@@ -89,3 +89,13 @@ Qt tests:
 - Run Qt tests only through `IDA_CYBERCHEF_ENABLE_QT_TESTS=1 QT_QPA_PLATFORM=offscreen .venv/bin/python tools/run_pytest.py -q`.
 - Rebuild the JS bundle with `just build` if `ida_cyberchef/data/CyberChef.js` is stale.
 - For operation coverage work, inspect both `operation_schema.json` and `docs/ops.md` before adding vectors.
+
+## Operation test triage notes
+
+- `tests/test_operation_vectors.py` is the preferred place for new deterministic engine coverage. Keep helpers small and value-oriented, then add parametrized `BakeVector` entries.
+- Upstream operation implementations live under `deps/CyberChef/src/core/operations/`. When behavior is unclear, also inspect supporting code in `deps/CyberChef/src/core/lib/`.
+- `docs/ops.md` uses upstream JS method names such as ``cartesianProduct()`` while the schema and recipes use user-facing names such as `Cartesian Product`. Search both styles when cross-referencing docs and source.
+- Do not trust default arguments blindly when verifying operations through `bake()`. Explicit recipe args were required to exercise `Cartesian Product` correctly with newline delimiters during test work.
+- Arithmetic operations like `Divide`, `Mean`, `Median`, and `Multiply` return CyberChef `BigNumber` objects internally. The Python bridge now converts `DishType.BIG_NUMBER` to `str`; if similar JS object leaks reappear, inspect `plate()` first.
+- When a result unexpectedly comes back as an STPyV8 object, first determine whether the issue is argument mapping, a missing `plate()` conversion, or a genuine upstream engine behavior.
+- The `Median` upstream implementation in `deps/CyberChef/src/core/lib/Arithmetic.mjs` only sorts even-length inputs before taking the middle value. Treat odd-length median cases carefully until that behavior is confirmed or fixed.
