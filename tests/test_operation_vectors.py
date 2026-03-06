@@ -195,6 +195,13 @@ def build_set_union(sample_a: list[str], sample_b: list[str], item_delimiter: st
     return item_delimiter.join(result)
 
 
+def build_symmetric_difference(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
+    return item_delimiter.join([
+        *[item for item in sample_a if item not in sample_b],
+        *[item for item in sample_b if item not in sample_a],
+    ])
+
+
 ENCODING_VECTORS = [
     BakeVector(
         name="to_base64_empty_bytes",
@@ -898,6 +905,61 @@ ARITHMETIC_LOGIC_VECTORS = [
         input_data="10,1,2,3",
         recipe=[{"op": "Subtract", "args": {"Delimiter": "Comma"}}],
         expected="4",
+    ),
+    BakeVector(
+        name="sum_space_delimited_docs_example",
+        input_data="0x0a 8 .5",
+        recipe=[{"op": "Sum", "args": {"Delimiter": "Space"}}],
+        expected="18.5",
+    ),
+    BakeVector(
+        name="sum_excludes_invalid_tokens",
+        input_data="20 nope 5",
+        recipe=[{"op": "Sum", "args": {"Delimiter": "Space"}}],
+        expected="25",
+    ),
+    BakeVector(
+        name="sum_colon_delimited_values",
+        input_data="1:2:3:4",
+        recipe=[{"op": "Sum", "args": {"Delimiter": "Colon"}}],
+        expected="10",
+    ),
+    BakeVector(
+        name="symmetric_difference_default_delimiters",
+        input_data="red,blue\n\ngreen,blue",
+        recipe=[
+            {
+                "op": "Symmetric Difference",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_symmetric_difference(["red", "blue"], ["green", "blue"], ","),
+    ),
+    BakeVector(
+        name="symmetric_difference_custom_delimiters",
+        input_data="north/south|south/east",
+        recipe=[
+            {
+                "op": "Symmetric Difference",
+                "args": {"Sample delimiter": "|", "Item delimiter": "/"},
+            }
+        ],
+        expected=build_symmetric_difference(["north", "south"], ["south", "east"], "/"),
+    ),
+    BakeVector(
+        name="symmetric_difference_preserves_duplicates_per_sample_order",
+        input_data="red,red,blue\n\ngreen,green,blue",
+        recipe=[
+            {
+                "op": "Symmetric Difference",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_symmetric_difference(
+            ["red", "red", "blue"],
+            ["green", "green", "blue"],
+            ",",
+        ),
     ),
 ]
 
