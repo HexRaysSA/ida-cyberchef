@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from tools.generate_operation_schema import (
     enhance_schema_with_categories,
     extract_categories_and_favorites,
@@ -19,6 +21,9 @@ def test_extract_categories_and_favorites():
         / "config"
         / "Categories.json"
     )
+
+    if not categories_json_path.exists():
+        pytest.skip("CyberChef source tree is not available")
 
     result = extract_categories_and_favorites(categories_json_path)
 
@@ -63,6 +68,9 @@ def test_enhance_schema_with_categories():
             {"name": "AES Decrypt", "module": "Crypto", "description": "Decrypt AES"},
         ]
     }
+
+    if not categories_json_path.exists():
+        pytest.skip("CyberChef source tree is not available")
 
     enhanced = enhance_schema_with_categories(schema, categories_json_path)
 
