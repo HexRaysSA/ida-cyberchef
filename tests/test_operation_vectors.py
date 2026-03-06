@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import re
 from dataclasses import dataclass
 from itertools import product
 
@@ -16,6 +17,18 @@ class BakeVector:
     input_data: bytes | str
     recipe: list[str | dict[str, object]]
     expected: bytes | str
+
+
+@dataclass(frozen=True)
+class BlockedBakeVector:
+    name: str
+    input_data: bytes | str
+    recipe: list[str | dict[str, object]]
+    error_message: str
+
+
+EMPTY_BSON_DOCUMENT = b"\x05\x00\x00\x00\x00"
+HELLO_WORLD_BSON_DOCUMENT = bytes.fromhex("160000000268656c6c6f0006000000776f726c640000")
 
 
 def build_base58_bitcoin(value: bytes) -> str:
@@ -200,6 +213,183 @@ def build_symmetric_difference(sample_a: list[str], sample_b: list[str], item_de
         *[item for item in sample_a if item not in sample_b],
         *[item for item in sample_b if item not in sample_a],
     ])
+
+
+CODE_TIDY_VECTORS = [
+    BakeVector(
+        name="bson_serialise_empty_json_object",
+        input_data="{}",
+        recipe=["BSON serialise"],
+        expected=EMPTY_BSON_DOCUMENT,
+    ),
+    BakeVector(
+        name="bson_serialise_string_field_document",
+        input_data='{"hello":"world"}',
+        recipe=["BSON serialise"],
+        expected=HELLO_WORLD_BSON_DOCUMENT,
+    ),
+    BakeVector(
+        name="bson_deserialise_empty_document",
+        input_data=EMPTY_BSON_DOCUMENT,
+        recipe=["BSON deserialise"],
+        expected="{}",
+    ),
+    BakeVector(
+        name="bson_deserialise_string_field_document",
+        input_data=HELLO_WORLD_BSON_DOCUMENT,
+        recipe=["BSON deserialise"],
+        expected='''{
+  "hello": "world"
+}''',
+    ),
+    BakeVector(
+        name="bson_roundtrip_string_field_document",
+        input_data='{"hello":"world"}',
+        recipe=["BSON serialise", "BSON deserialise"],
+        expected='''{
+  "hello": "world"
+}''',
+    ),
+    BakeVector(
+        name="css_beautify_empty_string",
+        input_data="",
+        recipe=["CSS Beautify"],
+        expected="",
+    ),
+    BakeVector(
+        name="css_beautify_default_tab_indent",
+        input_data="body{color:red;margin:0}",
+        recipe=["CSS Beautify"],
+        expected="body{\n\\tcolor:red;\n\\tmargin:0\n}\n",
+    ),
+    BakeVector(
+        name="css_beautify_custom_space_indent",
+        input_data="body{color:red}",
+        recipe=[{"op": "CSS Beautify", "args": {"Indent string": "  "}}],
+        expected="body{\n  color:red\n}\n",
+    ),
+    BakeVector(
+        name="css_minify_empty_string",
+        input_data="",
+        recipe=["CSS Minify"],
+        expected="",
+    ),
+    BakeVector(
+        name="css_minify_default_whitespace_reduction",
+        input_data="body { color: red; margin: 0; }",
+        recipe=["CSS Minify"],
+        expected="body {color: red;margin: 0;}",
+    ),
+    BakeVector(
+        name="css_minify_preserve_comments",
+        input_data="/*x*/ body { color: red; }",
+        recipe=[{"op": "CSS Minify", "args": {"Preserve comments": True}}],
+        expected="/*x*/body {color: red;}",
+    ),
+    BakeVector(
+        name="generic_code_beautify_empty_string",
+        input_data="",
+        recipe=["Generic Code Beautify"],
+        expected="",
+    ),
+    BakeVector(
+        name="generic_code_beautify_if_else_block",
+        input_data="if(a){b();}else{c();}",
+        recipe=["Generic Code Beautify"],
+        expected='''if (a)  {
+    b();
+} else {
+    c();
+}''',
+    ),
+    BakeVector(
+        name="json_beautify_empty_object",
+        input_data="{}",
+        recipe=["JSON Beautify"],
+        expected="{}",
+    ),
+    BakeVector(
+        name="json_beautify_default_indent",
+        input_data='{"b":1,"a":2}',
+        recipe=["JSON Beautify"],
+        expected='''{
+    "b": 1,
+    "a": 2
+}''',
+    ),
+    BakeVector(
+        name="json_beautify_sort_keys_with_custom_indent",
+        input_data='{"b":1,"a":2}',
+        recipe=[
+            {
+                "op": "JSON Beautify",
+                "args": {
+                    "Indent string": "  ",
+                    "Sort Object Keys": True,
+                    "Formatted": False,
+                },
+            }
+        ],
+        expected='''{
+  "a": 2,
+  "b": 1
+}''',
+    ),
+    BakeVector(
+        name="json_minify_empty_object",
+        input_data="{ }",
+        recipe=["JSON Minify"],
+        expected="{}",
+    ),
+    BakeVector(
+        name="json_minify_compacts_whitespace",
+        input_data='''{
+  "b": 1,
+  "a": 2
+}''',
+        recipe=["JSON Minify"],
+        expected='{"b":1,"a":2}',
+    ),
+    BakeVector(
+        name="json_minify_then_beautify_roundtrip",
+        input_data='''{
+  "b": 1,
+  "a": 2
+}''',
+        recipe=["JSON Minify", "JSON Beautify"],
+        expected='''{
+    "b": 1,
+    "a": 2
+}''',
+    ),
+]
+
+CODE_TIDY_BLOCKED_VECTORS = [
+    BlockedBakeVector(
+        name="javascript_beautify_excluded_from_node_bundle",
+        input_data="const answer=42;",
+        recipe=["JavaScript Beautify"],
+        error_message=(
+            "Sorry, the JavaScriptBeautify operation is not available in the Node.js version of CyberChef."
+        ),
+    ),
+    BlockedBakeVector(
+        name="javascript_minify_excluded_from_node_bundle",
+        input_data="const answer = 42;",
+        recipe=["JavaScript Minify"],
+        error_message=(
+            "Sorry, the JavaScriptMinify operation is not available in the Node.js version of CyberChef."
+        ),
+    ),
+    BlockedBakeVector(
+        name="javascript_parser_excluded_from_node_bundle",
+        input_data="const answer = 42;",
+        recipe=["JavaScript Parser"],
+        error_message=(
+            "Sorry, the JavaScriptParser operation is not available in the Node.js version of CyberChef."
+        ),
+    ),
+]
 
 
 ENCODING_VECTORS = [
@@ -964,6 +1154,7 @@ ARITHMETIC_LOGIC_VECTORS = [
 ]
 
 BITE_SIZED_BAKE_VECTORS = [
+    *CODE_TIDY_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,
@@ -979,3 +1170,13 @@ BITE_SIZED_BAKE_VECTORS = [
 )
 def test_bake_vectors(vector: BakeVector):
     assert bake(vector.input_data, vector.recipe) == vector.expected
+
+
+@pytest.mark.parametrize(
+    "vector",
+    CODE_TIDY_BLOCKED_VECTORS,
+    ids=[vector.name for vector in CODE_TIDY_BLOCKED_VECTORS],
+)
+def test_bake_vectors_blocked_operations(vector: BlockedBakeVector):
+    with pytest.raises(Exception, match=re.escape(vector.error_message)):
+        bake(vector.input_data, vector.recipe)
