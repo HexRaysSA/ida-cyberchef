@@ -194,7 +194,7 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
                 return bytes(list(value))
             return value
         elif dish_type == DishType.BIG_NUMBER:
-            return int(value) if isinstance(value, (int, float)) else value
+            return str(value)
         elif dish_type == DishType.JSON:
             return value
         elif dish_type in (DishType.FILE, DishType.LIST_FILE):

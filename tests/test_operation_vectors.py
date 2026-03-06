@@ -1,6 +1,7 @@
 import base64
 import hashlib
 from dataclasses import dataclass
+from itertools import product
 
 import pytest
 
@@ -50,6 +51,44 @@ def build_xor_bytes(
         result.append(xored_value)
 
     return bytes(result)
+
+
+def build_add_bytes(data: bytes, key: bytes) -> bytes:
+    if not key:
+        return data
+
+    return bytes((value + key[index % len(key)]) % 256 for index, value in enumerate(data))
+
+
+def build_and_bytes(data: bytes, key: bytes) -> bytes:
+    if not key:
+        return bytes(0 for _ in data)
+
+    return bytes(value & key[index % len(key)] for index, value in enumerate(data))
+
+
+def build_left_shift_bytes(data: bytes, amount: int) -> bytes:
+    return bytes((value << amount) & 0xFF for value in data)
+
+
+def build_right_shift_bytes(data: bytes, amount: int, *, arithmetic: bool) -> bytes:
+    result = bytearray()
+
+    for value in data:
+        shifted_value = value >> amount
+        if arithmetic:
+            shifted_value ^= value & 0x80
+        result.append(shifted_value)
+
+    return bytes(result)
+
+
+def build_not_bytes(data: bytes) -> bytes:
+    return bytes((~value) & 0xFF for value in data)
+
+
+def build_cartesian_product(samples: list[list[str]], item_delimiter: str) -> str:
+    return item_delimiter.join(f"({','.join(items)})" for items in product(*samples))
 
 
 ENCODING_VECTORS = [
@@ -325,11 +364,230 @@ BINARY_VECTORS = [
     ),
 ]
 
+ARITHMETIC_LOGIC_VECTORS = [
+    BakeVector(
+        name="add_empty_bytes_with_empty_key",
+        input_data=b"",
+        recipe=[{"op": "ADD", "args": {"Key": {"string": "", "option": "Hex"}}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="add_wraparound_with_repeating_hex_key",
+        input_data=b"\x00\xfe\xff\x10",
+        recipe=[
+            {
+                "op": "ADD",
+                "args": {"Key": {"string": "0102", "option": "Hex"}},
+            }
+        ],
+        expected=build_add_bytes(b"\x00\xfe\xff\x10", b"\x01\x02"),
+    ),
+    BakeVector(
+        name="add_utf8_key_option",
+        input_data=b"A\xff",
+        recipe=[
+            {
+                "op": "ADD",
+                "args": {"Key": {"string": "A", "option": "UTF8"}},
+            }
+        ],
+        expected=build_add_bytes(b"A\xff", b"A"),
+    ),
+    BakeVector(
+        name="and_empty_bytes_with_empty_key",
+        input_data=b"",
+        recipe=[{"op": "AND", "args": {"Key": {"string": "", "option": "Hex"}}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="and_binary_key_option",
+        input_data=b"\xff\x0f\xf0",
+        recipe=[
+            {
+                "op": "AND",
+                "args": {"Key": {"string": "10100001", "option": "Binary"}},
+            }
+        ],
+        expected=build_and_bytes(b"\xff\x0f\xf0", b"\xa1"),
+    ),
+    BakeVector(
+        name="and_utf8_key_option",
+        input_data=b"Az",
+        recipe=[
+            {
+                "op": "AND",
+                "args": {"Key": {"string": "A", "option": "UTF8"}},
+            }
+        ],
+        expected=build_and_bytes(b"Az", b"A"),
+    ),
+    BakeVector(
+        name="bit_shift_left_empty_bytes",
+        input_data=b"",
+        recipe=[{"op": "Bit shift left", "args": {"Amount": 1}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="bit_shift_left_amount_one",
+        input_data=b"\x01\x80\x7f",
+        recipe=[{"op": "Bit shift left", "args": {"Amount": 1}}],
+        expected=build_left_shift_bytes(b"\x01\x80\x7f", 1),
+    ),
+    BakeVector(
+        name="bit_shift_left_amount_seven",
+        input_data=b"\x81\x7f",
+        recipe=[{"op": "Bit shift left", "args": {"Amount": 7}}],
+        expected=build_left_shift_bytes(b"\x81\x7f", 7),
+    ),
+    BakeVector(
+        name="bit_shift_right_logical",
+        input_data=b"\x81\x7f",
+        recipe=[
+            {
+                "op": "Bit shift right",
+                "args": {"Amount": 1, "Type": "Logical shift"},
+            }
+        ],
+        expected=build_right_shift_bytes(b"\x81\x7f", 1, arithmetic=False),
+    ),
+    BakeVector(
+        name="bit_shift_right_arithmetic",
+        input_data=b"\x81\x7f",
+        recipe=[
+            {
+                "op": "Bit shift right",
+                "args": {"Amount": 1, "Type": "Arithmetic shift"},
+            }
+        ],
+        expected=build_right_shift_bytes(b"\x81\x7f", 1, arithmetic=True),
+    ),
+    BakeVector(
+        name="bit_shift_right_amount_two_arithmetic",
+        input_data=b"\xff\x40\x20",
+        recipe=[
+            {
+                "op": "Bit shift right",
+                "args": {"Amount": 2, "Type": "Arithmetic shift"},
+            }
+        ],
+        expected=build_right_shift_bytes(b"\xff\x40\x20", 2, arithmetic=True),
+    ),
+    BakeVector(
+        name="cartesian_product_two_sets_default_delimiters",
+        input_data="red,blue\n\ncircle,square",
+        recipe=[
+            {
+                "op": "Cartesian Product",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_cartesian_product(
+            [["red", "blue"], ["circle", "square"]],
+            ",",
+        ),
+    ),
+    BakeVector(
+        name="cartesian_product_custom_sample_delimiter",
+        input_data="a,b|1,2|X,Y",
+        recipe=[
+            {
+                "op": "Cartesian Product",
+                "args": {"Sample delimiter": "|", "Item delimiter": ","},
+            }
+        ],
+        expected=build_cartesian_product(
+            [["a", "b"], ["1", "2"], ["X", "Y"]],
+            ",",
+        ),
+    ),
+    BakeVector(
+        name="cartesian_product_custom_item_delimiter",
+        input_data="north/south\n\neast/west",
+        recipe=[
+            {
+                "op": "Cartesian Product",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": "/"},
+            }
+        ],
+        expected=build_cartesian_product(
+            [["north", "south"], ["east", "west"]],
+            "/",
+        ),
+    ),
+    BakeVector(
+        name="divide_space_delimited_docs_example",
+        input_data="0x0a 8 .5",
+        recipe=[{"op": "Divide", "args": {"Delimiter": "Space"}}],
+        expected="2.5",
+    ),
+    BakeVector(
+        name="divide_excludes_invalid_tokens",
+        input_data="20 nope 5",
+        recipe=[{"op": "Divide", "args": {"Delimiter": "Space"}}],
+        expected="4",
+    ),
+    BakeVector(
+        name="mean_space_delimited_docs_example",
+        input_data="0x0a 8 .5 .5",
+        recipe=[{"op": "Mean", "args": {"Delimiter": "Space"}}],
+        expected="4.75",
+    ),
+    BakeVector(
+        name="mean_comma_delimited_values",
+        input_data="1,2,3,4",
+        recipe=[{"op": "Mean", "args": {"Delimiter": "Comma"}}],
+        expected="2.5",
+    ),
+    BakeVector(
+        name="median_space_delimited_docs_example",
+        input_data="0x0a 8 1 .5",
+        recipe=[{"op": "Median", "args": {"Delimiter": "Space"}}],
+        expected="4.5",
+    ),
+    BakeVector(
+        name="median_sorted_odd_values",
+        input_data="1,2,10",
+        recipe=[{"op": "Median", "args": {"Delimiter": "Comma"}}],
+        expected="2",
+    ),
+    BakeVector(
+        name="multiply_space_delimited_docs_example",
+        input_data="0x0a 8 .5",
+        recipe=[{"op": "Multiply", "args": {"Delimiter": "Space"}}],
+        expected="40",
+    ),
+    BakeVector(
+        name="multiply_excludes_invalid_tokens",
+        input_data="3 nope 2 0.5",
+        recipe=[{"op": "Multiply", "args": {"Delimiter": "Space"}}],
+        expected="3",
+    ),
+    BakeVector(
+        name="not_empty_bytes",
+        input_data=b"",
+        recipe=["NOT"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="not_binary_edge_bytes",
+        input_data=b"\x00\x01\x7f\x80\xff",
+        recipe=["NOT"],
+        expected=build_not_bytes(b"\x00\x01\x7f\x80\xff"),
+    ),
+    BakeVector(
+        name="not_roundtrip_double_not",
+        input_data=bytes(range(32)),
+        recipe=["NOT", "NOT"],
+        expected=bytes(range(32)),
+    ),
+]
+
 BITE_SIZED_BAKE_VECTORS = [
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
+    *ARITHMETIC_LOGIC_VECTORS,
 ]
 
 
