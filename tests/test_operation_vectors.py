@@ -67,6 +67,20 @@ def build_and_bytes(data: bytes, key: bytes) -> bytes:
     return bytes(value & key[index % len(key)] for index, value in enumerate(data))
 
 
+def build_or_bytes(data: bytes, key: bytes) -> bytes:
+    if not key:
+        return data
+
+    return bytes(value | key[index % len(key)] for index, value in enumerate(data))
+
+
+def build_sub_bytes(data: bytes, key: bytes) -> bytes:
+    if not key:
+        return data
+
+    return bytes((value - key[index % len(key)]) % 256 for index, value in enumerate(data))
+
+
 def build_left_shift_bytes(data: bytes, amount: int) -> bytes:
     return bytes((value << amount) & 0xFF for value in data)
 
@@ -87,8 +101,98 @@ def build_not_bytes(data: bytes) -> bytes:
     return bytes((~value) & 0xFF for value in data)
 
 
+def build_rotate_left_bytes(data: bytes, amount: int) -> bytes:
+    amount %= 8
+    if amount == 0:
+        return data
+
+    return bytes(((value << amount) | (value >> (8 - amount))) & 0xFF for value in data)
+
+
+def build_rotate_right_bytes(data: bytes, amount: int) -> bytes:
+    amount %= 8
+    if amount == 0:
+        return data
+
+    return bytes(((value >> amount) | ((value << (8 - amount)) & 0xFF)) for value in data)
+
+
+def build_rotate_left_carry_bytes(data: bytes, amount: int) -> bytes:
+    if not data:
+        return b""
+
+    amount %= 8
+    result = [0] * len(data)
+    carry_bits = 0
+
+    for index in range(len(data) - 1, -1, -1):
+        old_byte = data[index]
+        result[index] = ((old_byte << amount) | carry_bits) & 0xFF
+        carry_bits = (old_byte >> (8 - amount)) & ((1 << amount) - 1) if amount else 0
+
+    result[-1] |= carry_bits
+    return bytes(result)
+
+
+def build_rotate_right_carry_bytes(data: bytes, amount: int) -> bytes:
+    if not data:
+        return b""
+
+    amount %= 8
+    result = []
+    carry_bits = 0
+
+    for old_byte in data:
+        result.append((old_byte >> amount) | carry_bits)
+        carry_bits = ((old_byte & ((1 << amount) - 1)) << (8 - amount)) if amount else 0
+
+    result[0] |= carry_bits
+    return bytes(result)
+
+
 def build_cartesian_product(samples: list[list[str]], item_delimiter: str) -> str:
     return item_delimiter.join(f"({','.join(items)})" for items in product(*samples))
+
+
+def build_power_set(items: list[str], item_delimiter: str) -> str:
+    filtered_items = [item for item in items if item]
+    if not filtered_items:
+        return ""
+
+    max_binary_value = int("1" * len(filtered_items), 2)
+    subsets = []
+
+    for value in range(max_binary_value + 1):
+        binary = format(value, f"0{len(filtered_items)}b")
+        subset = item_delimiter.join(
+            item for item, bit in zip(filtered_items, binary, strict=True) if bit == "1"
+        )
+        subsets.append(subset)
+
+    subsets.sort(key=len)
+    return "".join(f"{subset}\n" for subset in subsets)
+
+
+def build_set_difference(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
+    return item_delimiter.join(item for item in sample_a if item not in sample_b)
+
+
+def build_set_intersection(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
+    return item_delimiter.join(item for item in sample_a if item in sample_b)
+
+
+def build_set_union(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
+    result = []
+    seen = set()
+
+    for item in [*sample_a, *sample_b]:
+        if item in seen:
+            continue
+
+        seen.add(item)
+        result.append(item)
+
+    return item_delimiter.join(result)
 
 
 ENCODING_VECTORS = [
@@ -579,6 +683,221 @@ ARITHMETIC_LOGIC_VECTORS = [
         input_data=bytes(range(32)),
         recipe=["NOT", "NOT"],
         expected=bytes(range(32)),
+    ),
+    BakeVector(
+        name="or_empty_bytes_with_empty_key",
+        input_data=b"",
+        recipe=[{"op": "OR", "args": {"Key": {"string": "", "option": "Hex"}}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="or_binary_key_option",
+        input_data=b"\x0f\xf0U",
+        recipe=[
+            {
+                "op": "OR",
+                "args": {"Key": {"string": "10100001", "option": "Binary"}},
+            }
+        ],
+        expected=build_or_bytes(b"\x0f\xf0U", b"\xa1"),
+    ),
+    BakeVector(
+        name="or_utf8_key_option",
+        input_data=b"Az",
+        recipe=[
+            {
+                "op": "OR",
+                "args": {"Key": {"string": "A", "option": "UTF8"}},
+            }
+        ],
+        expected=build_or_bytes(b"Az", b"A"),
+    ),
+    BakeVector(
+        name="power_set_empty_string",
+        input_data="",
+        recipe=[{"op": "Power Set", "args": {"Item delimiter": ","}}],
+        expected="",
+    ),
+    BakeVector(
+        name="power_set_comma_delimited_values",
+        input_data="red,blue",
+        recipe=[{"op": "Power Set", "args": {"Item delimiter": ","}}],
+        expected=build_power_set(["red", "blue"], ","),
+    ),
+    BakeVector(
+        name="power_set_custom_item_delimiter",
+        input_data="north|south",
+        recipe=[{"op": "Power Set", "args": {"Item delimiter": "|"}}],
+        expected=build_power_set(["north", "south"], "|"),
+    ),
+    BakeVector(
+        name="rotate_left_empty_bytes",
+        input_data=b"",
+        recipe=[{"op": "Rotate left", "args": {"Amount": 1, "Carry through": False}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="rotate_left_amount_two",
+        input_data=b"\x81\x7f",
+        recipe=[{"op": "Rotate left", "args": {"Amount": 2, "Carry through": False}}],
+        expected=build_rotate_left_bytes(b"\x81\x7f", 2),
+    ),
+    BakeVector(
+        name="rotate_left_carry_through",
+        input_data=b"\x81\x7f",
+        recipe=[{"op": "Rotate left", "args": {"Amount": 1, "Carry through": True}}],
+        expected=build_rotate_left_carry_bytes(b"\x81\x7f", 1),
+    ),
+    BakeVector(
+        name="rotate_right_empty_bytes",
+        input_data=b"",
+        recipe=[{"op": "Rotate right", "args": {"Amount": 1, "Carry through": False}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="rotate_right_amount_two",
+        input_data=b"\x81\x7f",
+        recipe=[{"op": "Rotate right", "args": {"Amount": 2, "Carry through": False}}],
+        expected=build_rotate_right_bytes(b"\x81\x7f", 2),
+    ),
+    BakeVector(
+        name="rotate_right_carry_through",
+        input_data=b"\x81\x7f",
+        recipe=[{"op": "Rotate right", "args": {"Amount": 1, "Carry through": True}}],
+        expected=build_rotate_right_carry_bytes(b"\x81\x7f", 1),
+    ),
+    BakeVector(
+        name="rotate_roundtrip_left_then_right",
+        input_data=bytes(range(32)),
+        recipe=[
+            {"op": "Rotate left", "args": {"Amount": 3, "Carry through": False}},
+            {"op": "Rotate right", "args": {"Amount": 3, "Carry through": False}},
+        ],
+        expected=bytes(range(32)),
+    ),
+    BakeVector(
+        name="sub_empty_bytes_with_empty_key",
+        input_data=b"",
+        recipe=[{"op": "SUB", "args": {"Key": {"string": "", "option": "Hex"}}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="sub_wraparound_with_repeating_hex_key",
+        input_data=b"\x00\x01\xff\x10",
+        recipe=[
+            {
+                "op": "SUB",
+                "args": {"Key": {"string": "0102", "option": "Hex"}},
+            }
+        ],
+        expected=build_sub_bytes(b"\x00\x01\xff\x10", b"\x01\x02"),
+    ),
+    BakeVector(
+        name="sub_base64_key_option",
+        input_data=b"A\xff",
+        recipe=[
+            {
+                "op": "SUB",
+                "args": {"Key": {"string": "QQ==", "option": "Base64"}},
+            }
+        ],
+        expected=build_sub_bytes(b"A\xff", b"A"),
+    ),
+    BakeVector(
+        name="set_difference_default_delimiters",
+        input_data="red,blue\n\nblue,green",
+        recipe=[
+            {
+                "op": "Set Difference",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_set_difference(["red", "blue"], ["blue", "green"], ","),
+    ),
+    BakeVector(
+        name="set_difference_custom_delimiters",
+        input_data="north/south|south/east",
+        recipe=[
+            {
+                "op": "Set Difference",
+                "args": {"Sample delimiter": "|", "Item delimiter": "/"},
+            }
+        ],
+        expected=build_set_difference(["north", "south"], ["south", "east"], "/"),
+    ),
+    BakeVector(
+        name="set_intersection_default_delimiters",
+        input_data="red,blue\n\nblue,green",
+        recipe=[
+            {
+                "op": "Set Intersection",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_set_intersection(["red", "blue"], ["blue", "green"], ","),
+    ),
+    BakeVector(
+        name="set_intersection_custom_delimiters",
+        input_data="north/south|south/east",
+        recipe=[
+            {
+                "op": "Set Intersection",
+                "args": {"Sample delimiter": "|", "Item delimiter": "/"},
+            }
+        ],
+        expected=build_set_intersection(["north", "south"], ["south", "east"], "/"),
+    ),
+    BakeVector(
+        name="set_union_default_delimiters",
+        input_data="red,blue\n\nblue,green",
+        recipe=[
+            {
+                "op": "Set Union",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_set_union(["red", "blue"], ["blue", "green"], ","),
+    ),
+    BakeVector(
+        name="set_union_custom_delimiters",
+        input_data="north/south|south/east",
+        recipe=[
+            {
+                "op": "Set Union",
+                "args": {"Sample delimiter": "|", "Item delimiter": "/"},
+            }
+        ],
+        expected=build_set_union(["north", "south"], ["south", "east"], "/"),
+    ),
+    BakeVector(
+        name="standard_deviation_population_example",
+        input_data="2,4,4,4,5,5,7,9",
+        recipe=[{"op": "Standard Deviation", "args": {"Delimiter": "Comma"}}],
+        expected="2",
+    ),
+    BakeVector(
+        name="standard_deviation_excludes_invalid_tokens",
+        input_data="1:3:nope",
+        recipe=[{"op": "Standard Deviation", "args": {"Delimiter": "Colon"}}],
+        expected="1",
+    ),
+    BakeVector(
+        name="subtract_space_delimited_docs_example",
+        input_data="0x0a 8 .5",
+        recipe=[{"op": "Subtract", "args": {"Delimiter": "Space"}}],
+        expected="1.5",
+    ),
+    BakeVector(
+        name="subtract_excludes_invalid_tokens",
+        input_data="20 nope 5",
+        recipe=[{"op": "Subtract", "args": {"Delimiter": "Space"}}],
+        expected="15",
+    ),
+    BakeVector(
+        name="subtract_comma_delimited_values",
+        input_data="10,1,2,3",
+        recipe=[{"op": "Subtract", "args": {"Delimiter": "Comma"}}],
+        expected="4",
     ),
 ]
 
