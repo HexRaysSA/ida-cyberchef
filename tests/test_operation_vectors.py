@@ -14,7 +14,10 @@ import pytest
 
 from ida_cyberchef.cyberchef import bake
 
+BASE45_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"
 BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+BASE58_RIPPLE_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"
+BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 
 @dataclass(frozen=True)
@@ -94,7 +97,38 @@ AMF0_SINGLE_FIELD_OBJECT_DECODED = {
 }
 
 
-def build_base58_bitcoin(value: bytes) -> str:
+def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
+    if not value:
+        return ""
+
+    encoded = []
+
+    for index in range(0, len(value), 2):
+        pair = value[index : index + 2]
+        number = 0
+
+        for element in pair:
+            number = (number * 256) + element
+
+        chars = 0
+        while True:
+            encoded.append(alphabet[number % 45])
+            chars += 1
+            number //= 45
+            if number == 0:
+                break
+
+        if chars < 2:
+            encoded.append("0")
+            chars += 1
+
+        if len(pair) > 1 and chars < 3:
+            encoded.append("0")
+
+    return "".join(encoded)
+
+
+def build_base58(value: bytes, alphabet: str = BASE58_ALPHABET) -> str:
     if not value:
         return ""
 
@@ -104,9 +138,68 @@ def build_base58_bitcoin(value: bytes) -> str:
 
     while number:
         number, remainder = divmod(number, 58)
-        encoded = BASE58_ALPHABET[remainder] + encoded
+        encoded = alphabet[remainder] + encoded
 
-    return (BASE58_ALPHABET[0] * leading_zero_count) + encoded
+    return (alphabet[0] * leading_zero_count) + encoded
+
+
+def build_base58_bitcoin(value: bytes) -> str:
+    return build_base58(value, BASE58_ALPHABET)
+
+
+def build_base62(value: bytes, alphabet: str = BASE62_ALPHABET) -> str:
+    if not value:
+        return ""
+
+    number = int.from_bytes(value, byteorder="big")
+    encoded = ""
+
+    while number:
+        number, remainder = divmod(number, 62)
+        encoded = alphabet[remainder] + encoded
+
+    return encoded or alphabet[0]
+
+
+def build_base92_character(value: int) -> str:
+    if value == 0:
+        return "!"
+
+    if value <= 61:
+        return chr(ord("#") + value - 1)
+
+    return chr(ord("a") + value - 62)
+
+
+def build_base92(value: bytes) -> str:
+    encoded = []
+    bit_string = ""
+    remaining = bytes(value)
+
+    while remaining:
+        while len(bit_string) < 13 and remaining:
+            bit_string += format(remaining[0], "08b")
+            remaining = remaining[1:]
+
+        if len(bit_string) < 13:
+            break
+
+        number = int(bit_string[:13], 2)
+        encoded.append(build_base92_character(number // 91))
+        encoded.append(build_base92_character(number % 91))
+        bit_string = bit_string[13:]
+
+    if bit_string:
+        if len(bit_string) < 7:
+            bit_string = bit_string.ljust(6, "0")
+            encoded.append(build_base92_character(int(bit_string, 2)))
+        else:
+            bit_string = bit_string.ljust(13, "0")
+            number = int(bit_string[:13], 2)
+            encoded.append(build_base92_character(number // 91))
+            encoded.append(build_base92_character(number % 91))
+
+    return "".join(encoded)
 
 
 def build_xor_bytes(
@@ -1000,6 +1093,157 @@ DATA_FORMAT_VECTORS = [
             }
         ],
         expected="U+000041U+000021",
+    ),
+    BakeVector(
+        name="from_bcd_packed_nibbles_1234",
+        input_data="0001 0010 0011 0100",
+        recipe=[
+            {
+                "op": "From BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": True,
+                    "Signed": False,
+                    "Input format": "Nibbles",
+                },
+            }
+        ],
+        expected="1234",
+    ),
+    BakeVector(
+        name="from_bcd_unpacked_bytes_123",
+        input_data="00000001 00000010 00000011",
+        recipe=[
+            {
+                "op": "From BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": False,
+                    "Signed": False,
+                    "Input format": "Bytes",
+                },
+            }
+        ],
+        expected="123",
+    ),
+    BakeVector(
+        name="from_bcd_signed_negative_12",
+        input_data="0001 0010 1101",
+        recipe=[
+            {
+                "op": "From BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": True,
+                    "Signed": True,
+                    "Input format": "Nibbles",
+                },
+            }
+        ],
+        expected="-12",
+    ),
+    BakeVector(
+        name="from_base_hex_ff",
+        input_data="ff",
+        recipe=[{"op": "From Base", "args": {"Radix": 16}}],
+        expected=str(int("ff", 16)),
+    ),
+    BakeVector(
+        name="from_base_binary_strips_whitespace",
+        input_data="1 0 1 0",
+        recipe=[{"op": "From Base", "args": {"Radix": 2}}],
+        expected=str(int("1010", 2)),
+    ),
+    BakeVector(
+        name="from_base32_hex_extended_binary_edge_string",
+        input_data=base64.b32hexencode(b"\x00\x10\x7f\x80\xff").decode(),
+        recipe=[
+            {
+                "op": "From Base32",
+                "args": {"Alphabet": "0-9A-V=", "Remove non-alphabet chars": True},
+            }
+        ],
+        expected=b"\x00\x10\x7f\x80\xff",
+    ),
+    BakeVector(
+        name="from_base45_ascii_bytes",
+        input_data=build_base45(b"AB"),
+        recipe=["From Base45"],
+        expected=b"AB",
+    ),
+    BakeVector(
+        name="from_base58_ripple_alphabet_ascii_bytes",
+        input_data=build_base58(b"hello", BASE58_RIPPLE_ALPHABET),
+        recipe=[
+            {
+                "op": "From Base58",
+                "args": {
+                    "Alphabet": BASE58_RIPPLE_ALPHABET,
+                    "Remove non-alphabet chars": True,
+                },
+            }
+        ],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="from_base62_ascii_bytes",
+        input_data=build_base62(b"hello"),
+        recipe=["From Base62"],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="from_base62_custom_alphabet_ascii_bytes",
+        input_data=build_base62(b"hello", BASE62_ALPHABET[::-1]),
+        recipe=[{"op": "From Base62", "args": {"Alphabet": BASE62_ALPHABET[::-1]}}],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="from_base64_urlsafe_binary_edge_string",
+        input_data=base64.urlsafe_b64encode(b"\xfb\xef\xff").decode(),
+        recipe=[
+            {
+                "op": "From Base64",
+                "args": {
+                    "Alphabet": "A-Za-z0-9-_",
+                    "Remove non-alphabet chars": True,
+                    "Strict mode": False,
+                },
+            }
+        ],
+        expected=b"\xfb\xef\xff",
+    ),
+    BakeVector(
+        name="from_base85_custom_zero_group_char",
+        input_data="y",
+        recipe=[
+            {
+                "op": "From Base85",
+                "args": {
+                    "Alphabet": "!-u",
+                    "Remove non-alphabet chars": True,
+                    "All-zero group char": "y",
+                },
+            }
+        ],
+        expected=b"\x00\x00\x00\x00",
+    ),
+    BakeVector(
+        name="from_base92_ascii_bytes",
+        input_data=build_base92(b"hello"),
+        recipe=["From Base92"],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="from_binary_nibble_groups_without_delimiter",
+        input_data="0001001000110100",
+        recipe=[{"op": "From Binary", "args": {"Delimiter": "None", "Byte Length": 4}}],
+        expected=b"\x01\x02\x03\x04",
+    ),
+    BakeVector(
+        name="from_binary_colon_delimited_bytes",
+        input_data="01001000:01101001",
+        recipe=[{"op": "From Binary", "args": {"Delimiter": "Colon", "Byte Length": 8}}],
+        expected=b"Hi",
     ),
 ]
 
