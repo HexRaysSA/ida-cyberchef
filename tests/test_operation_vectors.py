@@ -136,6 +136,32 @@ def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
     return "".join(encoded)
 
 
+def build_expanded_alphabet(pattern: str) -> str:
+    expanded = []
+    index = 0
+
+    while index < len(pattern):
+        character = pattern[index]
+
+        if character == "\\" and index + 1 < len(pattern):
+            expanded.append(pattern[index + 1])
+            index += 2
+            continue
+
+        if index + 2 < len(pattern) and pattern[index + 1] == "-":
+            start = ord(character)
+            end = ord(pattern[index + 2])
+            step = 1 if start <= end else -1
+            expanded.extend(chr(code_point) for code_point in range(start, end + step, step))
+            index += 3
+            continue
+
+        expanded.append(character)
+        index += 1
+
+    return "".join(expanded)
+
+
 def build_base58(value: bytes, alphabet: str = BASE58_ALPHABET) -> str:
     if not value:
         return ""
@@ -167,6 +193,20 @@ def build_base62(value: bytes, alphabet: str = BASE62_ALPHABET) -> str:
         encoded = alphabet[remainder] + encoded
 
     return encoded or alphabet[0]
+
+
+def build_base_string(value: int, radix: int) -> str:
+    if value == 0:
+        return "0"
+
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    encoded = ""
+
+    while value:
+        value, remainder = divmod(value, radix)
+        encoded = digits[remainder] + encoded
+
+    return encoded
 
 
 def build_base92_character(value: int) -> str:
@@ -208,6 +248,25 @@ def build_base92(value: bytes) -> str:
             encoded.append(build_base92_character(number % 91))
 
     return "".join(encoded)
+
+
+def build_swap_endianness_bytes(
+    data: bytes,
+    word_length: int,
+    *,
+    pad_incomplete_words: bool,
+) -> bytes:
+    swapped = bytearray()
+
+    for index in range(0, len(data), word_length):
+        chunk = data[index : index + word_length]
+
+        if len(chunk) < word_length and pad_incomplete_words:
+            chunk = chunk.ljust(word_length, b"\x00")
+
+        swapped.extend(reversed(chunk))
+
+    return bytes(swapped)
 
 
 def build_xor_bytes(
@@ -1683,6 +1742,300 @@ DATA_FORMAT_VECTORS = [
             {"op": "Parse TLV", "args": {"Type/Key size": 1, "Length size": 1, "Use BER": True}}
         ],
         expected=[{"key": [1], "length": 2, "value": [65, 66]}],
+    ),
+    BakeVector(
+        name="rison_encode_default_nested_object",
+        input_data='{"a":1,"b":[true,"x"]}',
+        recipe=["Rison Encode"],
+        expected="(a:1,b:!(!t,x))",
+    ),
+    BakeVector(
+        name="rison_encode_uri_escapes_reserved_chars",
+        input_data='{"a":"a b","b":1}',
+        recipe=[{"op": "Rison Encode", "args": {"Encode Option": "Encode URI"}}],
+        expected="(a:'a+b',b%3A1)",
+    ),
+    BakeVector(
+        name="rison_decode_object_option",
+        input_data="a:1",
+        recipe=[{"op": "Rison Decode", "args": {"Decode Option": "Decode Object"}}],
+        expected={"a": 1},
+    ),
+    BakeVector(
+        name="rison_decode_array_option",
+        input_data="1,x,!f",
+        recipe=[{"op": "Rison Decode", "args": {"Decode Option": "Decode Array"}}],
+        expected=[1, "x", False],
+    ),
+    BakeVector(
+        name="rison_roundtrip_default_encode_decode",
+        input_data='{"a":1,"b":[true,"x"]}',
+        recipe=[
+            {"op": "Rison Encode", "args": {"Encode Option": "Encode"}},
+            {"op": "Rison Decode", "args": {"Decode Option": "Decode"}},
+        ],
+        expected={"a": 1, "b": [True, "x"]},
+    ),
+    BakeVector(
+        name="show_base64_offsets_plain_offsets_without_variable_chars",
+        input_data=b"cat",
+        recipe=[
+            {
+                "op": "Show Base64 offsets",
+                "args": {
+                    "Alphabet": "A-Za-z0-9+/=",
+                    "Show variable chars and padding": False,
+                    "Input format": "Raw",
+                },
+            }
+        ],
+        expected="Y2F0\nNhd\njYX",
+    ),
+    BakeVector(
+        name="show_base64_offsets_base64_input_matches_raw",
+        input_data=b"Y2F0",
+        recipe=[
+            {
+                "op": "Show Base64 offsets",
+                "args": {
+                    "Alphabet": "A-Za-z0-9+/=",
+                    "Show variable chars and padding": False,
+                    "Input format": "Base64",
+                },
+            }
+        ],
+        expected="Y2F0\nNhd\njYX",
+    ),
+    BakeVector(
+        name="show_base64_offsets_default_html_then_strip_tags",
+        input_data=b"cat",
+        recipe=["Show Base64 offsets", "Strip HTML tags"],
+        expected=(
+            "Characters highlighted in green could change if the input is surrounded by more data.\n"
+            "Characters highlighted in red are for padding purposes only.\n"
+            "Unhighlighted characters are static.\n"
+            "Hover over the static sections to see what they decode to on their own.\n"
+            "Offset 0: Y2F0\n"
+            "Offset 1: AGNhdA==\n"
+            "Offset 2: AABjYXQ="
+        ),
+    ),
+    BakeVector(
+        name="swap_endianness_hex_default_word_length",
+        input_data="0011223344556677",
+        recipe=["Swap endianness"],
+        expected=build_swap_endianness_bytes(
+            bytes.fromhex("0011223344556677"),
+            4,
+            pad_incomplete_words=True,
+        ).hex(" "),
+    ),
+    BakeVector(
+        name="swap_endianness_raw_word_length_four",
+        input_data="ABCDEFGH",
+        recipe=[
+            {
+                "op": "Swap endianness",
+                "args": {
+                    "Data format": "Raw",
+                    "Word length (bytes)": 4,
+                    "Pad incomplete words": True,
+                },
+            }
+        ],
+        expected=build_swap_endianness_bytes(
+            b"ABCDEFGH",
+            4,
+            pad_incomplete_words=True,
+        ).decode("latin1"),
+    ),
+    BakeVector(
+        name="swap_endianness_hex_without_padding",
+        input_data="0011223344",
+        recipe=[
+            {
+                "op": "Swap endianness",
+                "args": {
+                    "Data format": "Hex",
+                    "Word length (bytes)": 4,
+                    "Pad incomplete words": False,
+                },
+            }
+        ],
+        expected=build_swap_endianness_bytes(
+            bytes.fromhex("0011223344"),
+            4,
+            pad_incomplete_words=False,
+        ).hex(" "),
+    ),
+    BakeVector(
+        name="text_encoding_brute_force_decode_selected_encodings",
+        input_data=b"caf\xc3\xa9",
+        recipe=[
+            {"op": "Text Encoding Brute Force", "args": {"Mode": "Decode"}},
+            {
+                "op": "Jq",
+                "args": {
+                    "Query": '{"utf8": .["UTF-8 (65001)"], "cp500": .["IBM EBCDIC International (500)"]}'
+                },
+            },
+        ],
+        expected='{"utf8":"café","cp500":"Ä/ÃCz"}',
+    ),
+    BakeVector(
+        name="text_encoding_brute_force_encode_selected_encodings",
+        input_data="café",
+        recipe=[
+            {"op": "Text Encoding Brute Force", "args": {"Mode": "Encode"}},
+            {
+                "op": "Jq",
+                "args": {
+                    "Query": '{"utf8": .["UTF-8 (65001)"], "cp500": .["IBM EBCDIC International (500)"]}'
+                },
+            },
+        ],
+        expected='{"utf8":"cafÃ©","cp500":"\x83\x81\x86Q"}',
+    ),
+    BakeVector(
+        name="to_bcd_packed_nibbles_1234",
+        input_data="1234",
+        recipe=["To BCD"],
+        expected="0001 0010 0011 0100",
+    ),
+    BakeVector(
+        name="to_bcd_unpacked_bytes_123",
+        input_data="123",
+        recipe=[
+            {
+                "op": "To BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": False,
+                    "Signed": False,
+                    "Output format": "Bytes",
+                },
+            }
+        ],
+        expected="00000001 00000010 00000011",
+    ),
+    BakeVector(
+        name="to_bcd_signed_negative_12",
+        input_data="-12",
+        recipe=[
+            {
+                "op": "To BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": True,
+                    "Signed": True,
+                    "Output format": "Nibbles",
+                },
+            }
+        ],
+        expected="0000 0001 0010 1101",
+    ),
+    BakeVector(
+        name="to_bcd_then_from_bcd_roundtrip",
+        input_data="1234",
+        recipe=[
+            {
+                "op": "To BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": True,
+                    "Signed": False,
+                    "Output format": "Nibbles",
+                },
+            },
+            {
+                "op": "From BCD",
+                "args": {
+                    "Scheme": "8 4 2 1",
+                    "Packed": True,
+                    "Signed": False,
+                    "Input format": "Nibbles",
+                },
+            },
+        ],
+        expected="1234",
+    ),
+    BakeVector(
+        name="to_base_hex_255",
+        input_data="255",
+        recipe=[{"op": "To Base", "args": {"Radix": 16}}],
+        expected=build_base_string(255, 16),
+    ),
+    BakeVector(
+        name="to_base_binary_10",
+        input_data="10",
+        recipe=[{"op": "To Base", "args": {"Radix": 2}}],
+        expected=build_base_string(10, 2),
+    ),
+    BakeVector(
+        name="to_base_roundtrip_via_from_base",
+        input_data="255",
+        recipe=[
+            {"op": "To Base", "args": {"Radix": 16}},
+            {"op": "From Base", "args": {"Radix": 16}},
+        ],
+        expected="255",
+    ),
+    BakeVector(
+        name="to_base32_hex_extended_ascii_bytes",
+        input_data=b"hello",
+        recipe=[{"op": "To Base32", "args": {"Alphabet": "0-9A-V="}}],
+        expected=base64.b32hexencode(b"hello").decode(),
+    ),
+    BakeVector(
+        name="to_base32_roundtrip_hex_extended_binary_edge_bytes",
+        input_data=b"\x00\x10\x7f\x80\xff",
+        recipe=[
+            {"op": "To Base32", "args": {"Alphabet": "0-9A-V="}},
+            {
+                "op": "From Base32",
+                "args": {"Alphabet": "0-9A-V=", "Remove non-alphabet chars": True},
+            },
+        ],
+        expected=b"\x00\x10\x7f\x80\xff",
+    ),
+    BakeVector(
+        name="to_base45_ascii_bytes",
+        input_data=b"hello",
+        recipe=["To Base45"],
+        expected=build_base45(b"hello"),
+    ),
+    BakeVector(
+        name="to_base45_custom_alphabet_pattern",
+        input_data=b"AB",
+        recipe=[{"op": "To Base45", "args": {"Alphabet": "A-Z0-9 $%*+\\-./:"}}],
+        expected=build_base45(b"AB", build_expanded_alphabet("A-Z0-9 $%*+\\-./:")),
+    ),
+    BakeVector(
+        name="to_base45_roundtrip_ascii_bytes",
+        input_data=b"phase 13",
+        recipe=["To Base45", "From Base45"],
+        expected=b"phase 13",
+    ),
+    BakeVector(
+        name="to_base58_ripple_alphabet_ascii_bytes",
+        input_data=b"hello",
+        recipe=[{"op": "To Base58", "args": {"Alphabet": BASE58_RIPPLE_ALPHABET}}],
+        expected=build_base58(b"hello", BASE58_RIPPLE_ALPHABET),
+    ),
+    BakeVector(
+        name="to_base58_ripple_roundtrip_leading_zero_bytes",
+        input_data=b"\x00\x00hello",
+        recipe=[
+            {"op": "To Base58", "args": {"Alphabet": BASE58_RIPPLE_ALPHABET}},
+            {
+                "op": "From Base58",
+                "args": {
+                    "Alphabet": BASE58_RIPPLE_ALPHABET,
+                    "Remove non-alphabet chars": True,
+                },
+            },
+        ],
+        expected=b"\x00\x00hello",
     ),
 ]
 
