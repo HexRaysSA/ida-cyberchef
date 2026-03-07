@@ -299,6 +299,30 @@ def load_cyberchef(path: str | None = None):
         };
     }
 
+    if (typeof WebAssembly !== 'undefined') {
+        WebAssembly.compile = function(source) {
+            try {
+                return Promise.resolve(new WebAssembly.Module(source));
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        };
+        WebAssembly.instantiate = function(source, imports) {
+            try {
+                if (source instanceof WebAssembly.Module) {
+                    return Promise.resolve(new WebAssembly.Instance(source, imports));
+                }
+                const module = new WebAssembly.Module(source);
+                return Promise.resolve({
+                    module: module,
+                    instance: new WebAssembly.Instance(module, imports),
+                });
+            } catch (error) {
+                return Promise.reject(error);
+            }
+        };
+    }
+
     // Timer polyfills (minimal implementation for CyberChef)
     globalThis.setTimeout = function(fn, ms) {
         fn();
