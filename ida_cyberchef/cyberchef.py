@@ -229,6 +229,7 @@ def await_js_promise(ctx: STPyV8.JSContext, expression: str) -> Any:
     """)
 
     for _ in range(1000):
+        ctx.eval("globalThis.__piDrainTimers && globalThis.__piDrainTimers()")
         if not ctx.eval("globalThis.__piPromisePending"):
             break
     else:
@@ -269,6 +270,35 @@ def load_cyberchef(path: str | None = None):
         alert: function() {}
     };
 
+    globalThis.__piNextTicks = [];
+    globalThis.__piTimers = [];
+    globalThis.__piTimerId = 1;
+    globalThis.__piSchedule = function(queue, fn, args) {
+        const id = globalThis.__piTimerId++;
+        queue.push({id: id, fn: fn, args: args});
+        return id;
+    };
+    globalThis.__piCancel = function(queue, id) {
+        for (let i = 0; i < queue.length; i++) {
+            if (queue[i].id === id) {
+                queue.splice(i, 1);
+                return;
+            }
+        }
+    };
+    globalThis.__piDrainTimers = function() {
+        while (globalThis.__piNextTicks.length || globalThis.__piTimers.length) {
+            const nextTicks = globalThis.__piNextTicks.splice(0, globalThis.__piNextTicks.length);
+            for (const entry of nextTicks) {
+                entry.fn.apply(globalThis, entry.args);
+            }
+            const timers = globalThis.__piTimers.splice(0, globalThis.__piTimers.length);
+            for (const entry of timers) {
+                entry.fn.apply(globalThis, entry.args);
+            }
+        }
+    };
+
     // Minimal process polyfill
     globalThis.process = {
         platform: 'linux',
@@ -276,7 +306,10 @@ def load_cyberchef(path: str | None = None):
         cwd: () => '/',
         version: 'v18.0.0',
         versions: {node: 'v18.0.0'},
-        nextTick: (fn) => setTimeout(fn, 0)
+        nextTick: function(fn) {
+            const args = Array.prototype.slice.call(arguments, 1);
+            return globalThis.__piSchedule(globalThis.__piNextTicks, fn, args);
+        }
     };
 
     // TextEncoder/TextDecoder polyfill
@@ -358,14 +391,26 @@ def load_cyberchef(path: str | None = None):
 
     // Timer polyfills (minimal implementation for CyberChef)
     globalThis.setTimeout = function(fn, ms) {
-        fn();
-        return 0;
+        const args = Array.prototype.slice.call(arguments, 2);
+        return globalThis.__piSchedule(globalThis.__piTimers, fn, args);
     };
     globalThis.setInterval = function(fn, ms) {
-        return 0;
+        const args = Array.prototype.slice.call(arguments, 2);
+        return globalThis.__piSchedule(globalThis.__piTimers, fn, args);
     };
-    globalThis.clearTimeout = function(id) {};
-    globalThis.clearInterval = function(id) {};
+    globalThis.setImmediate = function(fn) {
+        const args = Array.prototype.slice.call(arguments, 1);
+        return globalThis.__piSchedule(globalThis.__piNextTicks, fn, args);
+    };
+    globalThis.clearTimeout = function(id) {
+        globalThis.__piCancel(globalThis.__piTimers, id);
+    };
+    globalThis.clearInterval = function(id) {
+        globalThis.__piCancel(globalThis.__piTimers, id);
+    };
+    globalThis.clearImmediate = function(id) {
+        globalThis.__piCancel(globalThis.__piNextTicks, id);
+    };
     """)
 
     # Setup minimal CommonJS environment

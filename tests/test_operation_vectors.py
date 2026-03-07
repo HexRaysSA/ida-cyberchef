@@ -9933,8 +9933,91 @@ def assert_html_to_text_preserves_raw_parse_ipv4_markup(result: object) -> None:
     assert decoded.endswith("</table>")
 
 
+def extract_js_string_constant(source: str, name: str) -> str:
+    match = re.search(rf'export const {re.escape(name)} = "(.*?)";', source, re.S)
+    if not match:
+        raise ValueError(f"Could not find JS string constant {name}")
+    return match.group(1)
+
+
+def extract_js_template_constant(source: str, name: str) -> str:
+    match = re.search(rf"const {re.escape(name)} = `(.*?)`;", source, re.S)
+    if not match:
+        raise ValueError(f"Could not find JS template constant {name}")
+    return match.group(1)
+
+
+def extract_pgp_case_input(source: str, case_name: str) -> str:
+    match = re.search(
+        rf'name: "{re.escape(case_name)}",\s*input: `(.*?)`,\s*expectedOutput:',
+        source,
+        re.S,
+    )
+    if not match:
+        raise ValueError(f"Could not find PGP case input {case_name}")
+    return match.group(1)
+
+
+def extract_pgp_case_expected_literal(source: str, case_name: str) -> str:
+    match = re.search(
+        rf'name: "{re.escape(case_name)}",\s*input: `.*?`,\s*expectedOutput: `(.*?)`,\s*recipeConfig:',
+        source,
+        re.S,
+    )
+    if not match:
+        raise ValueError(f"Could not find literal expected output for PGP case {case_name}")
+    return match.group(1)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TEST_DATA_DIR = REPO_ROOT / "tests" / "data"
+UPSTREAM_PGP_TESTS_TEXT = (REPO_ROOT / "deps" / "CyberChef" / "tests" / "operations" / "tests" / "PGP.mjs").read_text()
+UPSTREAM_CIPHER_SAMPLES_TEXT = (REPO_ROOT / "deps" / "CyberChef" / "tests" / "samples" / "Ciphers.mjs").read_text()
+PGP_ALICE_PRIVATE_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "ALICE_PRIVATE")
+PGP_ALICE_PUBLIC_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "ALICE_PUBLIC")
+PGP_BOB_PRIVATE_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "BOB_PRIVATE")
+PGP_BOB_PUBLIC_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "BOB_PUBLIC")
+PGP_ASCII_TEXT = extract_js_string_constant(UPSTREAM_CIPHER_SAMPLES_TEXT, "ASCII_TEXT")
+PGP_UTF8_TEXT = extract_js_string_constant(UPSTREAM_CIPHER_SAMPLES_TEXT, "UTF8_TEXT")
+PGP_VERIFY_INPUT = extract_pgp_case_input(UPSTREAM_PGP_TESTS_TEXT, "PGP Verify: ASCII, Alice")
+PGP_VERIFY_EXPECTED = extract_pgp_case_expected_literal(UPSTREAM_PGP_TESTS_TEXT, "PGP Verify: ASCII, Alice")
+PGP_DECRYPT_INPUT = extract_pgp_case_input(UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt: ASCII, Alice -> Bob")
+PGP_DECRYPT_AND_VERIFY_INPUT = extract_pgp_case_input(
+    UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt and Verify: UTF8, Alice -> Bob"
+)
+PGP_DECRYPT_AND_VERIFY_EXPECTED = extract_pgp_case_expected_literal(
+    UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt and Verify: UTF8, Alice -> Bob"
+).replace("${UTF8_TEXT}", PGP_UTF8_TEXT)
+RSA_TEST_PRIVATE_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_private.pem").read_text()
+RSA_TEST_PUBLIC_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_public.pem").read_text()
+RSA_TEST_CSR_PEM = (TEST_DATA_DIR / "public_key_phase45_parse_csr.pem").read_text()
+SSH_RSA_HOST_KEY_PUBLIC = (TEST_DATA_DIR / "public_key_phase45_ssh_host_key.pub").read_text()
+
+
 def parse_json_lines(value: str) -> list[dict[str, object]]:
     return [json.loads(line) for line in value.splitlines() if line.strip()]
+
+
+def assert_pgp_signed_output(result: object, expected_message: str) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("Signed by PGP key ID: DF98E485\n")
+    assert "PGP fingerprint: e94e06dd0b3744a0e970de9d84246548df98e485\n" in result
+    assert re.search(r"^Signed by PGP key ID: DF98E485\nPGP fingerprint: e94e06dd0b3744a0e970de9d84246548df98e485\nSigned on .+ GMT\n----------------------------------\n", result)
+    assert result.endswith(expected_message)
+
+
+def assert_parse_csr_output(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("Subject\n")
+    assert "  CN = example.test\n" in result
+    assert "  O  = Example Org\n" in result
+    assert "  C  = US\n" in result
+    assert "  Algorithm:      RSA\n" in result
+    assert "  Length:         1024 bits\n" in result
+    assert "  Exponent:       65537 (0x10001)\n" in result
+    assert "  Key Usage:\n    Digital Signature\n    Key encipherment\n" in result
+    assert "  Extended Key Usage:\n    TLS Web Server Authentication\n    TLS Web Client Authentication\n" in result
+    assert "  Subject Alternative Name:\n    DNS: example.test\n    DNS: www.example.test" in result
 
 
 def assert_generated_ecdsa_pem_key_pair(result: object) -> None:
@@ -10104,6 +10187,144 @@ PUBLIC_KEY_VECTORS = [
             }
         ],
         expected=assert_generated_rsa_pem_key_pair,
+    ),
+    BakeVector(
+        name="pgp_encrypt_decrypt_rsa_roundtrip",
+        input_data=PGP_ASCII_TEXT,
+        recipe=[
+            {"op": "PGP Encrypt", "args": {"Public key of recipient": PGP_ALICE_PUBLIC_KEY}},
+            {
+                "op": "PGP Decrypt",
+                "args": {
+                    "Private key of recipient": PGP_ALICE_PRIVATE_KEY,
+                    "Private key passphrase": "",
+                },
+            },
+        ],
+        expected=PGP_ASCII_TEXT,
+    ),
+    BakeVector(
+        name="pgp_decrypt_upstream_ascii_ciphertext",
+        input_data=PGP_DECRYPT_INPUT,
+        recipe=[
+            {
+                "op": "PGP Decrypt",
+                "args": {
+                    "Private key of recipient": PGP_ALICE_PRIVATE_KEY,
+                    "Private key passphrase": "",
+                },
+            }
+        ],
+        expected=PGP_ASCII_TEXT,
+    ),
+    BakeVector(
+        name="pgp_verify_upstream_ascii_signed_message",
+        input_data=PGP_VERIFY_INPUT,
+        recipe=[{"op": "PGP Verify", "args": {"Public key of signer": PGP_ALICE_PUBLIC_KEY}}],
+        expected=PGP_VERIFY_EXPECTED,
+    ),
+    BakeVector(
+        name="pgp_encrypt_and_sign_decrypt_and_verify_roundtrip",
+        input_data="hello",
+        recipe=[
+            {
+                "op": "PGP Encrypt and Sign",
+                "args": {
+                    "Private key of signer": PGP_ALICE_PRIVATE_KEY,
+                    "Private key passphrase": "",
+                    "Public key of recipient": PGP_BOB_PUBLIC_KEY,
+                },
+            },
+            {
+                "op": "PGP Decrypt and Verify",
+                "args": {
+                    "Public key of signer": PGP_ALICE_PUBLIC_KEY,
+                    "Private key of recipient": PGP_BOB_PRIVATE_KEY,
+                    "Private key password": "",
+                },
+            },
+        ],
+        expected=lambda result: assert_pgp_signed_output(result, "hello"),
+    ),
+    BakeVector(
+        name="pgp_decrypt_and_verify_upstream_utf8_message",
+        input_data=PGP_DECRYPT_AND_VERIFY_INPUT,
+        recipe=[
+            {
+                "op": "PGP Decrypt and Verify",
+                "args": {
+                    "Public key of signer": PGP_ALICE_PUBLIC_KEY,
+                    "Private key of recipient": PGP_BOB_PRIVATE_KEY,
+                    "Private key password": "",
+                },
+            }
+        ],
+        expected=PGP_DECRYPT_AND_VERIFY_EXPECTED,
+    ),
+    BakeVector(
+        name="parse_csr_rsa_with_requested_extensions",
+        input_data=RSA_TEST_CSR_PEM,
+        recipe=["Parse CSR"],
+        expected=assert_parse_csr_output,
+    ),
+    BakeVector(
+        name="parse_ssh_host_key_rsa_public_key",
+        input_data=SSH_RSA_HOST_KEY_PUBLIC,
+        recipe=["Parse SSH Host Key"],
+        expected=(
+            "Key type: ssh-rsa\n"
+            "Exponent: 0x010001\n"
+            "Modulus: "
+            "0x00a67f62b1a9f27aee5a6e0b51331b39e70807a6f0a8c5ee73399f3cad601681afc0763205fbfd6dbe5d5bffbb59e8eccbb29630c50d76fada242a43e9a8b2d994e2e6047a0df7060c3960bf8e5c5c3e947e1c03e935f1a6ece6bb88b2ef061a8e9e1686de3066b5c62e5b7c6e4d9a4f1e1a5a5e4ab35b8a3f7e23cab32875c0c5"
+        ),
+    ),
+    BakeVector(
+        name="rsa_encrypt_decrypt_oaep_sha256_roundtrip",
+        input_data="hello rsa",
+        recipe=[
+            {
+                "op": "RSA Encrypt",
+                "args": {
+                    "RSA Public Key (PEM)": RSA_TEST_PUBLIC_KEY_PEM,
+                    "Encryption Scheme": "RSA-OAEP",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            },
+            {
+                "op": "RSA Decrypt",
+                "args": {
+                    "RSA Private Key (PEM)": RSA_TEST_PRIVATE_KEY_PEM,
+                    "Key Password": "",
+                    "Encryption Scheme": "RSA-OAEP",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            },
+        ],
+        expected="hello rsa",
+    ),
+    BakeVector(
+        name="rsa_sign_verify_sha256_roundtrip",
+        input_data="hello rsa",
+        recipe=[
+            {
+                "op": "RSA Sign",
+                "args": {
+                    "RSA Private Key (PEM)": RSA_TEST_PRIVATE_KEY_PEM,
+                    "Key Password": "",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            },
+            {
+                "op": "RSA Verify",
+                "args": {
+                    "RSA Public Key (PEM)": RSA_TEST_PUBLIC_KEY_PEM,
+                    "Message": "hello rsa",
+                    "Message format": "Raw",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            },
+        ],
+        expected="Verified OK",
     ),
     BakeVector(
         name="hex_to_object_identifier_server_auth_oid",
