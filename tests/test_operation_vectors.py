@@ -115,6 +115,32 @@ SIMPLE_BER_TLV = bytes.fromhex("01024142")
 FERNET_TEST_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 FERNET_PHASE21_TOKEN = "gAAAAABpq-NaiTYSdio-mpGASNZAteHn6Q-ga8cYUUzCsmHyy73m1QsCRsqj0i-4QbAMBD6rIshNSOicC5CVLLIBXtg64AnOPw=="
 JWT_PHASE22_PAYLOAD = {"sub": "123", "name": "John Doe", "admin": True, "iat": 1_700_000_000}
+TYPEX_PHASE25_CUSTOM_ARGS = {
+    "1st (left-hand) rotor": "KHWENRCBISXJQGOFMAPVYZDLTU<BFHNQUW",
+    "1st rotor reversed": True,
+    "1st rotor ring setting": "B",
+    "1st rotor initial value": "C",
+    "2nd rotor": "BYPDZMGIKQCUSATREHOJNLFWXV<BFHNQUW",
+    "2nd rotor reversed": False,
+    "2nd rotor ring setting": "D",
+    "2nd rotor initial value": "E",
+    "3rd (middle) rotor": "ZANJCGDLVHIXOBRPMSWQUKFYET<BFHNQUW",
+    "3rd rotor reversed": True,
+    "3rd rotor ring setting": "F",
+    "3rd rotor initial value": "G",
+    "4th (static) rotor": "QXBGUTOVFCZPJIHSWERYNDAMLK<BFHNQUW",
+    "4th rotor reversed": False,
+    "4th rotor ring setting": "H",
+    "4th rotor initial value": "I",
+    "5th (right-hand, static) rotor": "BDCNWUEIQVFTSXALOGZJYMHKPR<BFHNQUW",
+    "5th rotor reversed": True,
+    "5th rotor ring setting": "J",
+    "5th rotor initial value": "K",
+    "Reflector": "AN BC FG IE KD LU MH OR TS VZ WQ XJ YP",
+    "Plugboard": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "Typex keyboard emulation": "None",
+    "Strict output": False,
+}
 
 
 def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
@@ -342,6 +368,50 @@ def build_affine_decode_string(value: str, *, a: int, b: int) -> str:
 
 def build_atbash_string(value: str) -> str:
     return build_affine_encode_string(value, a=25, b=25)
+
+
+def build_vigenere_encode_string(value: str, *, key: str) -> str:
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    key_lower = key.lower()
+    output = []
+    skipped = 0
+
+    for index, character in enumerate(value):
+        lower_character = character.lower()
+        if lower_character not in alphabet:
+            output.append(character)
+            skipped += 1
+            continue
+
+        key_character = key_lower[(index - skipped) % len(key_lower)]
+        key_index = alphabet.index(key_character)
+        message_index = alphabet.index(lower_character)
+        encoded = alphabet[(key_index + message_index) % 26]
+        output.append(encoded.upper() if character.isupper() else encoded)
+
+    return "".join(output)
+
+
+def build_vigenere_decode_string(value: str, *, key: str) -> str:
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    key_lower = key.lower()
+    output = []
+    skipped = 0
+
+    for index, character in enumerate(value):
+        lower_character = character.lower()
+        if lower_character not in alphabet:
+            output.append(character)
+            skipped += 1
+            continue
+
+        key_character = key_lower[(index - skipped) % len(key_lower)]
+        key_index = alphabet.index(key_character)
+        message_index = alphabet.index(lower_character)
+        decoded = alphabet[(message_index - key_index + len(alphabet)) % len(alphabet)]
+        output.append(decoded.upper() if character.isupper() else decoded)
+
+    return "".join(output)
 
 
 def build_bacon_encode_string(
@@ -1063,6 +1133,106 @@ def build_triple_des_args(
     }
 
 
+def build_xxtea_words(data: bytes, *, include_length: bool) -> list[int]:
+    length = len(data)
+    word_count = length >> 2
+    if length & 3:
+        word_count += 1
+
+    words = [0] * (word_count + 1 if include_length else word_count)
+    if include_length:
+        words[word_count] = length
+
+    for index, value in enumerate(data):
+        words[index >> 2] |= value << ((index & 3) << 3)
+
+    return words
+
+
+def build_xxtea_bytes(words: list[int], *, include_length: bool) -> bytes:
+    length = len(words)
+    byte_count = length << 2
+
+    if include_length:
+        message_length = words[-1]
+        byte_count -= 4
+        if message_length < byte_count - 3 or message_length > byte_count:
+            raise ValueError("Invalid XXTEA message length")
+        byte_count = message_length
+
+    return bytes((words[index >> 2] >> ((index & 3) << 3)) & 0xFF for index in range(byte_count))
+
+
+def build_xxtea_mix(sum_value: int, y: int, z: int, position: int, e_value: int, key_words: list[int]) -> int:
+    return (
+        ((z >> 5 ^ (y << 2)) + (y >> 3 ^ (z << 4)))
+        ^ ((sum_value ^ y) + (key_words[(position & 3) ^ e_value] ^ z))
+    )
+
+
+def build_xxtea_encrypt_bytes(data: bytes, key: bytes) -> bytes:
+    if not data:
+        return data
+
+    key_bytes = key[:16].ljust(16, b"\x00")
+    words = build_xxtea_words(data, include_length=True)
+    key_words = build_xxtea_words(key_bytes, include_length=False)
+    delta = 0x9E3779B9
+    word_count = len(words)
+    last_index = word_count - 1
+    z_value = words[last_index]
+    sum_value = 0
+
+    for _ in range((6 + (52 // word_count))):
+        sum_value = (sum_value + delta) & 0xFFFFFFFF
+        e_value = (sum_value >> 2) & 3
+
+        for position in range(last_index):
+            y_value = words[position + 1]
+            words[position] = (words[position] + build_xxtea_mix(sum_value, y_value, z_value, position, e_value, key_words)) & 0xFFFFFFFF
+            z_value = words[position]
+
+        y_value = words[0]
+        words[last_index] = (
+            words[last_index] + build_xxtea_mix(sum_value, y_value, z_value, last_index, e_value, key_words)
+        ) & 0xFFFFFFFF
+        z_value = words[last_index]
+
+    return build_xxtea_bytes(words, include_length=False)
+
+
+def build_xxtea_decrypt_bytes(data: bytes, key: bytes) -> bytes:
+    if not data:
+        return data
+
+    key_bytes = key[:16].ljust(16, b"\x00")
+    words = build_xxtea_words(data, include_length=False)
+    key_words = build_xxtea_words(key_bytes, include_length=False)
+    delta = 0x9E3779B9
+    word_count = len(words)
+    last_index = word_count - 1
+    y_value = words[0]
+    rounds = 6 + (52 // word_count)
+    sum_value = (rounds * delta) & 0xFFFFFFFF
+
+    while sum_value:
+        e_value = (sum_value >> 2) & 3
+
+        for position in range(last_index, 0, -1):
+            z_value = words[position - 1]
+            words[position] = (
+                words[position] - build_xxtea_mix(sum_value, y_value, z_value, position, e_value, key_words)
+            ) & 0xFFFFFFFF
+            y_value = words[position]
+
+        z_value = words[last_index]
+        words[0] = (words[0] - build_xxtea_mix(sum_value, y_value, z_value, 0, e_value, key_words)) & 0xFFFFFFFF
+        y_value = words[0]
+        sum_value = (sum_value - delta) & 0xFFFFFFFF
+
+    return build_xxtea_bytes(words, include_length=True)
+
+
 def build_base64url_text(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).decode().rstrip("=")
 
@@ -1212,18 +1382,31 @@ def build_xor_bytes(
     data: bytes,
     key: bytes,
     *,
+    scheme: str = "Standard",
     null_preserving: bool = False,
 ) -> bytes:
     result = bytearray()
+    effective_key = list(key or b"\x00")
 
     for index, value in enumerate(data):
-        xored_value = value ^ key[index % len(key)]
+        key_index = index % len(effective_key)
+        key_value = effective_key[key_index]
+
+        if scheme == "Cascade":
+            key_value = data[index + 1] if index + 1 < len(data) else 0
+
+        xored_value = value ^ key_value
 
         if null_preserving and (value == 0 or xored_value == 0):
             result.append(value)
             continue
 
         result.append(xored_value)
+
+        if scheme == "Input differential":
+            effective_key[key_index] = value
+        elif scheme == "Output differential":
+            effective_key[key_index] = xored_value
 
     return bytes(result)
 
@@ -5915,6 +6098,253 @@ ENCODING_VECTORS = [
             },
         ],
         expected="phase24 tdes",
+    ),
+    BakeVector(
+        name="typex_encrypt_default_hello",
+        input_data="HELLO",
+        recipe=["Typex"],
+        expected="PDEBF",
+    ),
+    BakeVector(
+        name="typex_roundtrip_default_configuration",
+        input_data="HELLO WORLD",
+        recipe=["Typex", {"op": "Typex", "args": {"Strict output": False}}],
+        expected="HELLO WORLD",
+    ),
+    BakeVector(
+        name="typex_roundtrip_keyboard_emulation_digits_and_punctuation",
+        input_data="MEET AT 9.",
+        recipe=[
+            {"op": "Typex", "args": {"Typex keyboard emulation": "Encrypt", "Strict output": False}},
+            {"op": "Typex", "args": {"Typex keyboard emulation": "Decrypt", "Strict output": False}},
+        ],
+        expected="MEET AT 9.",
+    ),
+    BakeVector(
+        name="typex_roundtrip_custom_rotors_raw_values",
+        input_data="TYPEXROUNDTRIP",
+        recipe=[
+            {"op": "Typex", "args": TYPEX_PHASE25_CUSTOM_ARGS},
+            {"op": "Typex", "args": TYPEX_PHASE25_CUSTOM_ARGS},
+        ],
+        expected="TYPEXROUNDTRIP",
+    ),
+    BakeVector(
+        name="vigenere_encode_empty_string",
+        input_data="",
+        recipe=[{"op": "Vigenère Encode", "args": {"Key": "LEMON"}}],
+        expected="",
+    ),
+    BakeVector(
+        name="vigenere_encode_classic_reference",
+        input_data="ATTACKATDAWN",
+        recipe=[{"op": "Vigenère Encode", "args": {"Key": "LEMON"}}],
+        expected=build_vigenere_encode_string("ATTACKATDAWN", key="LEMON"),
+    ),
+    BakeVector(
+        name="vigenere_decode_classic_reference",
+        input_data="LXFOPVEFRNHR",
+        recipe=[{"op": "Vigenère Decode", "args": {"Key": "LEMON"}}],
+        expected=build_vigenere_decode_string("LXFOPVEFRNHR", key="LEMON"),
+    ),
+    BakeVector(
+        name="vigenere_roundtrip_preserves_case_and_punctuation",
+        input_data="Attack at dawn!",
+        recipe=[
+            {"op": "Vigenère Encode", "args": {"Key": "LEMON"}},
+            {"op": "Vigenère Decode", "args": {"Key": "LEMON"}},
+        ],
+        expected="Attack at dawn!",
+    ),
+    BakeVector(
+        name="xor_input_differential_hex_key",
+        input_data=b"ABCD",
+        recipe=[
+            {
+                "op": "XOR",
+                "args": {
+                    "Key": {"string": "10", "option": "Hex"},
+                    "Scheme": "Input differential",
+                    "Null preserving": False,
+                },
+            }
+        ],
+        expected=build_xor_bytes(b"ABCD", b"\x10", scheme="Input differential"),
+    ),
+    BakeVector(
+        name="xor_output_differential_hex_key",
+        input_data=b"ABCD",
+        recipe=[
+            {
+                "op": "XOR",
+                "args": {
+                    "Key": {"string": "10", "option": "Hex"},
+                    "Scheme": "Output differential",
+                    "Null preserving": False,
+                },
+            }
+        ],
+        expected=build_xor_bytes(b"ABCD", b"\x10", scheme="Output differential"),
+    ),
+    BakeVector(
+        name="xor_cascade_ignores_supplied_key",
+        input_data=b"ABCD",
+        recipe=[
+            {
+                "op": "XOR",
+                "args": {
+                    "Key": {"string": "10", "option": "Hex"},
+                    "Scheme": "Cascade",
+                    "Null preserving": False,
+                },
+            }
+        ],
+        expected=build_xor_bytes(b"ABCD", b"\x10", scheme="Cascade"),
+    ),
+    BakeVector(
+        name="xor_brute_force_crib_finds_single_plaintext",
+        input_data=b"HELLO",
+        recipe=[
+            {
+                "op": "XOR Brute Force",
+                "args": {
+                    "Key length": 1,
+                    "Sample length": 5,
+                    "Sample offset": 0,
+                    "Scheme": "Standard",
+                    "Null preserving": False,
+                    "Print key": True,
+                    "Output as hex": False,
+                    "Crib (known plaintext string)": "hello",
+                },
+            }
+        ],
+        expected="Key = 20: hello",
+    ),
+    BakeVector(
+        name="xor_brute_force_sample_offset_hex_output",
+        input_data=b"zzHELLOzz",
+        recipe=[
+            {
+                "op": "XOR Brute Force",
+                "args": {
+                    "Key length": 1,
+                    "Sample length": 5,
+                    "Sample offset": 2,
+                    "Scheme": "Standard",
+                    "Null preserving": False,
+                    "Print key": True,
+                    "Output as hex": True,
+                    "Crib (known plaintext string)": "hello",
+                },
+            }
+        ],
+        expected="Key = 20: 68 65 6c 6c 6f",
+    ),
+    BakeVector(
+        name="xsalsa20_zero_key_nonce_keystream_prefix",
+        input_data="00000000000000000000000000000000",
+        recipe=[
+            {
+                "op": "XSalsa20",
+                "args": build_salsa20_args(
+                    key_string="00000000000000000000000000000000",
+                    key_option="Hex",
+                    nonce_string="000000000000000000000000000000000000000000000000",
+                    nonce_option="Hex",
+                    counter=0,
+                    rounds="20",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="37 33 27 1f c3 d0 14 a4 2a 9d ff 9f 22 d7 2b 28",
+    ),
+    BakeVector(
+        name="xsalsa20_roundtrip_twelve_round_utf8_nonce",
+        input_data="hello xsalsa",
+        recipe=[
+            {
+                "op": "XSalsa20",
+                "args": build_salsa20_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    nonce_string="123456789012345678901234",
+                    nonce_option="UTF8",
+                    counter=1,
+                    rounds="12",
+                    input_type="Raw",
+                    output_type="Hex",
+                ),
+            },
+            {
+                "op": "XSalsa20",
+                "args": build_salsa20_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    nonce_string="123456789012345678901234",
+                    nonce_option="UTF8",
+                    counter=1,
+                    rounds="12",
+                    input_type="Hex",
+                    output_type="Raw",
+                ),
+            },
+        ],
+        expected="hello xsalsa",
+    ),
+    BakeVector(
+        name="xxtea_encrypt_empty_bytes",
+        input_data=b"",
+        recipe=[
+            {"op": "XXTEA Encrypt", "args": {"Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"}}}
+        ],
+        expected=b"",
+    ),
+    BakeVector(
+        name="xxtea_encrypt_utf8_key_reference",
+        input_data=b"hello!!!",
+        recipe=[
+            {"op": "XXTEA Encrypt", "args": {"Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"}}}
+        ],
+        expected=build_xxtea_encrypt_bytes(b"hello!!!", b"YELLOW SUBMARINE"),
+    ),
+    BakeVector(
+        name="xxtea_decrypt_utf8_key_reference",
+        input_data=build_xxtea_encrypt_bytes(b"hello!!!", b"YELLOW SUBMARINE"),
+        recipe=[
+            {"op": "XXTEA Decrypt", "args": {"Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"}}}
+        ],
+        expected=build_xxtea_decrypt_bytes(
+            build_xxtea_encrypt_bytes(b"hello!!!", b"YELLOW SUBMARINE"),
+            b"YELLOW SUBMARINE",
+        ),
+    ),
+    BakeVector(
+        name="xxtea_encrypt_decrypt_base64_key_roundtrip",
+        input_data=b"phase25 xxtea",
+        recipe=[
+            {
+                "op": "XXTEA Encrypt",
+                "args": {
+                    "Key": {
+                        "string": base64.b64encode(b"YELLOW SUBMARINE").decode(),
+                        "option": "Base64",
+                    }
+                },
+            },
+            {
+                "op": "XXTEA Decrypt",
+                "args": {
+                    "Key": {
+                        "string": base64.b64encode(b"YELLOW SUBMARINE").decode(),
+                        "option": "Base64",
+                    }
+                },
+            },
+        ],
+        expected=b"phase25 xxtea",
     ),
     BakeVector(
         name="to_base64_empty_bytes",
