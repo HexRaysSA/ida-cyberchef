@@ -1710,6 +1710,15 @@ def build_xor_bytes(
     return bytes(result)
 
 
+def build_xor_checksum(data: bytes, blocksize: int) -> str:
+    result = bytearray(blocksize)
+
+    for index, value in enumerate(data):
+        result[index % blocksize] ^= value
+
+    return result.hex()
+
+
 def build_add_bytes(data: bytes, key: bytes) -> bytes:
     if not key:
         return data
@@ -7779,10 +7788,130 @@ HASH_VECTORS = [
         expected=hashlib.new("sha512_256", b"hello").hexdigest(),
     ),
     BakeVector(
+        name="sha3_default_512_ascii_bytes",
+        input_data=b"hello",
+        recipe=["SHA3"],
+        expected=hashlib.sha3_512(b"hello").hexdigest(),
+    ),
+    BakeVector(
+        name="sha3_224_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "SHA3", "args": {"Size": "224"}}],
+        expected=hashlib.sha3_224(b"Hello, World!").hexdigest(),
+    ),
+    BakeVector(
         name="sha3_256_ascii_bytes",
         input_data=b"hello",
         recipe=[{"op": "SHA3", "args": {"size": "256"}}],
         expected=hashlib.sha3_256(b"hello").hexdigest(),
+    ),
+    BakeVector(
+        name="sha3_384_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "SHA3", "args": {"Size": "384"}}],
+        expected=hashlib.sha3_384(b"Hello, World!").hexdigest(),
+    ),
+    BakeVector(
+        name="shake_default_512_ascii_bytes",
+        input_data=b"hello",
+        recipe=["Shake"],
+        expected=hashlib.shake_256(b"hello").hexdigest(64),
+    ),
+    BakeVector(
+        name="shake_128_256_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "Shake", "args": {"Capacity": "128", "Size": 256}}],
+        expected=hashlib.shake_128(b"Hello, World!").hexdigest(32),
+    ),
+    BakeVector(
+        name="shake_256_512_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "Shake", "args": {"Capacity": "256", "Size": 512}}],
+        expected=hashlib.shake_256(b"Hello, World!").hexdigest(64),
+    ),
+    BakeVector(
+        name="sm3_default_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=["SM3"],
+        expected="7ed26cbf0bee4ca7d55c1e64714c4aa7d1f163089ef5ceb603cd102c81fbcbc5",
+    ),
+    BakeVector(
+        name="sm3_short_rounds_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "SM3", "args": {"Length": 256, "Rounds": 16}}],
+        expected="64d4c84c6efaaf512c7eb1a44bce6bef3906efa4d100d47cf420466ee1d1dfde",
+    ),
+    BakeVector(
+        name="ssdeep_empty_string",
+        input_data="",
+        recipe=["SSDEEP"],
+        expected="3::",
+    ),
+    BakeVector(
+        name="ssdeep_phrase_upstream_vector",
+        input_data="shotgun tyranny snugly",
+        recipe=["SSDEEP"],
+        expected="3:DLIXzMQCJc:XERKc",
+    ),
+    BakeVector(
+        name="snefru_default_128_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=["Snefru"],
+        expected="6f3d55b69557abb0a3c4e9de9d29ba5d",
+    ),
+    BakeVector(
+        name="snefru_256_two_round_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "Snefru", "args": {"Size": 256, "Rounds": "2"}}],
+        expected="65736daba648de28ef4c4a316b4684584ecf9f22ddb5c457729e6bf0f40113c4",
+    ),
+    BakeVector(
+        name="streebog_default_256_test_bytes",
+        input_data=b"test",
+        recipe=["Streebog"],
+        expected="12a50838191b5504f1e5f2fd078714cf6b592b9d29af99d0b10d8d02881c3857",
+    ),
+    BakeVector(
+        name="streebog_512_test_bytes",
+        input_data=b"test",
+        recipe=[{"op": "Streebog", "args": {"Digest length": "512"}}],
+        expected="7200bf5dea560f0d7960d07fdc8874ad9f3b86ece2e45f5502ae2e176f2c928e0e581152281f5aee818318bed7cbe6aa69999589234723ceb33175598365b5c8",
+    ),
+    BakeVector(
+        name="whirlpool_default_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=["Whirlpool"],
+        expected="3d837c9ef7bb291bd1dcfc05d3004af2eeb8c631dd6a6c4ba35159b8889de4b1ec44076ce7a8f7bfa497e4d9dcb7c29337173f78d06791f3c3d9e00cc6017f0b",
+    ),
+    BakeVector(
+        name="whirlpool_t_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "Whirlpool", "args": {"Variant": "Whirlpool-T", "Rounds": 10}}],
+        expected="16c581089b6a6f356ae56e16a63a4c613eecd82a2a894b293f5ee45c37a31d09d7a8b60bfa7e414bd4a7166662cea882b5cf8c96b7d583fc610ad202591bcdb1",
+    ),
+    BakeVector(
+        name="whirlpool_zero_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "Whirlpool", "args": {"Variant": "Whirlpool-0", "Rounds": 10}}],
+        expected="1c327026f565a0105a827efbfb3d3635cdb042c0aabb8416e96deb128e6c5c8684b13541cf31c26c1488949df050311c6999a12eb0e7002ad716350f5c7700ca",
+    ),
+    BakeVector(
+        name="xor_checksum_default_empty_bytes",
+        input_data=b"",
+        recipe=["XOR Checksum"],
+        expected="00000000",
+    ),
+    BakeVector(
+        name="xor_checksum_blocksize_one_phrase",
+        input_data=b"The ships hung in the sky in much the same way that bricks don't.",
+        recipe=[{"op": "XOR Checksum", "args": {"Blocksize": 1}}],
+        expected=build_xor_checksum(b"The ships hung in the sky in much the same way that bricks don't.", 1),
+    ),
+    BakeVector(
+        name="xor_checksum_blocksize_four_all_bytes",
+        input_data=bytes(range(256)),
+        recipe=[{"op": "XOR Checksum", "args": {"Blocksize": 4}}],
+        expected=build_xor_checksum(bytes(range(256)), 4),
     ),
 ]
 
