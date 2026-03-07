@@ -9992,6 +9992,25 @@ RSA_TEST_PRIVATE_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_private.pem"
 RSA_TEST_PUBLIC_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_public.pem").read_text()
 RSA_TEST_CSR_PEM = (TEST_DATA_DIR / "public_key_phase45_parse_csr.pem").read_text()
 SSH_RSA_HOST_KEY_PUBLIC = (TEST_DATA_DIR / "public_key_phase45_ssh_host_key.pub").read_text()
+RSA_TEST_SHA256_SIGNATURE = bytes.fromhex(
+    "38015b89cac4dc16ccedf3d7ffbeb81521af828f9298dfcf613d268d0ec673fac4b115f203a8c0ccb00800bbcd2af2c81f14a8ef5cf6d3251eba94828ba2b770a938f03230b490234d6c70da9d73a0a0c013195b20ffc7adc7e25d1717e3218f21b31361e023dca9426761c587ad8f044c91e9fecc96abfbbdbe5a028e51ec47"
+)
+SM2_TEST_PRIVATE_KEY = "b714695bb3344da7fb8f5ca4524213b31ec946c5feeddcf86d11ea88827e667b"
+SM2_TEST_PUBLIC_KEY_X = "a3a4faf374e0f1fe63c95c951a63cd6dc08a4b500ece0a433f463fa4b7a4764d"
+SM2_TEST_PUBLIC_KEY_Y = "3e88d2372b5853f578cb46b8a870f6e057a130298c977a3986a2f3165aada482"
+SM2_TEST_MESSAGE = bytes.fromhex("0001534d32ff")
+SM2_TEST_C1C3C2_CIPHERTEXT = (
+    "4f251a9946d8999eb999076430b37e1f10092585c4a41544ad1f73d2e4849805"
+    "ba75046968a80f282c36ea7b4e3c829e17f62212a485e70da544da361913b4ac"
+    "ffed6ed8d6a0261a21a6bd19995b3482bd605ba8834d3e968a8cbebc5516e250"
+    "16793be6068f"
+)
+SM2_TEST_C1C2C3_CIPHERTEXT = (
+    "088580fa1d0ca161d4411f48d0684919aa0e69b7e1a3276211f295e52ef6b4bd"
+    "57ad35110273fbdf9536efbf7b89cf3c979c8cf382554936b67063605b0fea20"
+    "3dfcfdbf42ad039f0c18c608d93a4faffa0619528367545df63f2e762293b9b2"
+    "727a8d1d54b1"
+)
 
 
 def parse_json_lines(value: str) -> list[dict[str, object]]:
@@ -10325,6 +10344,148 @@ PUBLIC_KEY_VECTORS = [
             },
         ],
         expected="Verified OK",
+    ),
+    BakeVector(
+        name="rsa_verify_known_signature_raw_message",
+        input_data=RSA_TEST_SHA256_SIGNATURE,
+        recipe=[
+            {
+                "op": "RSA Verify",
+                "args": {
+                    "RSA Public Key (PEM)": RSA_TEST_PUBLIC_KEY_PEM,
+                    "Message": "hello rsa",
+                    "Message format": "Raw",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            }
+        ],
+        expected="Verified OK",
+    ),
+    BakeVector(
+        name="rsa_verify_known_signature_hex_message",
+        input_data=RSA_TEST_SHA256_SIGNATURE,
+        recipe=[
+            {
+                "op": "RSA Verify",
+                "args": {
+                    "RSA Public Key (PEM)": RSA_TEST_PUBLIC_KEY_PEM,
+                    "Message": "68656c6c6f20727361",
+                    "Message format": "Hex",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            }
+        ],
+        expected="Verified OK",
+    ),
+    BakeVector(
+        name="rsa_verify_known_signature_base64_message",
+        input_data=RSA_TEST_SHA256_SIGNATURE,
+        recipe=[
+            {
+                "op": "RSA Verify",
+                "args": {
+                    "RSA Public Key (PEM)": RSA_TEST_PUBLIC_KEY_PEM,
+                    "Message": "aGVsbG8gcnNh",
+                    "Message format": "Base64",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            }
+        ],
+        expected="Verified OK",
+    ),
+    BakeVector(
+        name="rsa_verify_rejects_wrong_message",
+        input_data=RSA_TEST_SHA256_SIGNATURE,
+        recipe=[
+            {
+                "op": "RSA Verify",
+                "args": {
+                    "RSA Public Key (PEM)": RSA_TEST_PUBLIC_KEY_PEM,
+                    "Message": "goodbye rsa",
+                    "Message format": "Raw",
+                    "Message Digest Algorithm": "SHA-256",
+                },
+            }
+        ],
+        expected="Verification Failure",
+    ),
+    BakeVector(
+        name="sm2_encrypt_decrypt_c1c3c2_binary_roundtrip",
+        input_data=SM2_TEST_MESSAGE,
+        recipe=[
+            {
+                "op": "SM2 Encrypt",
+                "args": {
+                    "Public Key X": SM2_TEST_PUBLIC_KEY_X,
+                    "Public Key Y": SM2_TEST_PUBLIC_KEY_Y,
+                    "Output Format": "C1C3C2",
+                    "Curve": "sm2p256v1",
+                },
+            },
+            {
+                "op": "SM2 Decrypt",
+                "args": {
+                    "Private Key": SM2_TEST_PRIVATE_KEY,
+                    "Input Format": "C1C3C2",
+                    "Curve": "sm2p256v1",
+                },
+            },
+        ],
+        expected=SM2_TEST_MESSAGE,
+    ),
+    BakeVector(
+        name="sm2_encrypt_decrypt_c1c2c3_binary_roundtrip",
+        input_data=SM2_TEST_MESSAGE,
+        recipe=[
+            {
+                "op": "SM2 Encrypt",
+                "args": {
+                    "Public Key X": SM2_TEST_PUBLIC_KEY_X,
+                    "Public Key Y": SM2_TEST_PUBLIC_KEY_Y,
+                    "Output Format": "C1C2C3",
+                    "Curve": "sm2p256v1",
+                },
+            },
+            {
+                "op": "SM2 Decrypt",
+                "args": {
+                    "Private Key": SM2_TEST_PRIVATE_KEY,
+                    "Input Format": "C1C2C3",
+                    "Curve": "sm2p256v1",
+                },
+            },
+        ],
+        expected=SM2_TEST_MESSAGE,
+    ),
+    BakeVector(
+        name="sm2_decrypt_known_c1c3c2_ciphertext",
+        input_data=SM2_TEST_C1C3C2_CIPHERTEXT,
+        recipe=[
+            {
+                "op": "SM2 Decrypt",
+                "args": {
+                    "Private Key": SM2_TEST_PRIVATE_KEY,
+                    "Input Format": "C1C3C2",
+                    "Curve": "sm2p256v1",
+                },
+            }
+        ],
+        expected=SM2_TEST_MESSAGE,
+    ),
+    BakeVector(
+        name="sm2_decrypt_known_c1c2c3_ciphertext",
+        input_data=SM2_TEST_C1C2C3_CIPHERTEXT,
+        recipe=[
+            {
+                "op": "SM2 Decrypt",
+                "args": {
+                    "Private Key": SM2_TEST_PRIVATE_KEY,
+                    "Input Format": "C1C2C3",
+                    "Curve": "sm2p256v1",
+                },
+            }
+        ],
+        expected=SM2_TEST_MESSAGE,
     ),
     BakeVector(
         name="hex_to_object_identifier_server_auth_oid",
