@@ -365,6 +365,22 @@ def load_cyberchef(path: str | None = None):
         };
     }
 
+    if (!globalThis.__piLocaleComparePatched && String.prototype.localeCompare) {
+        const originalLocaleCompare = String.prototype.localeCompare;
+        String.prototype.localeCompare = function(compareString) {
+            try {
+                return originalLocaleCompare.apply(this, arguments);
+            } catch (error) {
+                const left = String(this);
+                const right = String(compareString);
+                if (left < right) return -1;
+                if (left > right) return 1;
+                return 0;
+            }
+        };
+        globalThis.__piLocaleComparePatched = true;
+    }
+
     if (typeof WebAssembly !== 'undefined') {
         WebAssembly.compile = function(source) {
             try {

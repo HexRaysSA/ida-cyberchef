@@ -2188,6 +2188,102 @@ def build_drop_nth_bytes(
     return bytes(output)
 
 
+def build_reverse_bytes(data: bytes, *, by: str) -> bytes:
+    if by == "Line":
+        lines = data.split(b"\n")
+        return b"\n".join(reversed(lines))
+    if by == "Character":
+        return data.decode("utf-8")[::-1].encode("utf-8")
+    return data[::-1]
+
+
+def build_sort_output(value: str, *, delimiter: str, reverse: bool, order: str) -> str:
+    items = value.split(delimiter)
+
+    if order == "Alphabetical (case insensitive)":
+        items = sorted(items, key=str.lower)
+    elif order == "IP address":
+        items = sorted(items, key=ipaddress.IPv4Address)
+    elif order == "Numeric":
+        items = sorted(items, key=int)
+    elif order == "Numeric (hexadecimal)":
+        items = sorted(items, key=lambda item: int(item, 16))
+    elif order == "Length":
+        items = sorted(items, key=len)
+    else:
+        items = sorted(items)
+
+    if reverse:
+        items.reverse()
+
+    return delimiter.join(items)
+
+
+def build_split_output(value: str, *, split_delimiter: str, join_delimiter: str) -> str:
+    if split_delimiter == "":
+        return join_delimiter.join(value)
+    return join_delimiter.join(value.split(split_delimiter))
+
+
+def build_tail_output(value: str, *, delimiter: str, number: int) -> str:
+    items = value.split(delimiter)
+    if number < 0:
+        return delimiter.join(items[-number:])
+    return delimiter.join(items[-number:])
+
+
+def build_take_bytes(
+    data: bytes,
+    *,
+    start: int,
+    length: int,
+    apply_to_each_line: bool = False,
+) -> bytes:
+    def take_slice(chunk: bytes) -> bytes:
+        slice_start = start
+        slice_length = length
+
+        if slice_start < 0:
+            slice_start = len(chunk) + slice_start
+
+        if slice_length < 0:
+            slice_start += slice_length
+            if slice_start < 0:
+                slice_start = len(chunk) + slice_start
+                slice_length = slice_start - slice_length
+            else:
+                slice_length = -slice_length
+
+        return chunk[slice_start : slice_start + slice_length]
+
+    if apply_to_each_line:
+        return b"\n".join(take_slice(line) for line in data.split(b"\n"))
+
+    return take_slice(data)
+
+
+def build_take_nth_bytes(
+    data: bytes,
+    *,
+    take_every: int,
+    starting_at: int,
+    apply_to_each_line: bool = False,
+) -> bytes:
+    output = bytearray()
+    offset = 0
+
+    for index, value in enumerate(data):
+        if apply_to_each_line and value == 0x0A:
+            output.append(value)
+            offset = index + 1
+            continue
+
+        if index - offset >= starting_at and (index - (starting_at + offset)) % take_every == 0:
+            output.append(value)
+
+    return bytes(output)
+
+
 def build_file_tree(value: str, *, file_path_delimiter: str, delimiter: str) -> str:
     completed_paths: list[str] = []
     rendered_paths: list[str] = []
@@ -11638,6 +11734,160 @@ UTILS_VECTORS = [
             tabs=False,
             form_feeds=False,
             full_stops=True,
+        ),
+    ),
+    BakeVector(
+        name="reverse_default_byte_order",
+        input_data=b"abc",
+        recipe=["Reverse"],
+        expected=build_reverse_bytes(b"abc", by="Byte"),
+    ),
+    BakeVector(
+        name="reverse_line_order",
+        input_data=b"ab\ncd",
+        recipe=[{"op": "Reverse", "args": {"By": "Line"}}],
+        expected=build_reverse_bytes(b"ab\ncd", by="Line"),
+    ),
+    BakeVector(
+        name="show_on_map_decimal_degrees_identity",
+        input_data="51.5014,-0.1419",
+        recipe=["Show on map"],
+        expected="51.5014,-0.1419",
+    ),
+    BakeVector(
+        name="show_on_map_degrees_decimal_minutes_conversion",
+        input_data="51° 30.084' N, 0° 8.514' W",
+        recipe=[
+            {
+                "op": "Show on map",
+                "args": {
+                    "Zoom Level": 13,
+                    "Input Format": "Degrees Decimal Minutes",
+                    "Input Delimiter": "Direction Following",
+                },
+            }
+        ],
+        expected="51.5014,-0.1419",
+    ),
+    BakeVector(
+        name="shuffle_comma_delimited_then_sort",
+        input_data="pear,apple,banana",
+        recipe=[
+            {"op": "Shuffle", "args": {"Delimiter": "Comma"}},
+            {
+                "op": "Sort",
+                "args": {
+                    "Delimiter": "Comma",
+                    "Reverse": False,
+                    "Order": "Alphabetical (case sensitive)",
+                },
+            },
+        ],
+        expected="apple,banana,pear",
+    ),
+    BakeVector(
+        name="sleep_preserves_array_buffer_input",
+        input_data=b"abc",
+        recipe=[{"op": "Sleep", "args": {"Time (ms)": 1}}],
+        expected=b"abc",
+    ),
+    BakeVector(
+        name="sort_default_case_sensitive",
+        input_data="b\na\nC",
+        recipe=["Sort"],
+        expected=build_sort_output(
+            "b\na\nC",
+            delimiter="\n",
+            reverse=False,
+            order="Alphabetical (case sensitive)",
+        ),
+    ),
+    BakeVector(
+        name="sort_case_insensitive",
+        input_data="b\na\nC",
+        recipe=[
+            {
+                "op": "Sort",
+                "args": {
+                    "Delimiter": "Line feed",
+                    "Reverse": False,
+                    "Order": "Alphabetical (case insensitive)",
+                },
+            }
+        ],
+        expected=build_sort_output(
+            "b\na\nC",
+            delimiter="\n",
+            reverse=False,
+            order="Alphabetical (case insensitive)",
+        ),
+    ),
+    BakeVector(
+        name="split_comma_to_line_feed",
+        input_data="a,b,c",
+        recipe=[{"op": "Split", "args": {"Split delimiter": ",", "Join delimiter": "\n"}}],
+        expected=build_split_output("a,b,c", split_delimiter=",", join_delimiter="\n"),
+    ),
+    BakeVector(
+        name="split_into_characters_with_pipe_join",
+        input_data="abc",
+        recipe=[{"op": "Split", "args": {"Split delimiter": "", "Join delimiter": "|"}}],
+        expected=build_split_output("abc", split_delimiter="", join_delimiter="|"),
+    ),
+    BakeVector(
+        name="swap_case_expands_sharp_s",
+        input_data="ÅßaA1",
+        recipe=["Swap case"],
+        expected="åSSAa1",
+    ),
+    BakeVector(
+        name="tail_default_keeps_short_input",
+        input_data="a\nb\nc",
+        recipe=["Tail"],
+        expected=build_tail_output("a\nb\nc", delimiter="\n", number=10),
+    ),
+    BakeVector(
+        name="tail_negative_number_skips_first_field",
+        input_data="a,b,c,d",
+        recipe=[{"op": "Tail", "args": {"Delimiter": "Comma", "Number": -1}}],
+        expected=build_tail_output("a,b,c,d", delimiter=",", number=-1),
+    ),
+    BakeVector(
+        name="take_bytes_default_prefix",
+        input_data=b"abcdef",
+        recipe=["Take bytes"],
+        expected=build_take_bytes(b"abcdef", start=0, length=5),
+    ),
+    BakeVector(
+        name="take_bytes_apply_to_each_line",
+        input_data=b"abc\ndef\n",
+        recipe=[{"op": "Take bytes", "args": {"Start": 1, "Length": 2, "Apply to each line": True}}],
+        expected=build_take_bytes(b"abc\ndef\n", start=1, length=2, apply_to_each_line=True),
+    ),
+    BakeVector(
+        name="take_nth_bytes_default_every_fourth",
+        input_data=b"abcdefghi",
+        recipe=["Take nth bytes"],
+        expected=build_take_nth_bytes(b"abcdefghi", take_every=4, starting_at=0),
+    ),
+    BakeVector(
+        name="take_nth_bytes_apply_to_each_line",
+        input_data=b"abcdef\nuvwxyz\n",
+        recipe=[
+            {
+                "op": "Take nth bytes",
+                "args": {
+                    "Take every": 2,
+                    "Starting at": 1,
+                    "Apply to each line": True,
+                },
+            }
+        ],
+        expected=build_take_nth_bytes(
+            b"abcdef\nuvwxyz\n",
+            take_every=2,
+            starting_at=1,
+            apply_to_each_line=True,
         ),
     ),
 ]
