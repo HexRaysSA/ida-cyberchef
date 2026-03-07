@@ -11483,6 +11483,99 @@ UTILS_VECTORS = [
         expected=build_from_case_insensitive_regex("[ab][cC][dE]"),
     ),
     BakeVector(
+        name="to_case_insensitive_regex_docs_example",
+        input_data="Mozilla/[0-9].[0-9] .*",
+        recipe=["To Case Insensitive Regex"],
+        expected="[mM][oO][zZ][iI][lL][lL][aA]/[0-9].[0-9] .*",
+    ),
+    BakeVector(
+        name="to_case_insensitive_regex_mixed_range",
+        input_data="[H-d]+",
+        recipe=["To Case Insensitive Regex"],
+        expected="[A-DH-dh-z]+",
+    ),
+    BakeVector(
+        name="to_case_insensitive_regex_roundtrip_through_from_case_insensitive_regex",
+        input_data="Mozilla/[0-9].[0-9] .*",
+        recipe=["To Case Insensitive Regex", "From Case Insensitive Regex"],
+        expected="mozilla/[0-9].[0-9] .*",
+    ),
+    BakeVector(
+        name="to_table_ascii_with_header_row",
+        input_data="Name,Value\r\nalpha,1",
+        recipe=[
+            {
+                "op": "To Table",
+                "args": {
+                    "Cell delimiters": ",",
+                    "Row delimiters": "\r\n",
+                    "Make first row header": True,
+                    "Format": "ASCII",
+                },
+            }
+        ],
+        expected="+-------+-------+\n| Name  | Value |\n+-------+-------+\n| alpha | 1     |\n+-------+-------+\n",
+    ),
+    BakeVector(
+        name="to_table_markdown_with_pipe_delimiters",
+        input_data="a|1\nbb|22",
+        recipe=[
+            {
+                "op": "To Table",
+                "args": {
+                    "Cell delimiters": "|",
+                    "Row delimiters": "\n",
+                    "Format": "Markdown",
+                },
+            }
+        ],
+        expected="| a  | 1  |\n| -- | -- |\n| bb | 22 |\n",
+    ),
+    BakeVector(
+        name="to_table_html_escapes_markup",
+        input_data="<a>,1\r\n&b,2",
+        recipe=[
+            {
+                "op": "To Table",
+                "args": {
+                    "Cell delimiters": ",",
+                    "Row delimiters": "\r\n",
+                    "Make first row header": False,
+                    "Format": "HTML",
+                },
+            }
+        ],
+        expected=(
+            "<table class='table table-hover table-sm table-bordered table-nonfluid'><tbody>"
+            "<tr><td>&lt;a&gt;</td><td>1</td></tr><tr><td>&amp;b</td><td>2</td></tr>"
+            "</tbody></table>"
+        ),
+    ),
+    BakeVector(
+        name="unescape_string_mixed_escape_sequences",
+        input_data=r"Line\nTab\tSmile: \u{1f600}",
+        recipe=["Unescape string"],
+        expected="Line\nTab\tSmile: 😀",
+    ),
+    BakeVector(
+        name="unescape_string_unicode_escape",
+        input_data=r"\u03c3\u03bf\u03c5",
+        recipe=["Unescape string"],
+        expected="σου",
+    ),
+    BakeVector(
+        name="unique_default_line_feed_delimiter",
+        input_data="red\nblue\nred\nred",
+        recipe=["Unique"],
+        expected="red\nblue",
+    ),
+    BakeVector(
+        name="unique_with_display_count_and_comma_delimiter",
+        input_data="red,blue,red,red",
+        recipe=[{"op": "Unique", "args": {"Delimiter": "Comma", "Display count": True}}],
+        expected="3 red,1 blue",
+    ),
+    BakeVector(
         name="fuzzy_match_docs_example_highlights_disjoint_ranges",
         input_data="Don't Panic",
         recipe=[{"op": "Fuzzy Match", "args": {"Search": "dpan"}}],
@@ -11919,10 +12012,22 @@ TEXT_VECTORS = [
         expected="Hello World",
     ),
     BakeVector(
+        name="to_upper_case_paragraph_scope",
+        input_data="hello world\n\nnext line",
+        recipe=[{"op": "To Upper case", "args": {"Scope": "Paragraph"}}],
+        expected="Hello world\n\nNext line",
+    ),
+    BakeVector(
         name="to_lower_case_ascii_text",
         input_data="Hello WORLD!",
         recipe=["To Lower case"],
         expected="hello world!",
+    ),
+    BakeVector(
+        name="to_lower_case_unicode_text",
+        input_data="ÅNGSTRÖM",
+        recipe=["To Lower case"],
+        expected="ångström",
     ),
 ]
 
