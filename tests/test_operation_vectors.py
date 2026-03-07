@@ -4399,6 +4399,173 @@ EXTRACTOR_VECTORS = [
         ],
         expected="Total found: 1\n\nC:\\Temp\\file.txt",
     ),
+    BakeVector(
+        name="extract_hashes_defaults_to_sha1_length",
+        input_data="md5 9e107d9d372bb6826bd81d3542a419d6 sha1 2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
+        recipe=["Extract hashes"],
+        expected="2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
+    ),
+    BakeVector(
+        name="extract_hashes_can_find_multiple_lengths_and_count_results",
+        input_data=(
+            "MD5: 9e107d9d372bb6826bd81d3542a419d6\n"
+            "SHA1: 2fd4e1c67a2d28fced849ee1bb76e7391b93eb12\n"
+            "SHA256: d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"
+        ),
+        recipe=[{"op": "Extract hashes", "args": {"All hashes": True, "Display Total": True}}],
+        expected=(
+            "Total Results: 3\n\n"
+            "9e107d9d372bb6826bd81d3542a419d6\n"
+            "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12\n"
+            "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"
+        ),
+    ),
+    BakeVector(
+        name="jpath_expression_extracts_scalar_results_with_custom_delimiter",
+        input_data=json.dumps(
+            {
+                "store": {
+                    "book": [
+                        {"author": "Nigel Rees"},
+                        {"author": "Evelyn Waugh"},
+                        {"author": "Herman Melville"},
+                    ]
+                }
+            }
+        ),
+        recipe=[
+            {
+                "op": "JPath expression",
+                "args": {"Query": "$.store.book[*].author", "Result delimiter": "|"},
+            }
+        ],
+        expected='"Nigel Rees"|"Evelyn Waugh"|"Herman Melville"',
+    ),
+    BakeVector(
+        name="jpath_expression_filters_matching_objects",
+        input_data=json.dumps(
+            {
+                "store": {
+                    "book": [
+                        {"author": "Nigel Rees", "price": 8.95},
+                        {"author": "Evelyn Waugh", "price": 12.99},
+                        {"author": "Herman Melville", "price": 8.99},
+                    ]
+                }
+            }
+        ),
+        recipe=[
+            {
+                "op": "JPath expression",
+                "args": {"Query": "$..book[?(@.price<10)]", "Result delimiter": "\n"},
+            }
+        ],
+        expected="\n".join(
+            [
+                json.dumps({"author": "Nigel Rees", "price": 8.95}, separators=(",", ":")),
+                json.dumps({"author": "Herman Melville", "price": 8.99}, separators=(",", ":")),
+            ]
+        ),
+    ),
+    BakeVector(
+        name="jsonata_query_filters_array_members",
+        input_data=json.dumps(
+            {
+                "Phone": [
+                    {"type": "home", "number": "0203 544 1234"},
+                    {"type": "mobile", "number": "077 7700 1234"},
+                ]
+            }
+        ),
+        recipe=[{"op": "Jsonata Query", "args": {"Query": 'Phone[type="mobile"].number'}}],
+        expected='"077 7700 1234"',
+    ),
+    BakeVector(
+        name="jsonata_query_returns_empty_string_for_missing_path",
+        input_data=json.dumps({"Other": {"Misc": None}}),
+        recipe=[{"op": "Jsonata Query", "args": {"Query": "Other.DoesntExist"}}],
+        expected='""',
+    ),
+    BakeVector(
+        name="rake_scores_keywords_with_default_delimiters",
+        input_data="test1 test2. test2",
+        recipe=["RAKE"],
+        expected="Scores: , Keywords: \n3.5, test1 test2\n1.5, test2",
+    ),
+    BakeVector(
+        name="strings_extracts_utf16le_matches",
+        input_data="T\x00E\x00S\x00T\x00",
+        recipe=[
+            {
+                "op": "Strings",
+                "args": {
+                    "Encoding": "16-bit littleendian",
+                    "Minimum length": 4,
+                    "Match": "Alphanumeric + punctuation (U)",
+                },
+            }
+        ],
+        expected="T\x00E\x00S\x00T\x00",
+    ),
+    BakeVector(
+        name="strings_counts_unique_single_byte_matches_without_sorting",
+        input_data="beta\nalpha\nbeta\ngamma",
+        recipe=[
+            {
+                "op": "Strings",
+                "args": {
+                    "Encoding": "Single byte",
+                    "Minimum length": 4,
+                    "Match": "Alphanumeric + punctuation (A)",
+                    "Display total": True,
+                    "Unique": True,
+                },
+            }
+        ],
+        expected="Total found: 3\n\nbeta\nalpha\ngamma",
+    ),
+    BakeVector(
+        name="template_renders_each_blocks",
+        input_data=json.dumps(
+            {
+                "users": [
+                    {"name": "Someone", "age": 25},
+                    {"name": "Someone Else", "age": 32},
+                ]
+            }
+        ),
+        recipe=[
+            {
+                "op": "Template",
+                "args": {
+                    "Template definition (.handlebars)": "{{#each users}}{{name}}:{{age}}|{{/each}}"
+                },
+            }
+        ],
+        expected="Someone:25|Someone Else:32|",
+    ),
+    BakeVector(
+        name="template_escapes_html_from_input_data",
+        input_data=json.dumps({"test": "<script></script>"}),
+        recipe=[
+            {
+                "op": "Template",
+                "args": {"Template definition (.handlebars)": "<script></script>{{ test }}"},
+            }
+        ],
+        expected="<script></script>&lt;script&gt;&lt;/script&gt;",
+    ),
+    BakeVector(
+        name="xpath_expression_extracts_text_nodes_with_custom_delimiter",
+        input_data='<div><p class="a">hello</p><p>world</p><p class="a">again</p></div>',
+        recipe=[
+            {
+                "op": "XPath expression",
+                "args": {"XPath": '/div/p[@class="a"]/text()', "Result delimiter": "|"},
+            }
+        ],
+        expected="hello|again",
+    ),
 ]
 
 BLOCKED_BAKE_VECTORS = [
