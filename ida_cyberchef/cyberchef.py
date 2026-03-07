@@ -6,6 +6,38 @@ import STPyV8
 
 _chef_instance = None
 
+_NODE_API_SYNC_WRAPPER_OLD = """    wrapped = function wrapped(input) {
+      var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+      var _prepareOp2 = prepareOp(opInstance, input, args),
+        transformedInput = _prepareOp2.transformedInput,
+        transformedArgs = _prepareOp2.transformedArgs;
+      var result = opInstance.run(transformedInput, transformedArgs);
+      return new _NodeDish.default({
+        value: result,
+        type: opInstance.outputType
+      });
+    };"""
+
+_NODE_API_SYNC_WRAPPER_NEW = """    wrapped = function wrapped(input) {
+      var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+      var _prepareOp2 = prepareOp(opInstance, input, args),
+        transformedInput = _prepareOp2.transformedInput,
+        transformedArgs = _prepareOp2.transformedArgs;
+      var result = opInstance.run(transformedInput, transformedArgs);
+      if (result && typeof result.then === \"function\") {
+        return result.then(function (resolvedResult) {
+          return new _NodeDish.default({
+            value: resolvedResult,
+            type: opInstance.outputType
+          });
+        });
+      }
+      return new _NodeDish.default({
+        value: result,
+        type: opInstance.outputType
+      });
+    };"""
+
 
 class DishType(IntEnum):
     """CyberChef Dish type enumeration."""
@@ -47,6 +79,101 @@ def get_chef():
     if _chef_instance is None:
         _chef_instance = load_cyberchef()
     return _chef_instance
+
+
+def patch_bundle_source(source: str) -> str:
+    """Patch bundled CyberChef code for STPyV8 execution.
+
+    Raises:
+        RuntimeError: If the expected node wrapper snippet is not present.
+    """
+    if _NODE_API_SYNC_WRAPPER_OLD not in source:
+        raise RuntimeError("Failed to patch CyberChef async operation wrapper")
+
+    return source.replace(_NODE_API_SYNC_WRAPPER_OLD, _NODE_API_SYNC_WRAPPER_NEW, 1)
+
+
+def install_bake_helper(ctx: STPyV8.JSContext) -> None:
+    """Install an async-aware recipe executor in the JS context."""
+    ctx.eval("""
+    module.exports.__piBake = async function(input, recipeConfig) {
+        const sanitise = function(value) {
+            return value.replace(/ /g, "").toLowerCase();
+        };
+
+        let current = input;
+
+        for (const ingredient of recipeConfig) {
+            let operationName;
+            let args = null;
+
+            if (typeof ingredient === "string") {
+                operationName = ingredient;
+            } else if (ingredient && typeof ingredient === "object" && ingredient.op) {
+                operationName = ingredient.op;
+                if (ingredient.args) {
+                    args = ingredient.args;
+                }
+            } else {
+                throw new TypeError("Recipe can only contain function names or functions");
+            }
+
+            const operation = module.exports.operations.find(function(candidate) {
+                return sanitise(candidate.opName) === sanitise(operationName);
+            });
+
+            if (!operation) {
+                throw new TypeError("Couldn't find an operation with name '" + operationName + "'.");
+            }
+
+            current = args ? operation(current, args) : operation(current);
+
+            if (current && typeof current.then === "function") {
+                current = await current;
+            }
+        }
+
+        return current;
+    };
+    """)
+
+
+def await_js_promise(ctx: STPyV8.JSContext, expression: str) -> Any:
+    """Resolve a promise or plain JS value inside the active context.
+
+    Raises:
+        RuntimeError: If the value does not settle within the polling limit.
+    """
+    ctx.eval(f"""
+    globalThis.__piPromisePending = true;
+    globalThis.__piPromiseResult = undefined;
+    globalThis.__piPromiseError = undefined;
+    Promise.resolve({expression}).then(
+        function(result) {{
+            globalThis.__piPromiseResult = result;
+            globalThis.__piPromisePending = false;
+        }},
+        function(error) {{
+            globalThis.__piPromiseError = error;
+            globalThis.__piPromisePending = false;
+        }}
+    );
+    """)
+
+    for _ in range(1000):
+        if not ctx.eval("globalThis.__piPromisePending"):
+            break
+    else:
+        raise RuntimeError("Timed out waiting for CyberChef promise to settle")
+
+    return ctx.eval("""
+    (function() {
+        if (globalThis.__piPromiseError !== undefined) {
+            throw globalThis.__piPromiseError;
+        }
+        return globalThis.__piPromiseResult;
+    })
+    """)()
 
 
 def load_cyberchef(path: str | None = None):
@@ -134,7 +261,9 @@ def load_cyberchef(path: str | None = None):
 
     # Load and execute CyberChef
     with open(path, "rb") as f:
-        ctx.eval(f.read().decode("utf-8"))
+        source = patch_bundle_source(f.read().decode("utf-8"))
+    ctx.eval(source)
+    install_bake_helper(ctx)
 
     # Extract exports and attach context for later use
     chef = ctx.eval("module.exports")
@@ -228,7 +357,7 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
 
 
 def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> bytes | str:
-    """Execute CyberChef operations using native bake() function.
+    """Execute CyberChef operations using the loaded JS runtime.
 
     Args:
         input_data: Input data as bytes or string
@@ -238,6 +367,9 @@ def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> bytes 
 
     Returns: Result as bytes or string depending on the final operation output
     """
+    if not recipe:
+        return input_data
+
     chef = get_chef()
 
     if isinstance(input_data, bytes):
@@ -246,14 +378,7 @@ def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> bytes 
         input_dish = input_data
 
     recipe_json = json.dumps(recipe)
-
     ctx = chef._stpyv8_context
     ctx.locals.input_dish = input_dish
-    result = ctx.eval(f"""
-    (function() {{
-        const recipe = {recipe_json};
-        return module.exports.bake(input_dish, recipe);
-    }})
-    """)()
-
+    result = await_js_promise(ctx, f"module.exports.__piBake(input_dish, {recipe_json})")
     return plate(result, chef)  # type: ignore[return-value]

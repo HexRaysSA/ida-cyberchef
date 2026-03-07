@@ -1,4 +1,6 @@
 import base64
+import bz2
+import gzip
 import hashlib
 import re
 from dataclasses import dataclass
@@ -34,6 +36,11 @@ MICROSOFT_SCRIPT_SAMPLE_ENCODED = (
     "214Wv:zms/obI0xEAAA==^#~@"
 )
 MICROSOFT_SCRIPT_SAMPLE_DECODED = 'var my_msg = "Testing <1><2><3>!";\r\n\r\nVScript.Echo(my_msg);'
+HELLO_HELLO_HELLO_LZ4_FRAME = bytes.fromhex("04224d184070df0f0000006268656c6c6f2006005068656c6c6f00000000")
+HELLO_HELLO_HELLO_LZMA_STREAM = bytes.fromhex(
+    "5d00008000110000000000000000341949ee8de94f7f35c5a3ffff78a40000"
+)
+LZNT1_COMPRESSED_SAMPLE = b"\x1a\xb0\x00compress\x00edtestda\x04ta\x07\x88alot"
 
 
 def build_base58_bitcoin(value: bytes) -> str:
@@ -705,6 +712,131 @@ CODE_TIDY_BLOCKED_VECTORS = [
     ),
 ]
 
+COMPRESSION_BLOCKED_VECTORS = [
+    BlockedBakeVector(
+        name="bzip2_compress_runtime_initialization_hangs",
+        input_data=b"hello hello hello",
+        recipe=["Bzip2 Compress"],
+        error_message="Timed out waiting for CyberChef promise to settle",
+    ),
+    BlockedBakeVector(
+        name="bzip2_decompress_runtime_initialization_hangs",
+        input_data=bz2.compress(b"hello hello hello"),
+        recipe=["Bzip2 Decompress"],
+        error_message="Timed out waiting for CyberChef promise to settle",
+    ),
+]
+
+COMPRESSION_VECTORS = [
+    BakeVector(
+        name="gzip_empty_roundtrip",
+        input_data=b"",
+        recipe=["Gzip", "Gunzip"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="gunzip_python_reference_stream",
+        input_data=gzip.compress(b"hello hello hello", mtime=0),
+        recipe=["Gunzip"],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="gzip_fixed_huffman_with_metadata_roundtrip",
+        input_data=b"hello hello hello",
+        recipe=[
+            {
+                "op": "Gzip",
+                "args": {
+                    "Compression type": "Fixed Huffman Coding",
+                    "Filename (optional)": "sample.txt",
+                    "Comment (optional)": "phase7",
+                },
+            },
+            "Gunzip",
+        ],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="lz4_compress_empty_bytes",
+        input_data=b"",
+        recipe=["LZ4 Compress"],
+        expected=bytes.fromhex("04224d184070df00000000"),
+    ),
+    BakeVector(
+        name="lz4_compress_repeated_ascii",
+        input_data=b"hello hello hello",
+        recipe=["LZ4 Compress"],
+        expected=HELLO_HELLO_HELLO_LZ4_FRAME,
+    ),
+    BakeVector(
+        name="lz4_decompress_repeated_ascii",
+        input_data=HELLO_HELLO_HELLO_LZ4_FRAME,
+        recipe=["LZ4 Decompress"],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="lz4_roundtrip_binary_edge_bytes",
+        input_data=bytes(range(64)),
+        recipe=["LZ4 Compress", "LZ4 Decompress"],
+        expected=bytes(range(64)),
+    ),
+    BakeVector(
+        name="lzma_compress_default_mode",
+        input_data=b"hello hello hello",
+        recipe=["LZMA Compress"],
+        expected=HELLO_HELLO_HELLO_LZMA_STREAM,
+    ),
+    BakeVector(
+        name="lzma_decompress_known_size_stream",
+        input_data=HELLO_HELLO_HELLO_LZMA_STREAM,
+        recipe=["LZMA Decompress"],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="lzma_roundtrip_mode_one",
+        input_data=bytes(range(64)),
+        recipe=[
+            {"op": "LZMA Compress", "args": {"Compression Mode": "1"}},
+            "LZMA Decompress",
+        ],
+        expected=bytes(range(64)),
+    ),
+    BakeVector(
+        name="lznt1_decompress_empty_bytes",
+        input_data=b"",
+        recipe=["LZNT1 Decompress"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="lznt1_decompress_upstream_reference_sample",
+        input_data=LZNT1_COMPRESSED_SAMPLE,
+        recipe=["LZNT1 Decompress"],
+        expected=b"compressedtestdatacompressedalot",
+    ),
+    BakeVector(
+        name="lzstring_compress_empty_string",
+        input_data="",
+        recipe=["LZString Compress"],
+        expected="䀀",
+    ),
+    BakeVector(
+        name="lzstring_compress_default_format",
+        input_data="hello hello hello",
+        recipe=["LZString Compress"],
+        expected="օ〶惶J፲退",
+    ),
+    BakeVector(
+        name="lzstring_compress_base64_format",
+        input_data="hello hello hello",
+        recipe=[{"op": "LZString Compress", "args": {"Compression Format": "Base64"}}],
+        expected="BYUwNmD2AEoTcpA=",
+    ),
+]
+
+BLOCKED_BAKE_VECTORS = [
+    *CODE_TIDY_BLOCKED_VECTORS,
+    *COMPRESSION_BLOCKED_VECTORS,
+]
 
 ENCODING_VECTORS = [
     BakeVector(
@@ -1469,6 +1601,7 @@ ARITHMETIC_LOGIC_VECTORS = [
 
 BITE_SIZED_BAKE_VECTORS = [
     *CODE_TIDY_VECTORS,
+    *COMPRESSION_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,
@@ -1488,8 +1621,8 @@ def test_bake_vectors(vector: BakeVector):
 
 @pytest.mark.parametrize(
     "vector",
-    CODE_TIDY_BLOCKED_VECTORS,
-    ids=[vector.name for vector in CODE_TIDY_BLOCKED_VECTORS],
+    BLOCKED_BAKE_VECTORS,
+    ids=[vector.name for vector in BLOCKED_BAKE_VECTORS],
 )
 def test_bake_vectors_blocked_operations(vector: BlockedBakeVector):
     with pytest.raises(Exception, match=re.escape(vector.error_message)):
