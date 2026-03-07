@@ -5450,10 +5450,24 @@ EXTRACTOR_VECTORS = [
         expected="Total found: 2\n\nAA:BB:CC:DD:EE:FF\n11-22-33-44-55-66",
     ),
     BakeVector(
+        name="extract_mac_addresses_sorted_unique_results",
+        input_data="AA:BB:CC:DD:EE:FF xx 11-22-33-44-55-66 yy AA:BB:CC:DD:EE:FF",
+        recipe=[
+            {"op": "Extract MAC addresses", "args": {"Display total": True, "Sort": True, "Unique": True}}
+        ],
+        expected="Total found: 2\n\n11-22-33-44-55-66\nAA:BB:CC:DD:EE:FF",
+    ),
+    BakeVector(
         name="extract_urls_counts_unique_results",
         input_data="ftp://b.example/file https://example.com/x https://example.com/x",
         recipe=[{"op": "Extract URLs", "args": {"Display total": True, "Unique": True}}],
         expected="Total found: 2\n\nftp://b.example/file\nhttps://example.com/x",
+    ),
+    BakeVector(
+        name="extract_urls_sorted_unique_results",
+        input_data="https://z.example/x ftp://a.example/file https://b.example/y https://z.example/x",
+        recipe=[{"op": "Extract URLs", "args": {"Display total": True, "Sort": True, "Unique": True}}],
+        expected="Total found: 3\n\nftp://a.example/file\nhttps://b.example/y\nhttps://z.example/x",
     ),
     BakeVector(
         name="extract_domains_supports_underscore_labels",
@@ -5471,10 +5485,32 @@ EXTRACTOR_VECTORS = [
         expected="Total found: 3\n\n_dmarc.example.org\nselector._domainkey.example.org\nexample.com",
     ),
     BakeVector(
+        name="extract_domains_sorted_unique_results",
+        input_data="z.example.com selector._domainkey.example.org a.example.com z.example.com",
+        recipe=[
+            {
+                "op": "Extract domains",
+                "args": {
+                    "Display total": True,
+                    "Sort": True,
+                    "Unique": True,
+                    "Underscore (DMARC, DKIM, etc)": True,
+                },
+            }
+        ],
+        expected="Total found: 3\n\na.example.com\nselector._domainkey.example.org\nz.example.com",
+    ),
+    BakeVector(
         name="extract_email_addresses_counts_unique_results",
         input_data="z@example.com bob@example.com z@example.com",
         recipe=[{"op": "Extract email addresses", "args": {"Display total": True, "Unique": True}}],
         expected="Total found: 2\n\nz@example.com\nbob@example.com",
+    ),
+    BakeVector(
+        name="extract_email_addresses_sorted_unique_results",
+        input_data="z@example.com bob@example.com amy@example.com z@example.com",
+        recipe=[{"op": "Extract email addresses", "args": {"Display total": True, "Sort": True, "Unique": True}}],
+        expected="Total found: 3\n\namy@example.com\nbob@example.com\nz@example.com",
     ),
     BakeVector(
         name="extract_file_paths_can_limit_to_windows_paths",
@@ -5491,6 +5527,23 @@ EXTRACTOR_VECTORS = [
             }
         ],
         expected="Total found: 1\n\nC:\\Temp\\file.txt",
+    ),
+    BakeVector(
+        name="extract_file_paths_sorted_unique_results",
+        input_data=r"C:\Zoo\file.txt C:\Alpha\file.txt C:\Zoo\file.txt",
+        recipe=[
+            {
+                "op": "Extract file paths",
+                "args": {
+                    "Windows": True,
+                    "UNIX": False,
+                    "Display total": True,
+                    "Sort": True,
+                    "Unique": True,
+                },
+            }
+        ],
+        expected="Total found: 2\n\nC:\\Alpha\\file.txt\nC:\\Zoo\\file.txt",
     ),
     BakeVector(
         name="extract_hashes_defaults_to_sha1_length",
@@ -10611,6 +10664,34 @@ def assert_generated_rsa_pem_key_pair(result: object) -> None:
     assert sum("d" in key for key in keys) == 1
 
 
+def assert_generated_pgp_key_pair(result: object) -> None:
+    assert isinstance(result, str)
+    blocks = re.findall(
+        r"-----BEGIN PGP (?:PRIVATE|PUBLIC) KEY BLOCK-----.*?-----END PGP (?:PRIVATE|PUBLIC) KEY BLOCK-----",
+        result,
+        flags=re.S,
+    )
+    assert len(blocks) == 2
+    private_key = next(block for block in blocks if "PRIVATE" in block)
+    public_key = next(block for block in blocks if "PUBLIC" in block)
+    encrypted = bake(
+        "hello pgp",
+        [{"op": "PGP Encrypt", "args": {"Public key of recipient": public_key}}],
+    )
+    assert bake(
+        encrypted,
+        [
+            {
+                "op": "PGP Decrypt",
+                "args": {
+                    "Private key of recipient": private_key,
+                    "Private key passphrase": "",
+                },
+            }
+        ],
+    ) == "hello pgp"
+
+
 PUBLIC_KEY_VECTORS = [
     BakeVector(
         name="ecdsa_sign_verify_pkcs1_asn1_roundtrip",
@@ -10734,6 +10815,22 @@ PUBLIC_KEY_VECTORS = [
             }
         ],
         expected=assert_generated_rsa_pem_key_pair,
+    ),
+    BakeVector(
+        name="generate_pgp_key_pair_rsa_1024_roundtrip",
+        input_data="",
+        recipe=[
+            {
+                "op": "Generate PGP Key Pair",
+                "args": {
+                    "Key type": "RSA-1024",
+                    "Password (optional)": "",
+                    "Name (optional)": "",
+                    "Email (optional)": "",
+                },
+            }
+        ],
+        expected=assert_generated_pgp_key_pair,
     ),
     BakeVector(
         name="pgp_encrypt_decrypt_rsa_roundtrip",
