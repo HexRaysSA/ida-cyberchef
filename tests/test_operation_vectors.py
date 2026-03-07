@@ -112,6 +112,17 @@ SIMPLE_TLV_HI = bytes.fromhex("01024869")
 SIMPLE_LV_SEQUENCE = bytes.fromhex("02486903627965")
 SIMPLE_TWO_BYTE_LENGTH_TLV = bytes.fromhex("0102004869")
 SIMPLE_BER_TLV = bytes.fromhex("01024142")
+MINIMAL_EXIF_JPEG = bytes.fromhex(
+    "ffd8"
+    "ffe10028457869660000"
+    "4d4d002a00000008"
+    "0001"
+    "010f0002000000060000001a"
+    "00000000"
+    "43616e6f6e00"
+    "ffd9"
+)
+MINIMAL_ID3_TAG = bytes.fromhex("4944330300000000001054543200000000060000005469746c65")
 FERNET_TEST_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 FERNET_PHASE21_TOKEN = "gAAAAABpq-NaiTYSdio-mpGASNZAteHn6Q-ga8cYUUzCsmHyy73m1QsCRsqj0i-4QbAMBD6rIshNSOicC5CVLLIBXtg64AnOPw=="
 JWT_PHASE22_PAYLOAD = {"sub": "123", "name": "John Doe", "admin": True, "iat": 1_700_000_000}
@@ -4280,6 +4291,116 @@ DATE_TIME_VECTORS = [
     ),
 ]
 
+EXTRACTOR_VECTORS = [
+    BakeVector(
+        name="css_selector_extracts_multiple_elements_with_custom_delimiter",
+        input_data='<div><span class="x">a</span><span class="x">b</span></div>',
+        recipe=[{"op": "CSS selector", "args": {"CSS selector": ".x", "Delimiter": "|"}}],
+        expected='<span class="x">a</span>|<span class="x">b</span>',
+    ),
+    BakeVector(
+        name="extract_exif_reads_minimal_make_tag",
+        input_data=MINIMAL_EXIF_JPEG,
+        recipe=["Extract EXIF"],
+        expected="Found 1 tags.\n\nMake: Canon",
+    ),
+    BakeVector(
+        name="extract_files_carves_embedded_zip_archive",
+        input_data=b"JUNK" + build_zip_archive("a.txt", b"hello", compression=zipfile.ZIP_STORED) + b"TAIL",
+        recipe=["Extract Files"],
+        expected=[
+            {
+                "name": "extracted_at_0x4.zip",
+                "type": "application/zip",
+                "data": build_zip_archive("a.txt", b"hello", compression=zipfile.ZIP_STORED),
+            }
+        ],
+    ),
+    BakeVector(
+        name="extract_id3_reads_minimal_title_frame",
+        input_data=MINIMAL_ID3_TAG,
+        recipe=["Extract ID3"],
+        expected={
+            "Type": "ID3",
+            "Version": "3.0",
+            "Flags": "0",
+            "Size": "16",
+            "Tags": {
+                "TT2": {
+                    "Size": "6",
+                    "Description": "Title/Songname/Content description",
+                    "Data": "Title",
+                }
+            },
+        },
+    ),
+    BakeVector(
+        name="extract_ip_addresses_includes_ipv6_and_removes_local_ipv4",
+        input_data="10.0.0.1 xx 8.8.8.8 yy 2001:db8::1 zz 172.16.0.5 aa 127.0.0.1",
+        recipe=[
+            {
+                "op": "Extract IP addresses",
+                "args": {
+                    "IPv4": True,
+                    "IPv6": True,
+                    "Remove local IPv4 addresses": True,
+                    "Display total": True,
+                },
+            }
+        ],
+        expected="Total found: 2\n\n8.8.8.8\n2001:db8::1",
+    ),
+    BakeVector(
+        name="extract_mac_addresses_counts_unique_results",
+        input_data="AA:BB:CC:DD:EE:FF xx 11-22-33-44-55-66 yy AA:BB:CC:DD:EE:FF",
+        recipe=[{"op": "Extract MAC addresses", "args": {"Display total": True, "Unique": True}}],
+        expected="Total found: 2\n\nAA:BB:CC:DD:EE:FF\n11-22-33-44-55-66",
+    ),
+    BakeVector(
+        name="extract_urls_counts_unique_results",
+        input_data="ftp://b.example/file https://example.com/x https://example.com/x",
+        recipe=[{"op": "Extract URLs", "args": {"Display total": True, "Unique": True}}],
+        expected="Total found: 2\n\nftp://b.example/file\nhttps://example.com/x",
+    ),
+    BakeVector(
+        name="extract_domains_supports_underscore_labels",
+        input_data="mail _dmarc.example.org and selector._domainkey.example.org and plain example.com and example.com",
+        recipe=[
+            {
+                "op": "Extract domains",
+                "args": {
+                    "Display total": True,
+                    "Unique": True,
+                    "Underscore (DMARC, DKIM, etc)": True,
+                },
+            }
+        ],
+        expected="Total found: 3\n\n_dmarc.example.org\nselector._domainkey.example.org\nexample.com",
+    ),
+    BakeVector(
+        name="extract_email_addresses_counts_unique_results",
+        input_data="z@example.com bob@example.com z@example.com",
+        recipe=[{"op": "Extract email addresses", "args": {"Display total": True, "Unique": True}}],
+        expected="Total found: 2\n\nz@example.com\nbob@example.com",
+    ),
+    BakeVector(
+        name="extract_file_paths_can_limit_to_windows_paths",
+        input_data=r"C:\Temp\file.txt /usr/local/bin ./rel",
+        recipe=[
+            {
+                "op": "Extract file paths",
+                "args": {
+                    "Windows": True,
+                    "UNIX": False,
+                    "Display total": True,
+                    "Unique": True,
+                },
+            }
+        ],
+        expected="Total found: 1\n\nC:\\Temp\\file.txt",
+    ),
+]
+
 BLOCKED_BAKE_VECTORS = [
     *CODE_TIDY_BLOCKED_VECTORS,
     *COMPRESSION_BLOCKED_VECTORS,
@@ -7111,6 +7232,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *DATA_FORMAT_VECTORS,
     *COMPRESSION_VECTORS,
     *DATE_TIME_VECTORS,
+    *EXTRACTOR_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,
