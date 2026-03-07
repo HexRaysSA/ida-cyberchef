@@ -1,5 +1,6 @@
 import base64
 import bz2
+import calendar
 import gzip
 import hashlib
 import io
@@ -7,9 +8,12 @@ import ipaddress
 import re
 import struct
 import tarfile
+import time
 import zipfile
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from itertools import product
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -543,6 +547,156 @@ def build_zip_archive(
 
 def build_file_listing(filename: str, data: bytes) -> list[dict[str, object]]:
     return [{"name": filename, "type": "application/unknown", "data": data}]
+
+
+def build_ordinal_day(day: int) -> str:
+    if 10 <= day % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+    return f"{day}{suffix}"
+
+
+def build_verbose_utc_datetime(value: datetime) -> str:
+    return f"{value.strftime('%a')} {value.day} {value.strftime('%B %Y %H:%M:%S')} UTC"
+
+
+def build_datetime_delta_string(
+    value: str,
+    *,
+    days: int = 0,
+    hours: int = 0,
+    minutes: int = 0,
+    seconds: int = 0,
+) -> str:
+    parsed = datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    return (parsed + timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+
+def build_from_unix_timestamp_string(value: str, units: str) -> str:
+    divisors = {
+        "Seconds (s)": 1,
+        "Milliseconds (ms)": 1_000,
+        "Microseconds (μs)": 1_000_000,
+        "Nanoseconds (ns)": 1_000_000_000,
+    }
+    divisor = divisors[units]
+    parsed = datetime.fromtimestamp(int(value) / divisor, tz=timezone.utc)
+
+    if units == "Seconds (s)":
+        return build_verbose_utc_datetime(parsed)
+
+    milliseconds = parsed.strftime("%f")[:3]
+    return f"{parsed.strftime('%a')} {parsed.day} {parsed.strftime('%B %Y %H:%M:%S')}.{milliseconds} UTC"
+
+
+def build_parse_datetime_output(value: datetime) -> str:
+    return (
+        f"Date: {value.strftime('%A')} {build_ordinal_day(value.day)} {value.strftime('%B %Y')}\n"
+        f"Time: {value.strftime('%H:%M:%S')}\n"
+        f"Period: {value.strftime('%p')}\n"
+        f"Timezone: {value.tzname()}\n"
+        f"UTC offset: {value.strftime('%z')}\n\n"
+        f"Daylight Saving Time: {str(bool(value.dst())).lower()}\n"
+        f"Leap year: {str(calendar.isleap(value.year)).lower()}\n"
+        f"Days in this month: {calendar.monthrange(value.year, value.month)[1]}\n\n"
+        f"Day of year: {value.timetuple().tm_yday}\n"
+        f"Week number: {value.isocalendar().week}\n"
+        f"Quarter: {((value.month - 1) // 3) + 1}"
+    )
+
+
+def build_to_unix_timestamp_string(value: str, *, units: str, show_parsed_datetime: bool) -> str:
+    parsed = datetime.strptime(value, "%a %d %B %Y %H:%M:%S").replace(tzinfo=timezone.utc)
+    converters = {
+        "Seconds (s)": lambda timestamp: int(timestamp),
+        "Milliseconds (ms)": lambda timestamp: int(timestamp * 1_000),
+        "Microseconds (μs)": lambda timestamp: int(timestamp * 1_000_000),
+        "Nanoseconds (ns)": lambda timestamp: int(timestamp * 1_000_000_000),
+    }
+    result = converters[units](parsed.timestamp())
+
+    if not show_parsed_datetime:
+        return str(result)
+
+    return f"{result} ({build_verbose_utc_datetime(parsed)})"
+
+
+def build_translated_datetime_output(
+    value: str,
+    *,
+    input_format: str,
+    input_timezone: str,
+    output_timezone: str,
+) -> str:
+    parsed = datetime.strptime(value, input_format).replace(tzinfo=ZoneInfo(input_timezone))
+    translated = parsed.astimezone(ZoneInfo(output_timezone))
+    offset = translated.strftime("%z")
+    return (
+        f"{translated.strftime('%Y-%m-%d %H:%M:%S')} {offset[:3]}:{offset[3:]}"
+        f" {translated.tzname()}"
+    )
+
+
+def build_little_endian_hex(value: int) -> str:
+    hex_value = format(value, "x")
+    if len(hex_value) % 2:
+        hex_value = f"0{hex_value}"
+    return "".join(reversed([hex_value[index : index + 2] for index in range(0, len(hex_value), 2)]))
+
+
+def build_windows_filetime_string(value: str, *, units: str, output_format: str) -> str:
+    number = int(value)
+
+    if units == "Seconds (s)":
+        intervals = number * 10_000_000
+    elif units == "Milliseconds (ms)":
+        intervals = number * 10_000
+    elif units == "Microseconds (μs)":
+        intervals = number * 10
+    else:
+        intervals = number // 100
+
+    intervals += 116_444_736_000_000_000
+
+    if output_format == "Decimal":
+        return str(intervals)
+
+    if output_format == "Hex (big endian)":
+        return format(intervals, "x")
+
+    return build_little_endian_hex(intervals)
+
+
+def build_unix_timestamp_from_windows_filetime_string(
+    value: str,
+    *,
+    output_units: str,
+    input_format: str,
+) -> str:
+    if input_format == "Hex (little endian)":
+        chunks = [value[index : index + 2] for index in range(0, len(value), 2)]
+        intervals = int("".join(reversed(chunks)), 16)
+    elif input_format == "Hex (big endian)":
+        intervals = int(value, 16)
+    else:
+        intervals = int(value)
+
+    unix_intervals = intervals - 116_444_736_000_000_000
+
+    if output_units == "Seconds (s)":
+        return str(unix_intervals // 10_000_000)
+
+    if output_units == "Milliseconds (ms)":
+        return str(unix_intervals // 10_000)
+
+    if output_units == "Microseconds (μs)":
+        return str(unix_intervals // 10)
+
+    return str(unix_intervals * 100)
 
 
 CODE_TIDY_VECTORS = [
@@ -2881,6 +3035,206 @@ COMPRESSION_VECTORS = [
     ),
 ]
 
+DATE_TIME_VECTORS = [
+    BakeVector(
+        name="datetime_delta_add_across_leap_day_boundary",
+        input_data="2024-02-29 23:59:30",
+        recipe=[
+            {
+                "op": "DateTime Delta",
+                "args": {
+                    "Built in formats": "International date and time",
+                    "Input format string": "YYYY-MM-DD HH:mm:ss",
+                    "Time Operation": "Add",
+                    "Days": 1,
+                    "Hours": 0,
+                    "Minutes": 1,
+                    "Seconds": 45,
+                },
+            }
+        ],
+        expected=build_datetime_delta_string(
+            "2024-02-29 23:59:30",
+            days=1,
+            minutes=1,
+            seconds=45,
+        ),
+    ),
+    BakeVector(
+        name="datetime_delta_subtract_across_previous_day",
+        input_data="2024-03-01 00:00:00",
+        recipe=[
+            {
+                "op": "DateTime Delta",
+                "args": {
+                    "Built in formats": "International date and time",
+                    "Input format string": "YYYY-MM-DD HH:mm:ss",
+                    "Time Operation": "Subtract",
+                    "Days": 1,
+                    "Hours": 0,
+                    "Minutes": 0,
+                    "Seconds": 1,
+                },
+            }
+        ],
+        expected=build_datetime_delta_string("2024-03-01 00:00:00", days=-1, seconds=-1),
+    ),
+    BakeVector(
+        name="extract_dates_supported_formats",
+        input_data="ignore 2024-02-29 and 03/01/2024 plus 12.31.2025",
+        recipe=["Extract dates"],
+        expected="2024-02-29\n03/01/2024\n12.31.2025",
+    ),
+    BakeVector(
+        name="extract_dates_display_total",
+        input_data="ignore 2024-02-29 and 03/01/2024 plus 12.31.2025",
+        recipe=[{"op": "Extract dates", "args": {"Display total": True}}],
+        expected="Total found: 3\n\n2024-02-29\n03/01/2024\n12.31.2025",
+    ),
+    BakeVector(
+        name="from_unix_timestamp_seconds_epoch_example",
+        input_data="978346800",
+        recipe=["From UNIX Timestamp"],
+        expected=build_from_unix_timestamp_string("978346800", "Seconds (s)"),
+    ),
+    BakeVector(
+        name="from_unix_timestamp_milliseconds_epoch_example",
+        input_data="978346800000",
+        recipe=[{"op": "From UNIX Timestamp", "args": {"Units": "Milliseconds (ms)"}}],
+        expected=build_from_unix_timestamp_string("978346800000", "Milliseconds (ms)"),
+    ),
+    BakeVector(
+        name="parse_datetime_utc_details",
+        input_data="2015-06-15 20:45:00",
+        recipe=[
+            {
+                "op": "Parse DateTime",
+                "args": {
+                    "Built in formats": "International date and time",
+                    "Input format string": "YYYY-MM-DD HH:mm:ss",
+                    "Input timezone": "UTC",
+                },
+            }
+        ],
+        expected=build_parse_datetime_output(datetime(2015, 6, 15, 20, 45, 0, tzinfo=timezone.utc)),
+    ),
+    BakeVector(
+        name="to_unix_timestamp_seconds_with_parsed_datetime",
+        input_data="Mon 1 January 2001 11:00:00",
+        recipe=["To UNIX Timestamp"],
+        expected=build_to_unix_timestamp_string(
+            "Mon 1 January 2001 11:00:00",
+            units="Seconds (s)",
+            show_parsed_datetime=True,
+        ),
+    ),
+    BakeVector(
+        name="to_unix_timestamp_milliseconds_without_parsed_datetime",
+        input_data="Mon 1 January 2001 11:00:00",
+        recipe=[
+            {
+                "op": "To UNIX Timestamp",
+                "args": {
+                    "Units": "Milliseconds (ms)",
+                    "Treat as UTC": True,
+                    "Show parsed datetime": False,
+                },
+            }
+        ],
+        expected=build_to_unix_timestamp_string(
+            "Mon 1 January 2001 11:00:00",
+            units="Milliseconds (ms)",
+            show_parsed_datetime=False,
+        ),
+    ),
+    BakeVector(
+        name="translate_datetime_format_utc_to_queensland",
+        input_data="15/06/2015 20:45:00",
+        recipe=[
+            {
+                "op": "Translate DateTime Format",
+                "args": {
+                    "Built in formats": "Standard date and time",
+                    "Input format string": "DD/MM/YYYY HH:mm:ss",
+                    "Input timezone": "UTC",
+                    "Output format string": "YYYY-MM-DD HH:mm:ss Z z",
+                    "Output timezone": "Australia/Queensland",
+                },
+            }
+        ],
+        expected=build_translated_datetime_output(
+            "15/06/2015 20:45:00",
+            input_format="%d/%m/%Y %H:%M:%S",
+            input_timezone="UTC",
+            output_timezone="Australia/Queensland",
+        ),
+    ),
+    BakeVector(
+        name="unix_timestamp_to_windows_filetime_decimal_seconds",
+        input_data="978346800",
+        recipe=["UNIX Timestamp to Windows Filetime"],
+        expected=build_windows_filetime_string(
+            "978346800",
+            units="Seconds (s)",
+            output_format="Decimal",
+        ),
+    ),
+    BakeVector(
+        name="unix_timestamp_to_windows_filetime_hex_little_endian",
+        input_data="978346800",
+        recipe=[
+            {
+                "op": "UNIX Timestamp to Windows Filetime",
+                "args": {
+                    "Input units": "Seconds (s)",
+                    "Output format": "Hex (little endian)",
+                },
+            }
+        ],
+        expected=build_windows_filetime_string(
+            "978346800",
+            units="Seconds (s)",
+            output_format="Hex (little endian)",
+        ),
+    ),
+    BakeVector(
+        name="windows_filetime_to_unix_timestamp_decimal_seconds",
+        input_data=build_windows_filetime_string(
+            "978346800",
+            units="Seconds (s)",
+            output_format="Decimal",
+        ),
+        recipe=["Windows Filetime to UNIX Timestamp"],
+        expected="978346800",
+    ),
+    BakeVector(
+        name="windows_filetime_to_unix_timestamp_hex_little_endian_milliseconds",
+        input_data=build_windows_filetime_string(
+            "978346800",
+            units="Seconds (s)",
+            output_format="Hex (little endian)",
+        ),
+        recipe=[
+            {
+                "op": "Windows Filetime to UNIX Timestamp",
+                "args": {
+                    "Output units": "Milliseconds (ms)",
+                    "Input format": "Hex (little endian)",
+                },
+            }
+        ],
+        expected=build_unix_timestamp_from_windows_filetime_string(
+            build_windows_filetime_string(
+                "978346800",
+                units="Seconds (s)",
+                output_format="Hex (little endian)",
+            ),
+            output_units="Milliseconds (ms)",
+            input_format="Hex (little endian)",
+        ),
+    ),
+]
+
 BLOCKED_BAKE_VECTORS = [
     *CODE_TIDY_BLOCKED_VECTORS,
     *COMPRESSION_BLOCKED_VECTORS,
@@ -3651,12 +4005,33 @@ BITE_SIZED_BAKE_VECTORS = [
     *CODE_TIDY_VECTORS,
     *DATA_FORMAT_VECTORS,
     *COMPRESSION_VECTORS,
+    *DATE_TIME_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
     *ARITHMETIC_LOGIC_VECTORS,
 ]
+
+GET_TIME_GRANULARITIES = [
+    ("Seconds (s)", 1_000_000_000, 1),
+    ("Milliseconds (ms)", 1_000_000, 1),
+    ("Microseconds (μs)", 1_000, 1_000),
+    ("Nanoseconds (ns)", 1, 1_000_000),
+]
+
+
+@pytest.mark.parametrize(
+    ("granularity", "divisor", "slack"),
+    GET_TIME_GRANULARITIES,
+    ids=[granularity for granularity, _, _ in GET_TIME_GRANULARITIES],
+)
+def test_get_time_returns_current_epoch(granularity: str, divisor: int, slack: int):
+    lower_bound = time.time_ns() // divisor
+    result = bake("", [{"op": "Get Time", "args": {"Granularity": granularity}}])
+    upper_bound = time.time_ns() // divisor
+
+    assert lower_bound - slack <= int(result) <= upper_bound + slack
 
 
 @pytest.mark.parametrize(

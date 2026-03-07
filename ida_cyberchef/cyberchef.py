@@ -252,6 +252,16 @@ def load_cyberchef(path: str | None = None):
         };
     }
 
+    if (typeof performance === 'undefined') {
+        const timeOrigin = Date.now();
+        globalThis.performance = {
+            timeOrigin: timeOrigin,
+            now: function() {
+                return Date.now() - timeOrigin;
+            }
+        };
+    }
+
     // Timer polyfills (minimal implementation for CyberChef)
     globalThis.setTimeout = function(fn, ms) {
         fn();
