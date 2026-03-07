@@ -467,6 +467,78 @@ def assert_hex_density_chart_with_headers_and_empty_hexagons(result: object) -> 
     assert "Count: 3" in result
 
 
+def assert_scatter_chart_with_headers(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<svg ")
+    assert 'class="points"' in result
+    assert result.count("<circle") == 3
+    assert 'fill="black"' in result
+    assert 'r="10"' in result
+    assert '>x</text>' in result
+    assert '>y</text>' in result
+    assert 'X: 0' in result
+    assert 'Y: 2' in result
+
+
+def assert_scatter_chart_with_input_colours(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<svg ")
+    assert 'class="points"' in result
+    assert result.count("<circle") == 2
+    assert 'fill="red"' in result
+    assert 'fill="blue"' in result
+    assert 'r="5"' in result
+    assert '>Horizontal</text>' in result
+    assert '>Vertical</text>' in result
+    assert 'fill="green"' not in result
+
+
+def assert_series_chart_with_custom_colours(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<svg ")
+    assert result.count("<circle") == 6
+    assert result.count("<rect") == 3
+    assert 'stroke="red"' in result
+    assert 'stroke="blue"' in result
+    assert 'fill="red"' in result
+    assert 'fill="blue"' in result
+    assert 'r="3"' in result
+    assert '>Time</text>' in result
+    assert '>temp</text>' in result
+    assert '>humidity</text>' in result
+    assert 'temp: 10' in result
+    assert 'humidity: 30' in result
+
+
+def assert_split_colour_channels_files(result: object) -> None:
+    assert isinstance(result, list)
+    assert [item["name"] for item in result] == ["red.png", "green.png", "blue.png"]
+    assert all(item["type"] == "image/png" for item in result)
+    expected_channels = {
+        "red.png": build_extract_rgba_text(
+            [
+                [(255, 0, 0, 255), (0, 0, 0, 255)],
+                [(0, 0, 0, 255), (255, 0, 0, 255)],
+            ]
+        ),
+        "green.png": build_extract_rgba_text(
+            [
+                [(0, 0, 0, 255), (0, 255, 0, 255)],
+                [(0, 0, 0, 255), (0, 255, 0, 255)],
+            ]
+        ),
+        "blue.png": build_extract_rgba_text(
+            [
+                [(0, 0, 0, 255), (0, 0, 0, 255)],
+                [(0, 0, 255, 255), (0, 0, 255, 255)],
+            ]
+        ),
+    }
+    for item in result:
+        assert item["data"]
+        assert bake(item["data"], ["Extract RGBA"]) == expected_channels[item["name"]]
+
+
 def get_delimiter_text(name: str) -> str:
     return {
         "Space": " ",
@@ -8408,6 +8480,90 @@ MULTIMEDIA_VECTORS = [
                 [(0, 255, 0, 255), (255, 0, 0, 255)],
             ]
         ),
+    ),
+    BakeVector(
+        name="scatter_chart_headers_and_default_colour",
+        input_data="x,y\n0,0\n1,1\n2,2",
+        recipe=[
+            {
+                "op": "Scatter chart",
+                "args": {
+                    "Record delimiter": "Line feed",
+                    "Field delimiter": "Comma",
+                    "Use column headers as labels": True,
+                    "X label": "",
+                    "Y label": "",
+                    "Colour": "black",
+                    "Point radius": 10,
+                    "Use colour from third column": False,
+                },
+            }
+        ],
+        expected=assert_scatter_chart_with_headers,
+    ),
+    BakeVector(
+        name="scatter_chart_colour_from_third_column",
+        input_data="0;0;red\r\n1;1;blue",
+        recipe=[
+            {
+                "op": "Scatter chart",
+                "args": {
+                    "Record delimiter": "CRLF",
+                    "Field delimiter": "Semi-colon",
+                    "Use column headers as labels": False,
+                    "X label": "Horizontal",
+                    "Y label": "Vertical",
+                    "Colour": "green",
+                    "Point radius": 5,
+                    "Use colour from third column": True,
+                },
+            }
+        ],
+        expected=assert_scatter_chart_with_input_colours,
+    ),
+    BakeVector(
+        name="series_chart_crlf_semicolon_custom_colours",
+        input_data=(
+            "temp;00:00;10\r\n"
+            "humidity;00:00;20\r\n"
+            "temp;12:00;15\r\n"
+            "humidity;12:00;25\r\n"
+            "temp;24:00;12\r\n"
+            "humidity;24:00;30"
+        ),
+        recipe=[
+            {
+                "op": "Series chart",
+                "args": {
+                    "Record delimiter": "CRLF",
+                    "Field delimiter": "Semi-colon",
+                    "X label": "Time",
+                    "Point radius": 3,
+                    "Series colours": "red,blue",
+                },
+            }
+        ],
+        expected=assert_series_chart_with_custom_colours,
+    ),
+    BakeVector(
+        name="sharpen_image_unsharp_mask_extract_rgba",
+        input_data=MULTIMEDIA_NORMALISE_SOURCE_PNG,
+        recipe=[
+            {"op": "Sharpen Image", "args": {"Radius": 1, "Amount": 1, "Threshold": 0}},
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text(
+            [
+                [(10, 20, 30, 255), (127, 137, 147, 255)],
+                [(255, 255, 255, 255), (60, 70, 80, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="split_colour_channels_returns_three_png_files",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=["Split Colour Channels"],
+        expected=assert_split_colour_channels_files,
     ),
 ]
 
