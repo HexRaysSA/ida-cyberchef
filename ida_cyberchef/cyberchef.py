@@ -132,7 +132,12 @@ def patch_bundle_source(source: str) -> str:
     if _NODE_API_SYNC_WRAPPER_OLD not in source:
         raise RuntimeError("Failed to patch CyberChef async operation wrapper")
 
-    return source.replace(_NODE_API_SYNC_WRAPPER_OLD, _NODE_API_SYNC_WRAPPER_NEW, 1)
+    source = source.replace(_NODE_API_SYNC_WRAPPER_OLD, _NODE_API_SYNC_WRAPPER_NEW, 1)
+    return source.replace(
+        "window.app.options.attemptHighlight = false;",
+        "window.app&&window.app.options&&(window.app.options.attemptHighlight=false);",
+        2,
+    )
 
 
 def install_bake_helper(ctx: STPyV8.JSContext) -> None:

@@ -7704,6 +7704,12 @@ HASH_VECTORS = [
         expected=hashlib.md5("ნუ პანიკას".encode()).hexdigest(),
     ),
     BakeVector(
+        name="md5_utf8_string",
+        input_data="ნუ პანიკას",
+        recipe=["MD5"],
+        expected=hashlib.md5("ნუ პანიკას".encode()).hexdigest(),
+    ),
+    BakeVector(
         name="md6_keyed_text",
         input_data="Head Over Heels",
         recipe=[{"op": "MD6", "args": {"Size": 256, "Levels": 64, "Key": "arty"}}],
@@ -7912,6 +7918,96 @@ HASH_VECTORS = [
         input_data=bytes(range(256)),
         recipe=[{"op": "XOR Checksum", "args": {"Blocksize": 4}}],
         expected=build_xor_checksum(bytes(range(256)), 4),
+    ),
+]
+
+LANGUAGE_VECTORS = [
+    BakeVector(
+        name="convert_leet_speak_empty_string",
+        input_data="",
+        recipe=["Convert Leet Speak"],
+        expected="",
+    ),
+    BakeVector(
+        name="convert_leet_speak_to_default_letters",
+        input_data="Attack at dawn!",
+        recipe=["Convert Leet Speak"],
+        expected="4774ck 47 d4wn!",
+    ),
+    BakeVector(
+        name="convert_leet_speak_from_option",
+        input_data="7357",
+        recipe=[{"op": "Convert Leet Speak", "args": {"Direction": "From Leet Speak"}}],
+        expected="test",
+    ),
+    BakeVector(
+        name="convert_leet_speak_roundtrip_safe_subset",
+        input_data="test",
+        recipe=[
+            "Convert Leet Speak",
+            {"op": "Convert Leet Speak", "args": {"Direction": "From Leet Speak"}},
+        ],
+        expected="test",
+    ),
+    BakeVector(
+        name="convert_to_nato_alphabet_letters_digits_punctuation",
+        input_data="Go,9./",
+        recipe=["Convert to NATO alphabet"],
+        expected="Golf Oscar Comma Nine Full stop Fraction bar ",
+    ),
+    BakeVector(
+        name="convert_to_nato_alphabet_preserves_spacing",
+        input_data="A Z",
+        recipe=["Convert to NATO alphabet"],
+        expected="Alfa  Zulu ",
+    ),
+    BakeVector(
+        name="remove_diacritics_empty_string",
+        input_data="",
+        recipe=["Remove Diacritics"],
+        expected="",
+    ),
+    BakeVector(
+        name="remove_diacritics_accented_latin_text",
+        input_data="Crème Brûlée naïve café",
+        recipe=["Remove Diacritics"],
+        expected="Creme Brulee naive cafe",
+    ),
+    BakeVector(
+        name="remove_diacritics_combining_mark_sequence",
+        input_data="Cafe\u0301",
+        recipe=["Remove Diacritics"],
+        expected="Cafe",
+    ),
+    BakeVector(
+        name="unicode_text_format_empty_bytes",
+        input_data=b"",
+        recipe=[{"op": "Unicode Text Format", "args": {"Underline": False, "Strikethrough": False}}],
+        expected=b"",
+    ),
+    BakeVector(
+        name="unicode_text_format_plain_passthrough",
+        input_data=b"ab",
+        recipe=[{"op": "Unicode Text Format", "args": {"Underline": False, "Strikethrough": False}}],
+        expected=b"ab",
+    ),
+    BakeVector(
+        name="unicode_text_format_underline_only",
+        input_data=b"ab",
+        recipe=[{"op": "Unicode Text Format", "args": {"Underline": True, "Strikethrough": False}}],
+        expected="a\u0332b\u0332".encode("utf-8"),
+    ),
+    BakeVector(
+        name="unicode_text_format_strikethrough_only",
+        input_data=b"ab",
+        recipe=[{"op": "Unicode Text Format", "args": {"Underline": False, "Strikethrough": True}}],
+        expected="a\u0336b\u0336".encode("utf-8"),
+    ),
+    BakeVector(
+        name="unicode_text_format_both_styles",
+        input_data=b"ab",
+        recipe=[{"op": "Unicode Text Format", "args": {"Underline": True, "Strikethrough": True}}],
+        expected="a\u0336\u0332b\u0336\u0332".encode("utf-8"),
     ),
 ]
 
@@ -8494,6 +8590,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *FORENSICS_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
+    *LANGUAGE_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
     *ARITHMETIC_LOGIC_VECTORS,
