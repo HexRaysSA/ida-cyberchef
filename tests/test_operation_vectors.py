@@ -554,6 +554,156 @@ def build_cetacean_decode_string(value: str) -> str:
     )
 
 
+def build_ciphersaber2_bytes(temp_ivp: bytes, key: bytes, rounds: int, input_data: bytes) -> bytes:
+    ivp = list(key + temp_ivp)
+    state = list(range(256))
+    j = 0
+
+    for _ in range(rounds):
+        for index in range(256):
+            j = (j + state[index] + ivp[index % len(ivp)]) % 256
+            state[index], state[j] = state[j], state[index]
+
+    j = 0
+    i = 0
+    result = bytearray()
+
+    for value in input_data:
+        i = (i + 1) % 256
+        j = (j + state[i]) % 256
+        state[i], state[j] = state[j], state[i]
+        result.append(state[(state[i] + state[j]) % 256] ^ value)
+
+    return bytes(result)
+
+
+def build_citrix_ctx1_bytes(value: str) -> bytes:
+    result = bytearray()
+    temp = 0
+
+    for byte in value.encode("utf-16le"):
+        temp = byte ^ 0xA5 ^ temp
+        result.append(((temp >> 4) & 0xF) + 0x41)
+        result.append((temp & 0xF) + 0x41)
+
+    return bytes(result)
+
+
+def build_citrix_ctx1_string(value: bytes) -> str:
+    if len(value) % 4 != 0:
+        raise ValueError("Incorrect hash length")
+
+    reversed_value = bytearray(value)
+    reversed_value.reverse()
+    result = bytearray()
+    temp = 0
+
+    for index in range(0, len(reversed_value), 2):
+        if index + 2 >= len(reversed_value):
+            temp = 0
+        else:
+            temp = ((reversed_value[index + 2] - 0x41) & 0xF) ^ (
+                ((reversed_value[index + 3] - 0x41) << 4) & 0xF0
+            )
+
+        temp = (
+            ((reversed_value[index] - 0x41) & 0xF)
+            ^ (((reversed_value[index + 1] - 0x41) << 4) & 0xF0)
+            ^ 0xA5
+            ^ temp
+        )
+        result.append(temp)
+
+    result.reverse()
+    return bytes(result).decode("utf-16le")
+
+
+def build_evp_key_hex(
+    passphrase: bytes,
+    salt: bytes,
+    *,
+    key_size_bits: int,
+    iterations: int,
+    hash_name: str,
+) -> str:
+    key_size_bytes = key_size_bits // 8
+    derived = b""
+    block = b""
+    algorithm = hash_name.lower()
+
+    while len(derived) < key_size_bytes:
+        block = hashlib.new(algorithm, block + passphrase + salt).digest()
+
+        for _ in range(iterations - 1):
+            block = hashlib.new(algorithm, block).digest()
+
+        derived += block
+
+    return derived[:key_size_bytes].hex()
+
+
+def build_colossus_args(program_to_run: str) -> dict[str, object]:
+    return {
+        "Input": "",
+        "Pattern": "KH Pattern",
+        "QBusZ": "",
+        "QBusΧ": "",
+        "QBusΨ": "",
+        "Limitation": "None",
+        "K Rack Option": "Select Program",
+        "Program to run": program_to_run,
+        "K Rack: Conditional": "",
+        "R1-Q1": "",
+        "R1-Q2": "",
+        "R1-Q3": "",
+        "R1-Q4": "",
+        "R1-Q5": "",
+        "R1-Negate": False,
+        "R1-Counter": "",
+        "R2-Q1": "",
+        "R2-Q2": "",
+        "R2-Q3": "",
+        "R2-Q4": "",
+        "R2-Q5": "",
+        "R2-Negate": False,
+        "R2-Counter": "",
+        "R3-Q1": "",
+        "R3-Q2": "",
+        "R3-Q3": "",
+        "R3-Q4": "",
+        "R3-Q5": "",
+        "R3-Negate": False,
+        "R3-Counter": "",
+        "Negate All": False,
+        "K Rack: Addition": "",
+        "Add-Q1": False,
+        "Add-Q2": False,
+        "Add-Q3": False,
+        "Add-Q4": False,
+        "Add-Q5": False,
+        "Add-Equals": "",
+        "Add-Counter1": False,
+        "Add Negate All": False,
+        "Total Motor": "",
+        "Master Control Panel": "",
+        "Set Total": 0,
+        "Fast Step": "",
+        "Slow Step": "",
+        "Start Χ1": 1,
+        "Start Χ2": 1,
+        "Start Χ3": 1,
+        "Start Χ4": 1,
+        "Start Χ5": 1,
+        "Start M61": 1,
+        "Start M37": 1,
+        "Start Ψ1": 1,
+        "Start Ψ2": 1,
+        "Start Ψ3": 1,
+        "Start Ψ4": 1,
+        "Start Ψ5": 1,
+    }
+
+
 def verify_bcrypt_rounds_four_hash(result: object) -> None:
     assert isinstance(result, str)
     assert re.fullmatch(r"\$2a\$04\$[./A-Za-z0-9]{53}", result)
@@ -3922,6 +4072,236 @@ ENCODING_VECTORS = [
         input_data="hi ho",
         recipe=["Cetacean Cipher Encode", "Cetacean Cipher Decode"],
         expected="hi ho",
+    ),
+    BakeVector(
+        name="chacha_rfc8439_encrypt_vector",
+        input_data=(
+            "Ladies and Gentlemen of the class of '99: If I could offer you only one tip "
+            "for the future, sunscreen would be it."
+        ),
+        recipe=[
+            {
+                "op": "ChaCha",
+                "args": {
+                    "Key": {
+                        "string": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+                        "option": "Hex",
+                    },
+                    "Nonce": {"string": "000000000000004a00000000", "option": "Hex"},
+                    "Counter": 1,
+                    "Rounds": "20",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected=(
+            "6e 2e 35 9a 25 68 f9 80 41 ba 07 28 dd 0d 69 81 e9 7e 7a ec 1d 43 60 c2 "
+            "0a 27 af cc fd 9f ae 0b f9 1b 65 c5 52 47 33 ab 8f 59 3d ab cd 62 b3 57 "
+            "16 39 d6 24 e6 51 52 ab 8f 53 0c 35 9f 08 61 d8 07 ca 0d bf 50 0d 6a 61 "
+            "56 a3 8e 08 8a 22 b6 5e 52 bc 51 4d 16 cc f8 06 81 8c e9 1a b7 79 37 36 "
+            "5a f9 0b bf 74 a3 5b e6 b4 0b 8e ed f2 78 5e 42 87 4d"
+        ),
+    ),
+    BakeVector(
+        name="chacha_roundtrip_twelve_round_eight_byte_nonce",
+        input_data="phase20 roundtrip",
+        recipe=[
+            {
+                "op": "ChaCha",
+                "args": {
+                    "Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"},
+                    "Nonce": {"string": "12345678", "option": "UTF8"},
+                    "Counter": 7,
+                    "Rounds": "12",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            },
+            {
+                "op": "ChaCha",
+                "args": {
+                    "Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"},
+                    "Nonce": {"string": "12345678", "option": "UTF8"},
+                    "Counter": 7,
+                    "Rounds": "12",
+                    "Input": "Hex",
+                    "Output": "Raw",
+                },
+            },
+        ],
+        expected="phase20 roundtrip",
+    ),
+    BakeVector(
+        name="ciphersaber2_decrypt_fixed_iv_vector",
+        input_data=bytes(range(10)) + build_ciphersaber2_bytes(bytes(range(10)), b"secret", 5, b"hello"),
+        recipe=[
+            {
+                "op": "CipherSaber2 Decrypt",
+                "args": {
+                    "Key": {"string": "secret", "option": "UTF8"},
+                    "Rounds": 5,
+                },
+            }
+        ],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="ciphersaber2_roundtrip_binary_payload",
+        input_data=b"\x00phase20\xff",
+        recipe=[
+            {
+                "op": "CipherSaber2 Encrypt",
+                "args": {
+                    "Key": {"string": "secret", "option": "UTF8"},
+                    "Rounds": 20,
+                },
+            },
+            {
+                "op": "CipherSaber2 Decrypt",
+                "args": {
+                    "Key": {"string": "secret", "option": "UTF8"},
+                    "Rounds": 20,
+                },
+            },
+        ],
+        expected=b"\x00phase20\xff",
+    ),
+    BakeVector(
+        name="citrix_ctx1_encode_password1_bang",
+        input_data="Password1!",
+        recipe=["Citrix CTX1 Encode"],
+        expected=build_citrix_ctx1_bytes("Password1!"),
+    ),
+    BakeVector(
+        name="citrix_ctx1_decode_password1_bang",
+        input_data=build_citrix_ctx1_bytes("Password1!"),
+        recipe=["Citrix CTX1 Decode"],
+        expected=build_citrix_ctx1_string(build_citrix_ctx1_bytes("Password1!")),
+    ),
+    BakeVector(
+        name="citrix_ctx1_roundtrip_unicode_text",
+        input_data="pi ✓",
+        recipe=["Citrix CTX1 Encode", "Citrix CTX1 Decode"],
+        expected="pi ✓",
+    ),
+    BakeVector(
+        name="colossus_letter_count_program",
+        input_data="AAAA",
+        recipe=[
+            {
+                "op": "Colossus",
+                "args": build_colossus_args("Letter Count"),
+            }
+        ],
+        expected={"printout": " \n00 00 : a4 \n", "counters": [4, 0, 0, 0, 0], "runcount": 2},
+    ),
+    BakeVector(
+        name="des_encrypt_ecb_padded_fips_example",
+        input_data="0123456789ABCDEF",
+        recipe=[
+            {
+                "op": "DES Encrypt",
+                "args": {
+                    "Key": {"string": "133457799BBCDFF1", "option": "Hex"},
+                    "IV": {"string": "", "option": "Hex"},
+                    "Mode": "ECB",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="85e813540f0ab405fdf2e174492922f8",
+    ),
+    BakeVector(
+        name="des_decrypt_ecb_padded_fips_example",
+        input_data="85e813540f0ab405fdf2e174492922f8",
+        recipe=[
+            {
+                "op": "DES Decrypt",
+                "args": {
+                    "Key": {"string": "133457799BBCDFF1", "option": "Hex"},
+                    "IV": {"string": "", "option": "Hex"},
+                    "Mode": "ECB",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="0123456789abcdef",
+    ),
+    BakeVector(
+        name="des_roundtrip_cfb_utf8_key",
+        input_data="phase20!",
+        recipe=[
+            {
+                "op": "DES Encrypt",
+                "args": {
+                    "Key": {"string": "YELLOW12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Mode": "CFB",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            },
+            {
+                "op": "DES Decrypt",
+                "args": {
+                    "Key": {"string": "YELLOW12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Mode": "CFB",
+                    "Input": "Hex",
+                    "Output": "Raw",
+                },
+            },
+        ],
+        expected="phase20!",
+    ),
+    BakeVector(
+        name="derive_evp_key_md5_utf8_salt",
+        input_data="",
+        recipe=[
+            {
+                "op": "Derive EVP key",
+                "args": {
+                    "Passphrase": {"string": "password", "option": "UTF8"},
+                    "Key size": 128,
+                    "Iterations": 1,
+                    "Hashing function": "MD5",
+                    "Salt": {"string": "12345678", "option": "UTF8"},
+                },
+            }
+        ],
+        expected=build_evp_key_hex(
+            b"password",
+            b"12345678",
+            key_size_bits=128,
+            iterations=1,
+            hash_name="MD5",
+        ),
+    ),
+    BakeVector(
+        name="derive_evp_key_sha256_iterated_hex_salt",
+        input_data="",
+        recipe=[
+            {
+                "op": "Derive EVP key",
+                "args": {
+                    "Passphrase": {"string": "phase20", "option": "UTF8"},
+                    "Key size": 256,
+                    "Iterations": 2,
+                    "Hashing function": "SHA256",
+                    "Salt": {"string": "0001020304050607", "option": "Hex"},
+                },
+            }
+        ],
+        expected=build_evp_key_hex(
+            b"phase20",
+            bytes.fromhex("0001020304050607"),
+            key_size_bits=256,
+            iterations=2,
+            hash_name="SHA256",
+        ),
     ),
     BakeVector(
         name="to_base64_empty_bytes",
