@@ -2372,6 +2372,180 @@ DATA_FORMAT_VECTORS = [
         ],
         expected="5 < 7 & π",
     ),
+    BakeVector(
+        name="to_hex_percent_delimited_ascii_bytes",
+        input_data=b"Hi",
+        recipe=[{"op": "To Hex", "args": {"Delimiter": "Percent", "Bytes per line": 0}}],
+        expected="48%69",
+    ),
+    BakeVector(
+        name="to_hex_percent_roundtrip_ascii_bytes",
+        input_data=b"Hi",
+        recipe=[
+            {"op": "To Hex", "args": {"Delimiter": "Percent", "Bytes per line": 0}},
+            {"op": "From Hex", "args": {"Delimiter": "Percent"}},
+        ],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="to_hex_content_special_chars_including_spaces",
+        input_data=b"foo=bar baz",
+        recipe=[
+            {
+                "op": "To Hex Content",
+                "args": {
+                    "Convert": "Only special chars including spaces",
+                    "Print spaces between bytes": False,
+                },
+            }
+        ],
+        expected="foo|3d|bar|20|baz",
+    ),
+    BakeVector(
+        name="to_hex_content_all_chars_with_byte_spacing",
+        input_data=b"Hi",
+        recipe=[
+            {
+                "op": "To Hex Content",
+                "args": {"Convert": "All chars", "Print spaces between bytes": True},
+            }
+        ],
+        expected="|48 69|",
+    ),
+    BakeVector(
+        name="to_hexdump_empty_bytes",
+        input_data=b"",
+        recipe=["To Hexdump"],
+        expected="",
+    ),
+    BakeVector(
+        name="to_hexdump_multiline_uppercase_with_final_length",
+        input_data=b"hello\x00world",
+        recipe=[
+            {
+                "op": "To Hexdump",
+                "args": {
+                    "Width": 8,
+                    "Upper case hex": True,
+                    "Include final length": True,
+                    "UNIX format": True,
+                },
+            }
+        ],
+        expected=(
+            "00000000  68 65 6C 6C 6F 00 77 6F  |hello.wo|\n"
+            "00000008  72 6C 64                 |rld|\n"
+            "0000000b"
+        ),
+    ),
+    BakeVector(
+        name="to_messagepack_empty_object",
+        input_data="{}",
+        recipe=["To MessagePack"],
+        expected=b"\x80",
+    ),
+    BakeVector(
+        name="to_messagepack_single_map",
+        input_data='{"a":1}',
+        recipe=["To MessagePack"],
+        expected=bytes.fromhex("81a16101"),
+    ),
+    BakeVector(
+        name="to_modhex_default_ascii_bytes",
+        input_data=b"Hi",
+        recipe=["To Modhex"],
+        expected="fj hk",
+    ),
+    BakeVector(
+        name="to_modhex_custom_colon_delimiter",
+        input_data=b"Hi",
+        recipe=[{"op": "To Modhex", "args": {"Delimiter": "Colon", "Bytes per line": 0}}],
+        expected="fj:hk",
+    ),
+    BakeVector(
+        name="to_octal_colon_delimited_utf8_greek_text",
+        input_data="Γειά",
+        recipe=[
+            {"op": "Encode text", "args": {"Encoding": "UTF-8 (65001)"}},
+            {"op": "To Octal", "args": {"Delimiter": "Colon"}},
+        ],
+        expected="316:223:316:265:316:271:316:254",
+    ),
+    BakeVector(
+        name="to_octal_colon_roundtrip_ascii_bytes",
+        input_data=b"Hi",
+        recipe=[
+            {"op": "To Octal", "args": {"Delimiter": "Colon"}},
+            {"op": "From Octal", "args": {"Delimiter": "Colon"}},
+        ],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="to_punycode_label",
+        input_data="münchen",
+        recipe=["To Punycode"],
+        expected="mnchen-3ya",
+    ),
+    BakeVector(
+        name="to_punycode_idn_domain",
+        input_data="münchen.de",
+        recipe=[{"op": "To Punycode", "args": {"Internationalised domain name": True}}],
+        expected="xn--mnchen-3ya.de",
+    ),
+    BakeVector(
+        name="to_quoted_printable_empty_bytes",
+        input_data=b"",
+        recipe=["To Quoted Printable"],
+        expected="",
+    ),
+    BakeVector(
+        name="to_quoted_printable_latin1_bytes",
+        input_data=b"caf\xe9",
+        recipe=["To Quoted Printable"],
+        expected="caf=E9",
+    ),
+    BakeVector(
+        name="to_quoted_printable_wraps_long_lines_with_crlf",
+        input_data=b"A" * 80,
+        recipe=["To Quoted Printable"],
+        expected=("A" * 75) + "=\r\nAAAAA",
+    ),
+    BakeVector(
+        name="to_quoted_printable_roundtrip_binary_bytes",
+        input_data=b"hello world=\xff",
+        recipe=["To Quoted Printable", "From Quoted Printable"],
+        expected=b"hello world=\xff",
+    ),
+    BakeVector(
+        name="url_decode_plus_as_space",
+        input_data="a+b%20c",
+        recipe=["URL Decode"],
+        expected="a b c",
+    ),
+    BakeVector(
+        name="url_decode_preserve_plus",
+        input_data="a+b%20c",
+        recipe=[{"op": "URL Decode", "args": {"Treat \"+\" as space": False}}],
+        expected="a+b c",
+    ),
+    BakeVector(
+        name="url_encode_default_preserves_reserved_uri_chars",
+        input_data="a/b?c=d&e=f",
+        recipe=["URL Encode"],
+        expected="a/b?c=d&e=f",
+    ),
+    BakeVector(
+        name="url_encode_all_special_chars",
+        input_data="a+b c=/",
+        recipe=[{"op": "URL Encode", "args": {"Encode all special chars": True}}],
+        expected="a%2Bb%20c%3D%2F",
+    ),
+    BakeVector(
+        name="url_encode_decode_roundtrip_utf8_text",
+        input_data="café",
+        recipe=["URL Encode", "URL Decode"],
+        expected="café",
+    ),
 ]
 
 COMPRESSION_BLOCKED_VECTORS = [
