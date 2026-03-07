@@ -582,6 +582,154 @@ def build_ciphersaber2_bytes(temp_ivp: bytes, key: bytes, rounds: int, input_dat
     return bytes(result)
 
 
+def build_rc4_bytes(data: bytes, key: bytes, *, drop_dwords: int = 0) -> bytes:
+    state = list(range(256))
+    j = 0
+
+    for index in range(256):
+        j = (j + state[index] + key[index % len(key)]) % 256
+        state[index], state[j] = state[j], state[index]
+
+    i = 0
+    j = 0
+
+    for _ in range(drop_dwords * 4):
+        i = (i + 1) % 256
+        j = (j + state[i]) % 256
+        state[i], state[j] = state[j], state[i]
+
+    result = bytearray()
+
+    for value in data:
+        i = (i + 1) % 256
+        j = (j + state[i]) % 256
+        state[i], state[j] = state[j], state[i]
+        result.append(value ^ state[(state[i] + state[j]) % 256])
+
+    return bytes(result)
+
+
+def build_rot13_bytes(
+    data: bytes,
+    *,
+    rotate_lower_case_chars: bool = True,
+    rotate_upper_case_chars: bool = True,
+    rotate_numbers: bool = False,
+    amount: int = 13,
+) -> bytes:
+    result = bytearray(data)
+    amount_numbers = amount
+
+    if amount < 0:
+        amount = 26 - (abs(amount) % 26)
+        amount_numbers = 10 - (abs(amount_numbers) % 10)
+
+    for index, value in enumerate(result):
+        if rotate_upper_case_chars and 65 <= value <= 90:
+            result[index] = ((value - 65 + amount) % 26) + 65
+        elif rotate_lower_case_chars and 97 <= value <= 122:
+            result[index] = ((value - 97 + amount) % 26) + 97
+        elif rotate_numbers and 48 <= value <= 57:
+            result[index] = ((value - 48 + amount_numbers) % 10) + 48
+
+    return bytes(result)
+
+
+def build_escaped_whitespace_string(value: str) -> str:
+    return "".join(chr(0xE000 + ord(character)) if 9 <= ord(character) <= 16 else character for character in value)
+
+
+def build_rot13_brute_force_string(
+    data: bytes,
+    *,
+    rotate_lower_case_chars: bool = True,
+    rotate_upper_case_chars: bool = True,
+    rotate_numbers: bool = False,
+    sample_length: int = 100,
+    sample_offset: int = 0,
+    print_amount: bool = True,
+    crib: str = "",
+) -> str:
+    sample = data[sample_offset : sample_offset + sample_length]
+    crib_lower = crib.lower()
+    result = []
+
+    for amount in range(1, 26):
+        rotated = build_rot13_bytes(
+            sample,
+            rotate_lower_case_chars=rotate_lower_case_chars,
+            rotate_upper_case_chars=rotate_upper_case_chars,
+            rotate_numbers=rotate_numbers,
+            amount=amount,
+        ).decode()
+        if crib_lower in rotated.lower():
+            escaped = build_escaped_whitespace_string(rotated)
+            result.append(f"Amount = {amount:2d}: {escaped}" if print_amount else escaped)
+
+    return "\n".join(result)
+
+
+def build_rot47_bytes(data: bytes, *, amount: int = 47) -> bytes:
+    result = bytearray(data)
+
+    if amount < 0:
+        amount = 94 - (abs(amount) % 94)
+
+    for index, value in enumerate(result):
+        if 33 <= value <= 126:
+            result[index] = ((value - 33 + amount) % 94) + 33
+
+    return bytes(result)
+
+
+def build_rot47_brute_force_string(
+    data: bytes,
+    *,
+    sample_length: int = 100,
+    sample_offset: int = 0,
+    print_amount: bool = True,
+    crib: str = "",
+) -> str:
+    sample = data[sample_offset : sample_offset + sample_length]
+    crib_lower = crib.lower()
+    result = []
+
+    for amount in range(1, 94):
+        rotated = build_rot47_bytes(sample, amount=amount).decode()
+        if crib_lower in rotated.lower():
+            escaped = build_escaped_whitespace_string(rotated)
+            result.append(f"Amount = {amount:2d}: {escaped}" if print_amount else escaped)
+
+    return "\n".join(result)
+
+
+def build_rail_fence_encode_string(value: str, *, key: int, offset: int) -> str:
+    cycle = (key - 1) * 2
+    rows = [""] * key
+
+    for position, character in enumerate(value):
+        row_index = key - 1 - abs((cycle // 2) - ((position + offset) % cycle))
+        rows[row_index] += character
+
+    return "".join(rows)
+
+
+def build_rail_fence_decode_string(value: str, *, key: int, offset: int) -> str:
+    cycle = (key - 1) * 2
+    plaintext = [""] * len(value)
+    cipher_index = 0
+
+    for row_index in range(key):
+        for column_index in range(len(value)):
+            if ((row_index + column_index + offset) % cycle == 0) or (
+                (row_index - column_index - offset) % cycle == 0
+            ):
+                plaintext[column_index] = value[cipher_index]
+                cipher_index += 1
+
+    return "".join(plaintext)
+
+
 def build_citrix_ctx1_bytes(value: str) -> bytes:
     result = bytearray()
     temp = 0
@@ -4988,6 +5136,47 @@ ENCODING_VECTORS = [
         expected=verify_multiple_bombe_user_defined_three_rotor,
     ),
     BakeVector(
+        name="rc2_encrypt_raw_to_hex_cbc",
+        input_data="hello",
+        recipe=[
+            {
+                "op": "RC2 Encrypt",
+                "args": {
+                    "Key": {"string": "secret12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="84feeb41042de66e",
+    ),
+    BakeVector(
+        name="rc2_encrypt_then_decrypt_cbc_roundtrip",
+        input_data="phase23 message",
+        recipe=[
+            {
+                "op": "RC2 Encrypt",
+                "args": {
+                    "Key": {"string": "secret12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            },
+            {
+                "op": "RC2 Decrypt",
+                "args": {
+                    "Key": {"string": "secret12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Input": "Hex",
+                    "Output": "Raw",
+                },
+            },
+        ],
+        expected="phase23 message",
+    ),
+    BakeVector(
         name="rc2_decrypt_hex_to_raw_cbc",
         input_data="84feeb41042de66e",
         recipe=[
@@ -5018,6 +5207,324 @@ ENCODING_VECTORS = [
             }
         ],
         expected="68656c6c6f",
+    ),
+    BakeVector(
+        name="rc4_utf8_to_hex_reference",
+        input_data="Go Out On a Limb",
+        recipe=[
+            {
+                "op": "RC4",
+                "args": {
+                    "Passphrase": {"string": "Under Your Nose", "option": "UTF8"},
+                    "Input format": "UTF8",
+                    "Output format": "Hex",
+                },
+            }
+        ],
+        expected=build_rc4_bytes(b"Go Out On a Limb", b"Under Your Nose").hex(),
+    ),
+    BakeVector(
+        name="rc4_hex_input_base64_output_with_base64_passphrase",
+        input_data="68656c6c6f",
+        recipe=[
+            {
+                "op": "RC4",
+                "args": {
+                    "Passphrase": {"string": "a2V5", "option": "Base64"},
+                    "Input format": "Hex",
+                    "Output format": "Base64",
+                },
+            }
+        ],
+        expected=base64.b64encode(build_rc4_bytes(b"hello", b"key")).decode(),
+    ),
+    BakeVector(
+        name="rc4_roundtrip_utf8_hex",
+        input_data="phase23 ✓",
+        recipe=[
+            {
+                "op": "RC4",
+                "args": {
+                    "Passphrase": {"string": "Under Your Nose", "option": "UTF8"},
+                    "Input format": "UTF8",
+                    "Output format": "Hex",
+                },
+            },
+            {
+                "op": "RC4",
+                "args": {
+                    "Passphrase": {"string": "Under Your Nose", "option": "UTF8"},
+                    "Input format": "Hex",
+                    "Output format": "UTF8",
+                },
+            },
+        ],
+        expected="phase23 ✓",
+    ),
+    BakeVector(
+        name="rc4_drop_default_192_dwords_reference",
+        input_data="Go Out On a Limb",
+        recipe=[
+            {
+                "op": "RC4 Drop",
+                "args": {
+                    "Passphrase": {"string": "Under Your Nose", "option": "UTF8"},
+                    "Input format": "UTF8",
+                    "Output format": "Hex",
+                    "Number of dwords to drop": 192,
+                },
+            }
+        ],
+        expected=build_rc4_bytes(b"Go Out On a Limb", b"Under Your Nose", drop_dwords=192).hex(),
+    ),
+    BakeVector(
+        name="rc4_drop_one_dword_reference",
+        input_data="hello",
+        recipe=[
+            {
+                "op": "RC4 Drop",
+                "args": {
+                    "Passphrase": {"string": "key", "option": "UTF8"},
+                    "Input format": "UTF8",
+                    "Output format": "Hex",
+                    "Number of dwords to drop": 1,
+                },
+            }
+        ],
+        expected=build_rc4_bytes(b"hello", b"key", drop_dwords=1).hex(),
+    ),
+    BakeVector(
+        name="rc4_drop_roundtrip_utf8_hex",
+        input_data="phase23 ✓",
+        recipe=[
+            {
+                "op": "RC4 Drop",
+                "args": {
+                    "Passphrase": {"string": "Under Your Nose", "option": "UTF8"},
+                    "Input format": "UTF8",
+                    "Output format": "Hex",
+                    "Number of dwords to drop": 192,
+                },
+            },
+            {
+                "op": "RC4 Drop",
+                "args": {
+                    "Passphrase": {"string": "Under Your Nose", "option": "UTF8"},
+                    "Input format": "Hex",
+                    "Output format": "UTF8",
+                    "Number of dwords to drop": 192,
+                },
+            },
+        ],
+        expected="phase23 ✓",
+    ),
+    BakeVector(
+        name="rot13_empty_bytes",
+        input_data=b"",
+        recipe=["ROT13"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="rot13_default_mixed_ascii",
+        input_data=b"Hello-123",
+        recipe=["ROT13"],
+        expected=build_rot13_bytes(b"Hello-123"),
+    ),
+    BakeVector(
+        name="rot13_amount_five_rotates_numbers",
+        input_data=b"Hello-123",
+        recipe=[
+            {
+                "op": "ROT13",
+                "args": {
+                    "Rotate lower case chars": True,
+                    "Rotate upper case chars": True,
+                    "Rotate numbers": True,
+                    "Amount": 5,
+                },
+            }
+        ],
+        expected=build_rot13_bytes(
+            b"Hello-123",
+            rotate_numbers=True,
+            amount=5,
+        ),
+    ),
+    BakeVector(
+        name="rot13_roundtrip_self_inverse",
+        input_data=b"phase23",
+        recipe=["ROT13", "ROT13"],
+        expected=b"phase23",
+    ),
+    BakeVector(
+        name="rot13_brute_force_default_prints_all_amounts",
+        input_data=b"uryyb",
+        recipe=["ROT13 Brute Force"],
+        expected=build_rot13_brute_force_string(b"uryyb"),
+    ),
+    BakeVector(
+        name="rot13_brute_force_crib_filter_without_amounts",
+        input_data=b"uryyb",
+        recipe=[
+            {
+                "op": "ROT13 Brute Force",
+                "args": {
+                    "Rotate lower case chars": True,
+                    "Rotate upper case chars": True,
+                    "Rotate numbers": False,
+                    "Sample length": 100,
+                    "Sample offset": 0,
+                    "Print amount": False,
+                    "Crib (known plaintext string)": "hello",
+                },
+            }
+        ],
+        expected=build_rot13_brute_force_string(b"uryyb", print_amount=False, crib="hello"),
+    ),
+    BakeVector(
+        name="rot47_default_ascii",
+        input_data=b"Hello!~",
+        recipe=["ROT47"],
+        expected=build_rot47_bytes(b"Hello!~"),
+    ),
+    BakeVector(
+        name="rot47_amount_ten_ascii",
+        input_data=b"Hello!~",
+        recipe=[{"op": "ROT47", "args": {"Amount": 10}}],
+        expected=build_rot47_bytes(b"Hello!~", amount=10),
+    ),
+    BakeVector(
+        name="rot47_roundtrip_self_inverse",
+        input_data=b"phase23!?*",
+        recipe=["ROT47", "ROT47"],
+        expected=b"phase23!?*",
+    ),
+    BakeVector(
+        name="rot47_brute_force_default_prints_all_amounts",
+        input_data=b"w6==@[",
+        recipe=["ROT47 Brute Force"],
+        expected=build_rot47_brute_force_string(b"w6==@["),
+    ),
+    BakeVector(
+        name="rot47_brute_force_crib_filter_without_amounts",
+        input_data=b"w6==@[",
+        recipe=[
+            {
+                "op": "ROT47 Brute Force",
+                "args": {
+                    "Sample length": 100,
+                    "Sample offset": 0,
+                    "Print amount": False,
+                    "Crib (known plaintext string)": "hello",
+                },
+            }
+        ],
+        expected=build_rot47_brute_force_string(b"w6==@[", print_amount=False, crib="hello"),
+    ),
+    BakeVector(
+        name="rot8000_empty_string",
+        input_data="",
+        recipe=["ROT8000"],
+        expected="",
+    ),
+    BakeVector(
+        name="rot8000_known_phrase",
+        input_data="The Quick Brown Fox Jumped Over The Lazy Dog.",
+        recipe=["ROT8000"],
+        expected="籝籱籮 籚籾籲籬籴 籋类籸粀籷 籏籸粁 籓籾籶籹籮籭 籘籿籮类 籝籱籮 籕籪粃粂 籍籸籰簷",
+    ),
+    BakeVector(
+        name="rot8000_roundtrip_self_inverse",
+        input_data="phase23 ✓",
+        recipe=["ROT8000", "ROT8000"],
+        expected="phase23 ✓",
+    ),
+    BakeVector(
+        name="rabbit_rfc_big_endian_without_iv",
+        input_data="000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        recipe=[
+            {
+                "op": "Rabbit",
+                "args": {
+                    "Key": {"string": "00000000000000000000000000000000", "option": "Hex"},
+                    "IV": {"string": "", "option": "Hex"},
+                    "Endianness": "Big",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="b15754f036a5d6ecf56b45261c4af70288e8d815c59c0c397b696c4789c68aa7f416a1c3700cd451da68d1881673d696",
+    ),
+    BakeVector(
+        name="rabbit_little_endian_crypto_pp_vector",
+        input_data="Rabbit stream cipher test",
+        recipe=[
+            {
+                "op": "Rabbit",
+                "args": {
+                    "Key": {"string": "23c2731e8b5469fd8dabb5bc592a0f3a", "option": "Hex"},
+                    "IV": {"string": "712906405ef03201", "option": "Hex"},
+                    "Endianness": "Little",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="1ae2d4edcf9b6063b00fd6fda0b223aded157e77031cf0440b",
+    ),
+    BakeVector(
+        name="rabbit_roundtrip_big_endian_utf8_key",
+        input_data="phase23 rabbit",
+        recipe=[
+            {
+                "op": "Rabbit",
+                "args": {
+                    "Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Endianness": "Big",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            },
+            {
+                "op": "Rabbit",
+                "args": {
+                    "Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Endianness": "Big",
+                    "Input": "Hex",
+                    "Output": "Raw",
+                },
+            },
+        ],
+        expected="phase23 rabbit",
+    ),
+    BakeVector(
+        name="rail_fence_decode_two_rails_reference",
+        input_data="Cytgah sTEAto rtn rsligcdsrporpyi H r fWiigo ovn oe",
+        recipe=[{"op": "Rail Fence Cipher Decode", "args": {"Key": 2, "Offset": 0}}],
+        expected=build_rail_fence_decode_string(
+            "Cytgah sTEAto rtn rsligcdsrporpyi H r fWiigo ovn oe",
+            key=2,
+            offset=0,
+        ),
+    ),
+    BakeVector(
+        name="rail_fence_decode_four_rails_with_offset",
+        input_data="51746026813793592840",
+        recipe=[{"op": "Rail Fence Cipher Decode", "args": {"Key": 4, "Offset": 2}}],
+        expected=build_rail_fence_decode_string("51746026813793592840", key=4, offset=2),
+    ),
+    BakeVector(
+        name="rail_fence_decode_three_rails_with_spaces",
+        input_data=build_rail_fence_encode_string(
+            "No one expects the spanish Inquisition.",
+            key=3,
+            offset=2,
+        ),
+        recipe=[{"op": "Rail Fence Cipher Decode", "args": {"Key": 3, "Offset": 2}}],
+        expected="No one expects the spanish Inquisition.",
     ),
     BakeVector(
         name="to_base64_empty_bytes",
