@@ -12,10 +12,12 @@ import struct
 import tarfile
 import time
 import zipfile
+import zlib
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from itertools import product
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -152,6 +154,56 @@ TYPEX_PHASE25_CUSTOM_ARGS = {
     "Typex keyboard emulation": "None",
     "Strict output": False,
 }
+CYBERCHEF_SAMPLE_EXIF_JPEG = (
+    Path(__file__).resolve().parents[1] / "deps" / "CyberChef" / "tests" / "node" / "sampleData" / "pic.jpg"
+).read_bytes()
+MINIMAL_ELF64 = bytes.fromhex(
+    "7f454c46"
+    "02"
+    "01"
+    "01"
+    "00"
+    "00"
+    "00000000000000"
+    "0200"
+    "3e00"
+    "01000000"
+    "0000000000000000"
+    "0000000000000000"
+    "0000000000000000"
+    "00000000"
+    "4000"
+    "0000"
+    "0000"
+    "0000"
+    "0000"
+    "0000"
+)
+MINIMAL_ELF64_INFO_OUTPUT = (
+    "============================== ELF Header ==============================\n"
+    "Magic:                        \x7fELF\n"
+    "Format:                       64-bit\n"
+    "Endianness:                   Little\n"
+    "Version:                      1\n"
+    "ABI:                          System V\n"
+    "ABI Version:                  0\n"
+    "Type:                         Executable File\n"
+    "Instruction Set Architecture: AMD x86-64\n"
+    "ELF Version:                  1\n"
+    "Entry Point:                  0x00\n"
+    "Entry PHOFF:                  0x00\n"
+    "Entry SHOFF:                  0x00\n"
+    "Flags:                        00000000\n"
+    "ELF Header Size:              64 bytes\n"
+    "Program Header Size:          0 bytes\n"
+    "Program Header Entries:       0\n"
+    "Section Header Size:          0 bytes\n"
+    "Section Header Entries:       0\n"
+    "Section Header Names:         0\n\n"
+    "============================== Program Header ==============================\n"
+    "============================== Section Header ==============================\n"
+    "============================== Symbol Table =============================="
+)
 
 
 def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
@@ -313,6 +365,50 @@ def build_base64_with_alphabet(value: bytes, alphabet: str) -> str:
         return translated.rstrip("=")
 
     return translated.replace("=", expanded_alphabet[64])
+
+
+def build_png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(data))
+        + chunk_type
+        + data
+        + struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+    )
+
+
+def build_png_rgba_bytes(rows: list[list[tuple[int, int, int, int]]]) -> bytes:
+    height = len(rows)
+    width = len(rows[0]) if rows else 0
+    raw = b"".join(b"\x00" + bytes(channel for pixel in row for channel in pixel) for row in rows)
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + build_png_chunk(b"IHDR", header)
+        + build_png_chunk(b"IDAT", zlib.compress(raw))
+        + build_png_chunk(b"IEND", b"")
+    )
+
+
+def build_randomized_palette_rgba_text(
+    rows: list[list[tuple[int, int, int, int]]],
+    *,
+    seed: str,
+) -> str:
+    output = []
+
+    for row in rows:
+        for red, green, blue, _ in row:
+            hash_prefix = hashlib.md5(f"{seed}{red}.{green}.{blue}".encode()).hexdigest()[:6]
+            output.extend(str(int(hash_prefix[index : index + 2], 16)) for index in range(0, 6, 2))
+            output.append("255")
+
+    return ",".join(output)
+
+
+FORENSICS_RGBA_ROWS = [[(0, 255, 0, 255), (255, 0, 255, 0)]]
+FORENSICS_RGBA_PNG = build_png_rgba_bytes(FORENSICS_RGBA_ROWS)
+FORENSICS_LSB_PNG = build_png_rgba_bytes([[(int(bit), 0, 0, 255) for bit in "01000001"]])
+FORENSICS_EMBEDDED_PNG_SAMPLE = b"ABCD" + build_png_rgba_bytes([[(1, 2, 3, 255)]]) + b"XYZ"
 
 
 def get_delimiter_text(name: str) -> str:
@@ -4672,10 +4768,142 @@ FLOW_CONTROL_VECTORS = [
     ),
 ]
 
+FORENSICS_VECTORS = [
+    BakeVector(
+        name="detect_file_type_png_bytes",
+        input_data=FORENSICS_RGBA_PNG,
+        recipe=["Detect File Type"],
+        expected="File type:   Portable Network Graphics image\nExtension:   png\nMIME type:   image/png\n",
+    ),
+    BakeVector(
+        name="detect_file_type_png_with_images_disabled_is_unknown",
+        input_data=FORENSICS_RGBA_PNG,
+        recipe=[
+            {
+                "op": "Detect File Type",
+                "args": {
+                    "Images": False,
+                    "Video": True,
+                    "Audio": True,
+                    "Documents": True,
+                    "Applications": True,
+                    "Archives": True,
+                    "Miscellaneous": True,
+                },
+            }
+        ],
+        expected=(
+            "Unknown file type. Have you tried checking the entropy of this data to determine whether it "
+            "might be encrypted or compressed?"
+        ),
+    ),
+    BakeVector(
+        name="elf_info_minimal_elf64_header_only",
+        input_data=MINIMAL_ELF64,
+        recipe=["ELF Info"],
+        expected=MINIMAL_ELF64_INFO_OUTPUT,
+    ),
+    BakeVector(
+        name="extract_lsb_row_major_red_channel_least_significant_bits",
+        input_data=FORENSICS_LSB_PNG,
+        recipe=[
+            {
+                "op": "Extract LSB",
+                "args": {
+                    "Colour Pattern #1": "R",
+                    "Colour Pattern #2": "",
+                    "Colour Pattern #3": "",
+                    "Colour Pattern #4": "",
+                    "Pixel Order": "Row",
+                    "Bit": 0,
+                },
+            }
+        ],
+        expected=b"A",
+    ),
+    BakeVector(
+        name="extract_rgba_default_delimiter_includes_alpha",
+        input_data=FORENSICS_RGBA_PNG,
+        recipe=["Extract RGBA"],
+        expected="0,255,0,255,255,0,255,0",
+    ),
+    BakeVector(
+        name="extract_rgba_space_delimiter_without_alpha",
+        input_data=FORENSICS_RGBA_PNG,
+        recipe=[{"op": "Extract RGBA", "args": {"Delimiter": " ", "Include Alpha": False}}],
+        expected="0 255 0 255 0 255",
+    ),
+    BakeVector(
+        name="randomize_colour_palette_seeded_then_extract_rgba",
+        input_data=FORENSICS_RGBA_PNG,
+        recipe=[
+            {"op": "Randomize Colour Palette", "args": {"Seed": "seed"}},
+            "Extract RGBA",
+        ],
+        expected=build_randomized_palette_rgba_text(FORENSICS_RGBA_ROWS, seed="seed"),
+    ),
+    BakeVector(
+        name="remove_exif_then_extract_exif_finds_zero_tags",
+        input_data=CYBERCHEF_SAMPLE_EXIF_JPEG,
+        recipe=["Remove EXIF", "Extract EXIF"],
+        expected="Found 0 tags.\n",
+    ),
+    BakeVector(
+        name="scan_for_embedded_files_finds_prefixed_png_and_nested_zlib",
+        input_data=FORENSICS_EMBEDDED_PNG_SAMPLE,
+        recipe=["Scan for Embedded Files"],
+        expected=(
+            "Scanning data for 'magic bytes' which may indicate embedded files. The following results may "
+            "be false positives and should not be treated as reliable. Any sufficiently long file is likely "
+            "to contain these magic bytes coincidentally.\n\n"
+            "Offset 4 (0x04):\n"
+            "  File type:   Portable Network Graphics image\n"
+            "  Extension:   png\n"
+            "  MIME type:   image/png\n\n"
+            "Offset 45 (0x2d):\n"
+            "  File type:   Zlib Deflate\n"
+            "  Extension:   zlib\n"
+            "  MIME type:   application/x-deflate\n"
+        ),
+    ),
+    BakeVector(
+        name="view_bit_plane_red_lsb_then_extract_rgba",
+        input_data=FORENSICS_RGBA_PNG,
+        recipe=[
+            {"op": "View Bit Plane", "args": {"Colour": "Red", "Bit": 0}},
+            "Extract RGBA",
+        ],
+        expected="255,255,255,255,0,0,0,255",
+    ),
+]
+
+FORENSICS_BLOCKED_VECTORS = [
+    BlockedBakeVector(
+        name="yara_rules_simple_match_times_out_under_stpyv8",
+        input_data=b"foobar foobar",
+        recipe=[
+            {
+                "op": "YARA Rules",
+                "args": {
+                    "Rules": 'rule foo { strings: $re1 = /foo/ condition: $re1 }',
+                    "Show strings": True,
+                    "Show string lengths": True,
+                    "Show metadata": False,
+                    "Show counts": True,
+                    "Show rule warnings": True,
+                    "Show console module messages": True,
+                },
+            }
+        ],
+        error_message="Timed out waiting for CyberChef promise to settle",
+    ),
+]
+
 BLOCKED_BAKE_VECTORS = [
     *CODE_TIDY_BLOCKED_VECTORS,
     *COMPRESSION_BLOCKED_VECTORS,
     *FLOW_CONTROL_BLOCKED_VECTORS,
+    *FORENSICS_BLOCKED_VECTORS,
 ]
 
 ENCODING_VECTORS = [
@@ -7506,6 +7734,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *DATE_TIME_VECTORS,
     *EXTRACTOR_VECTORS,
     *FLOW_CONTROL_VECTORS,
+    *FORENSICS_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,
