@@ -1369,6 +1369,61 @@ def build_multiple_bombe_args() -> dict[str, object]:
     }
 
 
+def build_murmurhash3(value: str, seed: int = 0, *, signed: bool = False) -> int:
+    remainder = len(value) & 3
+    byte_count = len(value) - remainder
+    hash_value = seed
+    constant_one = 0xCC9E2D51
+    constant_two = 0x1B873593
+    index = 0
+
+    while index < byte_count:
+        block = (
+            (ord(value[index]) & 0xFF)
+            | ((ord(value[index + 1]) & 0xFF) << 8)
+            | ((ord(value[index + 2]) & 0xFF) << 16)
+            | ((ord(value[index + 3]) & 0xFF) << 24)
+        )
+        index += 4
+
+        block = ((block & 0xFFFF) * constant_one + ((((block >> 16) * constant_one) & 0xFFFF) << 16)) & 0xFFFFFFFF
+        block = ((block << 15) | (block >> 17)) & 0xFFFFFFFF
+        block = ((block & 0xFFFF) * constant_two + ((((block >> 16) * constant_two) & 0xFFFF) << 16)) & 0xFFFFFFFF
+
+        hash_value ^= block
+        hash_value = ((hash_value << 13) | (hash_value >> 19)) & 0xFFFFFFFF
+        mixed = ((hash_value & 0xFFFF) * 5 + ((((hash_value >> 16) * 5) & 0xFFFF) << 16)) & 0xFFFFFFFF
+        hash_value = ((mixed & 0xFFFF) + 0x6B64 + ((((mixed >> 16) + 0xE654) & 0xFFFF) << 16)) & 0xFFFFFFFF
+
+    block = 0
+
+    if remainder == 3:
+        block ^= (ord(value[index + 2]) & 0xFF) << 16
+
+    if remainder in {2, 3}:
+        block ^= (ord(value[index + 1]) & 0xFF) << 8
+
+    if remainder in {1, 2, 3}:
+        block ^= ord(value[index]) & 0xFF
+        block = ((block & 0xFFFF) * constant_one + ((((block >> 16) * constant_one) & 0xFFFF) << 16)) & 0xFFFFFFFF
+        block = ((block << 15) | (block >> 17)) & 0xFFFFFFFF
+        block = ((block & 0xFFFF) * constant_two + ((((block >> 16) * constant_two) & 0xFFFF) << 16)) & 0xFFFFFFFF
+        hash_value ^= block
+
+    hash_value ^= len(value)
+    hash_value ^= hash_value >> 16
+    hash_value = ((hash_value & 0xFFFF) * 0x85EBCA6B + ((((hash_value >> 16) * 0x85EBCA6B) & 0xFFFF) << 16)) & 0xFFFFFFFF
+    hash_value ^= hash_value >> 13
+    hash_value = ((hash_value & 0xFFFF) * 0xC2B2AE35 + ((((hash_value >> 16) * 0xC2B2AE35) & 0xFFFF) << 16)) & 0xFFFFFFFF
+    hash_value ^= hash_value >> 16
+    hash_value &= 0xFFFFFFFF
+
+    if signed and hash_value & 0x80000000:
+        return hash_value - 0x100000000
+
+    return hash_value
+
+
 def build_hash_analysis_output(input_value: str) -> str:
     normalized = re.sub(r"\s+", "", input_value)
     bit_length = len(normalized) * 4
@@ -7610,6 +7665,18 @@ HASH_VECTORS = [
         expected=build_luhn_checksum_output("ABCD", 16),
     ),
     BakeVector(
+        name="md2_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=["MD2"],
+        expected="1c8f1e6a94aaa7145210bf90bb52871a",
+    ),
+    BakeVector(
+        name="md4_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=["MD4"],
+        expected="94e3cb0fa9aa7a5ee3db74b79e915989",
+    ),
+    BakeVector(
         name="md5_empty_bytes",
         input_data=b"",
         recipe=["MD5"],
@@ -7622,10 +7689,76 @@ HASH_VECTORS = [
         expected=hashlib.md5(b"hello").hexdigest(),
     ),
     BakeVector(
+        name="md5_utf8_bytes",
+        input_data="ნუ პანიკას".encode(),
+        recipe=["MD5"],
+        expected=hashlib.md5("ნუ პანიკას".encode()).hexdigest(),
+    ),
+    BakeVector(
+        name="md6_keyed_text",
+        input_data="Head Over Heels",
+        recipe=[{"op": "MD6", "args": {"Size": 256, "Levels": 64, "Key": "arty"}}],
+        expected="d8f7fe4931fbaa37316f76283d5f615f50ddd54afdc794b61da522556aee99ad",
+    ),
+    BakeVector(
+        name="murmurhash3_empty_string",
+        input_data="",
+        recipe=["MurmurHash3"],
+        expected=float(build_murmurhash3("")),
+    ),
+    BakeVector(
+        name="murmurhash3_seeded_hello_world_string",
+        input_data="Hello World!",
+        recipe=[{"op": "MurmurHash3", "args": {"Seed": 1337, "Convert to Signed": False}}],
+        expected=float(build_murmurhash3("Hello World!", seed=1337)),
+    ),
+    BakeVector(
+        name="murmurhash3_signed_foo_string",
+        input_data="foo",
+        recipe=[{"op": "MurmurHash3", "args": {"Seed": 0, "Convert to Signed": True}}],
+        expected=float(build_murmurhash3("foo", signed=True)),
+    ),
+    BakeVector(
+        name="nt_hash_long_ascii_string",
+        input_data="QWERTYUIOPASDFGHJKLZXCVBNM1234567890!@#$%^&*()_+.,?/",
+        recipe=["NT Hash"],
+        expected="C5FA1C40E55734A8E528DBFE21766D23",
+    ),
+    BakeVector(
+        name="ripemd_160_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "RIPEMD", "args": {"Size": "160"}}],
+        expected=hashlib.new("ripemd160", b"Hello, World!").hexdigest(),
+    ),
+    BakeVector(
+        name="ripemd_320_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "RIPEMD", "args": {"Size": "320"}}],
+        expected="f9832e5bb00576fc56c2221f404eb77addeafe49843c773f0df3fc5a996d5934f3c96e94aeb80e89",
+    ),
+    BakeVector(
+        name="sha0_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=["SHA0"],
+        expected="5a5588f0407c6ae9a988758e76965f841b299229",
+    ),
+    BakeVector(
         name="sha1_ascii_bytes",
         input_data=b"hello",
         recipe=["SHA1"],
         expected=hashlib.sha1(b"hello").hexdigest(),
+    ),
+    BakeVector(
+        name="sha1_utf8_bytes",
+        input_data="ნუ პანიკას".encode(),
+        recipe=["SHA1"],
+        expected=hashlib.sha1("ნუ პანიკას".encode()).hexdigest(),
+    ),
+    BakeVector(
+        name="sha2_224_utf8_bytes",
+        input_data="ნუ პანიკას".encode(),
+        recipe=[{"op": "SHA2", "args": {"size": "224"}}],
+        expected=hashlib.sha224("ნუ პანიკას".encode()).hexdigest(),
     ),
     BakeVector(
         name="sha2_256_empty_bytes",
@@ -7638,6 +7771,12 @@ HASH_VECTORS = [
         input_data=b"hello",
         recipe=[{"op": "SHA2", "args": {"size": "256"}}],
         expected=hashlib.sha256(b"hello").hexdigest(),
+    ),
+    BakeVector(
+        name="sha2_512_256_ascii_bytes",
+        input_data=b"hello",
+        recipe=[{"op": "SHA2", "args": {"size": "512/256"}}],
+        expected=hashlib.new("sha512_256", b"hello").hexdigest(),
     ),
     BakeVector(
         name="sha3_256_ascii_bytes",
