@@ -28,26 +28,19 @@ Reasons:
 - the network operations require browser-style request APIs and live network policy decisions
 - the OCR and image-text operations require browser-style workers, assets, or XHR-style loading that this project does not provide
 
-## Known unsupported but intended for future remediation
+## Also unsupported in the current runtime
 
-These operations are still shipped in metadata, but they are not currently reliable in this runtime:
+These operations remain unsupported in the current runtime and should be documented that way rather than treated as active remediation targets:
 - Magic
 - YARA Rules
 - Argon2
 - Argon2 compare
 
-These are not treated as out of scope. They need additional runtime or wasm packaging work.
+They may stay discoverable in internal metadata, but user-facing docs should describe them as unsupported.
 
 ## Known degraded behaviors still shipped
 
-These operations currently have known behavior gaps and should not be treated as fully corrected:
-- Reverse: character mode still corrupts some multibyte UTF-8 input
-- Set Difference and Set Intersection: preserve duplicates from the first sample
-- Median: odd-length behavior still needs an explicit policy decision or upstream fix
-- Gzip: header checksum mode still needs investigation
-- From Base: fractional inputs still fail
-- Unescape Unicode Characters: `U+` decoding only handles the four-digit form reliably
-- To Base92: returns bytes through the Python bridge rather than a Python string
+No additional degraded behaviors are currently tracked in `remaining.md` for the supported runtime.
 
 ## Support policy for docs and tests
 

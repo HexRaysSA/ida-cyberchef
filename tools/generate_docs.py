@@ -1,178 +1,184 @@
+"""Generate docs/ops.md from the operation schema."""
+
+from __future__ import annotations
+
+import html
 import json
 import re
+import unicodedata
 from pathlib import Path
+from typing import Any
 
 
-def title_to_camel(title_str: str) -> str:
-    """Convert Title Case with spaces to camelCase.
+ROOT = Path(__file__).parent.parent
+SCHEMA_PATH = ROOT / "ida_cyberchef" / "data" / "operation_schema.json"
+DOCS_PATH = ROOT / "docs" / "ops.md"
+UNSUPPORTED_OPERATION_NOTES = {
+    "JavaScript Beautify": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
+    "JavaScript Minify": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
+    "JavaScript Parser": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
+    "Syntax highlighter": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
+    "DNS over HTTPS": "Unsupported in the current STPyV8 runtime. Requires browser-style request APIs and live network access.",
+    "HTTP request": "Unsupported in the current STPyV8 runtime. Requires browser-style request APIs and live network access.",
+    "Optical Character Recognition": "Unsupported in the current STPyV8 runtime. Requires browser workers and OCR assets that this project does not provide.",
+    "Add Text To Image": "Unsupported in the current STPyV8 runtime. Requires browser-style asset loading that this project does not provide.",
+    "Magic": "Unsupported in the current STPyV8 runtime.",
+    "YARA Rules": "Unsupported in the current STPyV8 runtime.",
+    "Argon2": "Unsupported in the current STPyV8 runtime.",
+    "Argon2 compare": "Unsupported in the current STPyV8 runtime.",
+}
 
-    Args:
-        title_str: Title Case string like 'From Base64'
-
-    Returns:
-        camelCase string like 'fromBase64'
-    """
-    words = title_str.split()
-    if not words:
-        return ""
-
-    # First word lowercase, rest title case, remove spaces
-    result = words[0].lower() + "".join(w.capitalize() for w in words[1:])
-    # Remove any remaining spaces or special chars that shouldn't be in camelCase
-    result = re.sub(r"[^a-zA-Z0-9]", "", result)
-    return result
 
 
-def format_arg(arg: dict) -> str:
-    """Format an argument definition for markdown."""
-    name = arg.get("name", "")
-    arg_type = arg.get("type", "")
-    value = arg.get("value", "")
+def render_method_name(operation_name: str) -> str:
+    """Return the function-style name used in docs/ops.md."""
+    normalized = unicodedata.normalize("NFKD", operation_name)
+    ascii_name = "".join(char for char in normalized if not unicodedata.combining(char))
+    words = re.findall(r"[A-Za-z0-9]+", ascii_name)
+    rendered_words = [word if word.isupper() else word[:1].upper() + word[1:] for word in words]
+    return "".join(rendered_words)
 
-    if arg_type == "option" and isinstance(value, list):
-        options = ", ".join(f"`{v}`" for v in value[:3])
+
+
+def render_literal(value: Any) -> str:
+    """Render a schema value for markdown output."""
+    if value is None:
+        return "null"
+    if isinstance(value, str):
+        escaped = value.encode("unicode_escape").decode("ascii")
+        return escaped.replace("\\u2019", "’")
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+
+def clean_html_description(description: str) -> str:
+    """Convert CyberChef HTML descriptions into plain markdown-ish text."""
+    text = description.replace("<br><br>", "\n\n").replace("<br>", "\n")
+    text = re.sub(r"<code>(.*?)</code>", r"`\1`", text, flags=re.DOTALL)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+
+def extract_option_label(option: Any) -> str:
+    """Return a display label for an option-like schema entry."""
+    if isinstance(option, dict):
+        return str(option.get("name", option.get("value", "")))
+    return str(option)
+
+
+
+def format_arg(arg: dict[str, Any]) -> str:
+    """Format one argument definition for markdown."""
+    name = str(arg.get("name", ""))
+    arg_type = str(arg.get("type", ""))
+    value = arg.get("value")
+
+    if isinstance(value, list) and arg_type in {
+        "option",
+        "editableOption",
+        "editableOptionShort",
+        "argSelector",
+        "populateMultiOption",
+    }:
+        labels = [f"`{extract_option_label(option)}`" for option in value[:3]]
+        summary = ", ".join(labels)
         if len(value) > 3:
-            options += f" (+{len(value) - 3} more)"
-        return f"  - **{name}** ({arg_type}): {options}"
-    elif arg_type == "editableOption" and isinstance(value, list):
-        # Handle both dict format and string format
-        opt_names = []
-        for v in value[:3]:
-            if isinstance(v, dict):
-                opt_names.append(f"`{v.get('name', '')}`")
-            else:
-                opt_names.append(f"`{v}`")
-        options = ", ".join(opt_names)
-        if len(value) > 3:
-            options += f" (+{len(value) - 3} more)"
-        return f"  - **{name}** ({arg_type}): {options}"
-    elif arg_type == "boolean":
-        return f"  - **{name}** ({arg_type}): default `{value}`"
-    elif arg_type == "number":
-        return f"  - **{name}** ({arg_type}): default `{value}`"
-    else:
-        return f"  - **{name}** ({arg_type}): default `{value}`"
+            summary += f" (+{len(value) - 3} more)"
+        if "defaultIndex" in arg and value:
+            default_index = int(arg.get("defaultIndex", 0))
+            default_label = extract_option_label(value[min(default_index, len(value) - 1)])
+            summary += f"; default `{default_label}`"
+        return f"  - **{name}** ({arg_type}): {summary}"
+
+    if value not in (None, "", []) or arg_type in {"boolean", "number", "string", "binaryString", "binaryShortString", "toggleString"}:
+        return f"  - **{name}** ({arg_type}): default `{render_literal(value)}`"
+
+    return f"  - **{name}** ({arg_type})"
 
 
-def clean_html_description(desc: str) -> str:
-    """Remove HTML tags from description."""
-    # Remove <br> tags
-    desc = desc.replace("<br><br>", "\n\n").replace("<br>", " ")
-    # Remove <code> tags but keep content
-    desc = re.sub(r"<code>(.*?)</code>", r"`\1`", desc)
-    # Remove any other HTML tags
-    desc = re.sub(r"<[^>]+>", "", desc)
-    return desc.strip()
+
+def get_support_annotation(operation_name: str) -> str | None:
+    """Return the user-facing support note for an operation, if any."""
+    return UNSUPPORTED_OPERATION_NOTES.get(operation_name)
 
 
-def generate_operation_doc(func_name: str, config: dict) -> str:
-    """Generate markdown documentation for a single operation."""
-    lines = []
 
-    # Header
-    lines.append(f"### `{func_name}()`")
-    lines.append("")
+def generate_operation_doc(operation: dict[str, Any]) -> str:
+    """Generate markdown for one operation."""
+    name = str(operation.get("name", ""))
+    lines = [f"### `{render_method_name(name)}()`", "", f"**Operation:** `{name}`", ""]
 
-    # Module
-    module = config.get("module", "Unknown")
+    category = operation.get("category")
+    if category:
+        lines.append(f"**Category:** `{category}`")
+        lines.append("")
+
+    module = operation.get("module", "Unknown")
     lines.append(f"**Module:** {module}")
     lines.append("")
 
-    # Description
-    desc = clean_html_description(
-        config.get("description", "No description available.")
-    )
-    lines.append(desc)
-    lines.append("")
+    if support_note := get_support_annotation(name):
+        lines.append(f"**Support:** {support_note}")
+        lines.append("")
 
-    # Info URL
-    if info_url := config.get("infoURL"):
+    description = clean_html_description(str(operation.get("description", "")))
+    if description:
+        lines.append(description)
+        lines.append("")
+
+    if info_url := operation.get("infoURL"):
         lines.append(f"[More info]({info_url})")
         lines.append("")
 
-    # Input/Output types
-    input_type = config.get("inputType", "unknown")
-    output_type = config.get("outputType", "unknown")
-    lines.append(f"**Input:** `{input_type}` → **Output:** `{output_type}`")
+    lines.append(
+        f"**Input:** `{operation.get('inputType', 'unknown')}` → **Output:** `{operation.get('outputType', 'unknown')}`"
+    )
     lines.append("")
 
-    # Arguments
-    if args := config.get("args"):
+    args = operation.get("args", [])
+    if args:
         lines.append("**Arguments:**")
-        for arg in args:
-            lines.append(format_arg(arg))
+        lines.extend(format_arg(arg) for arg in args)
         lines.append("")
 
     lines.append("---")
     lines.append("")
+    return "\n".join(lines)
+
+
+
+def generate_docs_markdown(schema: dict[str, Any]) -> str:
+    """Render the full operations reference markdown document."""
+    operations = sorted(schema.get("operations", []), key=lambda operation: str(operation.get("name", "")))
+    lines = [
+        "# CyberChef Operations Reference",
+        "",
+        f"This document lists all {len(operations)} available CyberChef operations.",
+        "",
+        "Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.",
+        "See `docs/runtime-support.md` for the broader support policy.",
+        "",
+        "## Operations",
+        "",
+    ]
+
+    for operation in operations:
+        lines.append(generate_operation_doc(operation))
 
     return "\n".join(lines)
 
 
-def main():
-    # Load operation list
-    with open("cyberchef_operations.json") as f:
-        operations = json.load(f)
 
-    # Load operation config
-    config_path = Path("deps/CyberChef/src/core/config/OperationConfig.json")
-    with open(config_path) as f:
-        operation_config = json.load(f)
-
-    # Build reverse mapping: camelCase -> config_key
-    # Convert each config key to camelCase and map it back
-    # Use case-insensitive keys for lookup
-    camel_to_config = {}
-    for config_key in operation_config.keys():
-        camel_name = title_to_camel(config_key)
-        # Store both exact case and lowercase for flexible matching
-        camel_to_config[camel_name] = config_key
-        camel_to_config[camel_name.lower()] = config_key
-
-    # Build documentation
-    docs = []
-    docs.append("# CyberChef Operations Reference")
-    docs.append("")
-    docs.append(
-        f"This document lists all {len(operations)} available CyberChef operations."
-    )
-    docs.append("")
-    docs.append("## Operations")
-    docs.append("")
-
-    mapped = 0
-    unmapped = []
-
-    for func_name in sorted(operations):
-        # Look up the config key using the reverse mapping
-        # Try exact match first, then case-insensitive
-        config_key = camel_to_config.get(func_name) or camel_to_config.get(
-            func_name.lower()
-        )
-
-        if config_key:
-            config = operation_config[config_key]
-            docs.append(generate_operation_doc(func_name, config))
-            mapped += 1
-        else:
-            unmapped.append(func_name)
-
-    # Save documentation
-    docs_dir = Path("docs")
-    docs_dir.mkdir(exist_ok=True)
-
-    docs_path = docs_dir / "ops.md"
-    with open(docs_path, "w") as f:
-        f.write("\n".join(docs))
-
-    print(f"Documentation generated: {docs_path}")
-    print(f"Mapped: {mapped}/{len(operations)}")
-    print(f"Unmapped: {len(unmapped)}")
-
-    if unmapped:
-        print("\nUnmapped operations (first 20):")
-        for op in unmapped[:20]:
-            print(f"  - {op}")
+def main() -> None:
+    schema = json.loads(SCHEMA_PATH.read_text())
+    DOCS_PATH.write_text(generate_docs_markdown(schema))
+    print(f"Documentation generated: {DOCS_PATH}")
+    print(f"Operations documented: {len(schema.get('operations', []))}")
 
 
 if __name__ == "__main__":

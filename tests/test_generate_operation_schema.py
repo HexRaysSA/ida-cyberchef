@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from tools.generate_operation_schema import (
+    deduplicate_operations,
     enhance_schema_with_categories,
     extract_categories_and_favorites,
 )
@@ -43,6 +44,20 @@ def test_extract_categories_and_favorites():
 
     # XOR appears in multiple categories - should pick first
     assert "XOR" in result["categories"]
+
+
+def test_deduplicate_operations_keeps_first_operation():
+    operations = [
+        {"name": "AES Decrypt", "module": "Ciphers"},
+        {"name": "AES Decrypt", "module": "Alias"},
+        {"name": "SM3", "module": "Crypto"},
+    ]
+
+    assert deduplicate_operations(operations) == [
+        {"name": "AES Decrypt", "module": "Ciphers"},
+        {"name": "SM3", "module": "Crypto"},
+    ]
+
 
 
 def test_enhance_schema_with_categories():

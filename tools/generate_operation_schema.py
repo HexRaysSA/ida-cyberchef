@@ -1,259 +1,218 @@
 """Generate operation schema from CyberChef runtime introspection."""
 
+from __future__ import annotations
+
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ida_cyberchef import cyberchef
 
 
-def extract_js_value(ctx, js_expression):
-    """Extract JavaScript value as Python object without double-encoding.
+OperationMetadata = dict[str, Any]
 
-    Args:
-        ctx: STPyV8 context
-        js_expression: JavaScript expression to evaluate
 
-    Returns: Python value (str, int, float, bool, list, dict, or None)
-    """
+ROOT = Path(__file__).parent.parent
+CATEGORIES_JSON_PATH = ROOT / "deps" / "CyberChef" / "src" / "core" / "config" / "Categories.json"
+OUTPUT_PATH = ROOT / "ida_cyberchef" / "data" / "operation_schema.json"
+EXCLUDED_ATTRIBUTES = {
+    "bake",
+    "help",
+    "operations",
+    "Dish",
+    "DishError",
+    "OperationError",
+    "ExcludedOperationError",
+    "register",
+}
+
+
+
+def extract_js_value(ctx: Any, js_expression: str) -> Any:
+    """Return a JS value as native Python data."""
     js_type = ctx.eval(f"typeof ({js_expression})")
 
-    if js_type in ("string", "number", "boolean"):
+    if js_type in {"string", "number", "boolean"}:
         return ctx.eval(js_expression)
-    elif js_type == "undefined" or ctx.eval(f"({js_expression}) === null"):
+    if js_type == "undefined" or ctx.eval(f"({js_expression}) === null"):
         return None
-    else:
-        try:
-            json_str = ctx.eval(f"JSON.stringify({js_expression})")
-            return json.loads(json_str) if json_str else None
-        except Exception:
-            return None
+
+    try:
+        json_text = ctx.eval(f"JSON.stringify({js_expression})")
+    except Exception:
+        return None
+
+    return json.loads(json_text) if json_text else None
 
 
-def extract_operation_metadata(chef, ctx, op_attr_name):
-    """Extract metadata for a single operation using runtime introspection.
 
-    Args:
-        chef: CyberChef module instance
-        ctx: STPyV8 context
-        op_attr_name: Operation attribute name (camelCase)
-
-    Returns: Dict with operation metadata or None if extraction fails
-    """
+def extract_operation_metadata(chef: Any, ctx: Any, op_attr_name: str) -> OperationMetadata | None:
+    """Extract metadata for one operation attribute."""
     try:
         help_result = chef.help(op_attr_name)
-
-        if not help_result or len(help_result) == 0:
-            return None
-
-        ctx.locals.help_result = help_result
-        ctx.locals.item_index = 0
-
-        name = ctx.eval("help_result[item_index].name")
-        module = ctx.eval("help_result[item_index].module")
-        description = ctx.eval("help_result[item_index].description")
-        input_type = ctx.eval("help_result[item_index].inputType")
-        output_type = ctx.eval("help_result[item_index].outputType")
-        info_url = ctx.eval("help_result[item_index].infoURL")
-        args_length = ctx.eval(
-            "help_result[item_index].args ? help_result[item_index].args.length : 0"
-        )
-
-        op_info = {
-            "name": name or op_attr_name,
-            "module": module or "Unknown",
-            "description": description or "",
-            "infoURL": info_url or None,
-            "inputType": input_type or "string",
-            "outputType": output_type or "string",
-            "args": [],
-        }
-
-        for i in range(args_length):
-            ctx.locals.arg_index = i
-
-            arg_name = ctx.eval("help_result[item_index].args[arg_index].name")
-            arg_type = ctx.eval("help_result[item_index].args[arg_index].type")
-            arg_value = extract_js_value(
-                ctx, "help_result[item_index].args[arg_index].value"
-            )
-
-            arg_info = {
-                "name": arg_name or "",
-                "type": arg_type or "string",
-                "value": arg_value if arg_value is not None else "",
-            }
-
-            has_toggle = ctx.eval(
-                "help_result[item_index].args[arg_index].toggleValues !== undefined"
-            )
-            if has_toggle:
-                toggle_values = extract_js_value(
-                    ctx, "help_result[item_index].args[arg_index].toggleValues"
-                )
-                if toggle_values is not None:
-                    arg_info["toggleValues"] = toggle_values
-
-            has_default_index = ctx.eval(
-                "help_result[item_index].args[arg_index].defaultIndex !== undefined"
-            )
-            if has_default_index:
-                default_index = extract_js_value(
-                    ctx, "help_result[item_index].args[arg_index].defaultIndex"
-                )
-                if default_index is not None:
-                    arg_info["defaultIndex"] = default_index
-
-            has_target = ctx.eval(
-                "help_result[item_index].args[arg_index].target !== undefined"
-            )
-            if has_target:
-                target = extract_js_value(
-                    ctx, "help_result[item_index].args[arg_index].target"
-                )
-                if target is not None:
-                    arg_info["target"] = target
-
-            op_info["args"].append(arg_info)
-
-        return op_info
-
-    except Exception as e:
+    except Exception as exc:
         print(
-            f"Warning: Failed to extract metadata for {op_attr_name}: {e}",
+            f"Warning: Failed to extract metadata for {op_attr_name}: {exc}",
             file=sys.stderr,
         )
         return None
 
+    if not help_result or len(help_result) == 0:
+        return None
 
-def extract_categories_and_favorites(categories_json_path):
-    """Extract category and favorites data from CyberChef Categories.json.
+    ctx.locals.help_result = help_result
+    ctx.locals.item_index = 0
 
-    Args:
-        categories_json_path: Path to Categories.json file
+    args_length = ctx.eval("help_result[item_index].args ? help_result[item_index].args.length : 0")
+    operation: OperationMetadata = {
+        "name": ctx.eval("help_result[item_index].name") or op_attr_name,
+        "module": ctx.eval("help_result[item_index].module") or "Unknown",
+        "description": ctx.eval("help_result[item_index].description") or "",
+        "infoURL": ctx.eval("help_result[item_index].infoURL") or None,
+        "inputType": ctx.eval("help_result[item_index].inputType") or "string",
+        "outputType": ctx.eval("help_result[item_index].outputType") or "string",
+        "args": [],
+    }
 
-    Returns: Dict with 'categories' (operation name -> category) and 'favorites' list
-    """
-    with open(categories_json_path, "r") as f:
-        categories_data = json.load(f)
+    for index in range(args_length):
+        ctx.locals.arg_index = index
+        arg: OperationMetadata = {
+            "name": ctx.eval("help_result[item_index].args[arg_index].name") or "",
+            "type": ctx.eval("help_result[item_index].args[arg_index].type") or "string",
+            "value": extract_js_value(ctx, "help_result[item_index].args[arg_index].value") or "",
+        }
 
-    categories = {}
-    favorites = []
+        if ctx.eval("help_result[item_index].args[arg_index].toggleValues !== undefined"):
+            toggle_values = extract_js_value(
+                ctx,
+                "help_result[item_index].args[arg_index].toggleValues",
+            )
+            if toggle_values is not None:
+                arg["toggleValues"] = toggle_values
+
+        if ctx.eval("help_result[item_index].args[arg_index].defaultIndex !== undefined"):
+            default_index = extract_js_value(
+                ctx,
+                "help_result[item_index].args[arg_index].defaultIndex",
+            )
+            if default_index is not None:
+                arg["defaultIndex"] = default_index
+
+        if ctx.eval("help_result[item_index].args[arg_index].target !== undefined"):
+            target = extract_js_value(
+                ctx,
+                "help_result[item_index].args[arg_index].target",
+            )
+            if target is not None:
+                arg["target"] = target
+
+        operation["args"].append(arg)
+
+    return operation
+
+
+
+def deduplicate_operations(operations: list[OperationMetadata]) -> list[OperationMetadata]:
+    """Return operations deduplicated by user-facing name."""
+    deduplicated: list[OperationMetadata] = []
+    seen_names: set[str] = set()
+
+    for operation in operations:
+        name = str(operation.get("name", ""))
+        if name in seen_names:
+            print(f"Warning: Skipping duplicate operation metadata for {name}", file=sys.stderr)
+            continue
+        deduplicated.append(operation)
+        seen_names.add(name)
+
+    return deduplicated
+
+
+
+def extract_categories_and_favorites(categories_json_path: Path) -> dict[str, Any]:
+    """Extract category and favourites data from CyberChef Categories.json."""
+    categories_data = json.loads(categories_json_path.read_text())
+    categories: dict[str, str] = {}
+    favorites: list[str] = []
 
     for category_group in categories_data:
         category_name = category_group.get("name", "")
 
         if category_name == "Favourites":
-            favorites = category_group.get("ops", [])
+            favorites = list(category_group.get("ops", []))
             continue
 
         for op_name in category_group.get("ops", []):
-            if op_name not in categories:
-                categories[op_name] = category_name
+            categories.setdefault(op_name, category_name)
 
     return {"categories": categories, "favorites": favorites}
 
 
-def enhance_schema_with_categories(schema, categories_json_path):
-    """Enhance operation schema with category and favorites data.
 
-    Args:
-        schema: Operation schema dict with 'operations' list
-        categories_json_path: Path to Categories.json file
-
-    Returns: Enhanced schema with category and is_favorite fields added to each operation
-    """
+def enhance_schema_with_categories(
+    schema: dict[str, Any],
+    categories_json_path: Path,
+) -> dict[str, Any]:
+    """Add category and favourite metadata to each operation."""
     category_data = extract_categories_and_favorites(categories_json_path)
     categories = category_data["categories"]
-    favorites = category_data["favorites"]
+    favorites = set(category_data["favorites"])
 
     for operation in schema["operations"]:
-        op_name = operation.get("name", "")
+        op_name = str(operation.get("name", ""))
         operation["category"] = categories.get(op_name, "Other")
         operation["is_favorite"] = op_name in favorites
 
     return schema
 
 
-def introspect_operations():
-    """Introspect CyberChef operations using runtime API.
 
-    Returns: Dict with operations list
-    """
+def introspect_operations() -> dict[str, list[OperationMetadata]]:
+    """Introspect CyberChef operations through the runtime API."""
     print("Loading CyberChef...", file=sys.stderr)
     chef = cyberchef.get_chef()
     ctx = chef._stpyv8_context
 
-    print("Discovering operations...", file=sys.stderr)
-
-    excluded_attrs = {
-        "bake",
-        "help",
-        "operations",
-        "Dish",
-        "DishError",
-        "OperationError",
-        "ExcludedOperationError",
-        "register",
-    }
-
     operation_names = [
         name
         for name in dir(chef)
-        if not name.startswith("_") and name not in excluded_attrs
+        if not name.startswith("_") and name not in EXCLUDED_ATTRIBUTES
     ]
+    print(f"Discovering {len(operation_names)} exported operation attributes...", file=sys.stderr)
 
-    print(f"Found {len(operation_names)} operations to introspect", file=sys.stderr)
-
-    operations = []
+    operations: list[OperationMetadata] = []
     failed_count = 0
 
-    for i, op_name in enumerate(operation_names):
-        if (i + 1) % 50 == 0:
-            print(f"  Progress: {i + 1}/{len(operation_names)}", file=sys.stderr)
+    for index, op_name in enumerate(operation_names, start=1):
+        if index % 50 == 0:
+            print(f"  Progress: {index}/{len(operation_names)}", file=sys.stderr)
 
-        op_info = extract_operation_metadata(chef, ctx, op_name)
-        if op_info:
-            operations.append(op_info)
-        else:
+        operation = extract_operation_metadata(chef, ctx, op_name)
+        if operation is None:
             failed_count += 1
+            continue
+        operations.append(operation)
 
-    print(f"\nSuccessfully extracted {len(operations)} operations", file=sys.stderr)
-    if failed_count > 0:
-        print(f"Failed to extract {failed_count} operations", file=sys.stderr)
+    operations = deduplicate_operations(operations)
+    operations.sort(key=lambda operation: str(operation.get("name", "")))
+
+    print(f"Successfully extracted {len(operations)} unique operations", file=sys.stderr)
+    if failed_count:
+        print(f"Failed to extract {failed_count} exported attributes", file=sys.stderr)
 
     return {"operations": operations}
 
 
-def main():
+
+def main() -> None:
     schema = introspect_operations()
-
-    categories_json_path = (
-        Path(__file__).parent.parent
-        / "deps"
-        / "CyberChef"
-        / "src"
-        / "core"
-        / "config"
-        / "Categories.json"
-    )
-
-    print("\nEnhancing schema with categories and favorites...", file=sys.stderr)
-    schema = enhance_schema_with_categories(schema, categories_json_path)
-
-    output_path = (
-        Path(__file__).parent.parent
-        / "ida_cyberchef"
-        / "data"
-        / "operation_schema.json"
-    )
-    with open(output_path, "w") as f:
-        json.dump(schema, f, indent=2)
-
-    print(f"\nGenerated schema with {len(schema['operations'])} operations")
-    print(f"Saved to: {output_path}")
+    schema = enhance_schema_with_categories(schema, CATEGORIES_JSON_PATH)
+    OUTPUT_PATH.write_text(json.dumps(schema, indent=2) + "\n")
+    print(f"Generated schema with {len(schema['operations'])} operations")
+    print(f"Saved to: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

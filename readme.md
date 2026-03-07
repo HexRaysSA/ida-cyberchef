@@ -58,9 +58,10 @@ Unsupported in the current runtime:
 
 These either come from the Node-targeted bundle exclusion list or require browser-style networking, workers, or asset loading that this project does not provide.
 
-Some operations are still shipped but not yet reliable enough to claim support, notably Magic, YARA Rules, Argon2, and Argon2 compare.
+Some operations are also explicitly unsupported in the current runtime, notably Magic, YARA Rules, Argon2, and Argon2 compare.
+Generated operation docs in `docs/ops.md` annotate these unsupported operations directly.
 
-See `docs/runtime-support.md` for the current support policy and known degraded behaviors.
+See `docs/runtime-support.md` for the current support policy.
 
 ## Building
 
