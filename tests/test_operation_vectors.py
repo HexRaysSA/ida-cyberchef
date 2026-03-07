@@ -1004,6 +1004,65 @@ def build_gost_mac_args(
     return args
 
 
+def build_salsa20_args(
+    *,
+    key_string: str,
+    key_option: str,
+    nonce_string: str,
+    nonce_option: str,
+    counter: int,
+    rounds: str,
+    input_type: str,
+    output_type: str,
+) -> dict[str, object]:
+    return {
+        "Key": {"string": key_string, "option": key_option},
+        "Nonce": {"string": nonce_string, "option": nonce_option},
+        "Counter": counter,
+        "Rounds": rounds,
+        "Input": input_type,
+        "Output": output_type,
+    }
+
+
+def build_sm4_args(
+    *,
+    key_string: str,
+    key_option: str,
+    mode: str,
+    input_type: str,
+    output_type: str,
+    iv_string: str = "",
+    iv_option: str = "Hex",
+) -> dict[str, object]:
+    return {
+        "Key": {"string": key_string, "option": key_option},
+        "IV": {"string": iv_string, "option": iv_option},
+        "Mode": mode,
+        "Input": input_type,
+        "Output": output_type,
+    }
+
+
+def build_triple_des_args(
+    *,
+    key_string: str,
+    key_option: str,
+    mode: str,
+    input_type: str,
+    output_type: str,
+    iv_string: str = "",
+    iv_option: str = "Hex",
+) -> dict[str, object]:
+    return {
+        "Key": {"string": key_string, "option": key_option},
+        "IV": {"string": iv_string, "option": iv_option},
+        "Mode": mode,
+        "Input": input_type,
+        "Output": output_type,
+    }
+
+
 def build_base64url_text(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).decode().rstrip("=")
 
@@ -5525,6 +5584,337 @@ ENCODING_VECTORS = [
         ),
         recipe=[{"op": "Rail Fence Cipher Decode", "args": {"Key": 3, "Offset": 2}}],
         expected="No one expects the spanish Inquisition.",
+    ),
+    BakeVector(
+        name="rail_fence_encode_three_rails_reference",
+        input_data="WEAREDISCOVEREDFLEEATONCE",
+        recipe=[{"op": "Rail Fence Cipher Encode", "args": {"Key": 3, "Offset": 0}}],
+        expected=build_rail_fence_encode_string("WEAREDISCOVEREDFLEEATONCE", key=3, offset=0),
+    ),
+    BakeVector(
+        name="rail_fence_encode_four_rails_with_offset",
+        input_data="12345678901234567890",
+        recipe=[{"op": "Rail Fence Cipher Encode", "args": {"Key": 4, "Offset": 2}}],
+        expected=build_rail_fence_encode_string("12345678901234567890", key=4, offset=2),
+    ),
+    BakeVector(
+        name="rail_fence_encode_decode_roundtrip_with_spaces",
+        input_data="No one expects the spanish Inquisition.",
+        recipe=[
+            {"op": "Rail Fence Cipher Encode", "args": {"Key": 3, "Offset": 2}},
+            {"op": "Rail Fence Cipher Decode", "args": {"Key": 3, "Offset": 2}},
+        ],
+        expected="No one expects the spanish Inquisition.",
+    ),
+    BakeVector(
+        name="sigaba_encrypt_default_hello",
+        input_data="HELLO",
+        recipe=["SIGABA"],
+        expected="HIPGI",
+    ),
+    BakeVector(
+        name="sigaba_decrypt_default_hello",
+        input_data="HIPGI",
+        recipe=[{"op": "SIGABA", "args": {"SIGABA mode": "Decrypt"}}],
+        expected="HELLO",
+    ),
+    BakeVector(
+        name="sigaba_roundtrip_default_configuration",
+        input_data="HELLOWORLD",
+        recipe=["SIGABA", {"op": "SIGABA", "args": {"SIGABA mode": "Decrypt"}}],
+        expected="HELLOWORLD",
+    ),
+    BakeVector(
+        name="sm4_encrypt_ecb_padding_openssl_vector",
+        input_data="0123456789abcdeffedcba9876543210",
+        recipe=[
+            {
+                "op": "SM4 Encrypt",
+                "args": build_sm4_args(
+                    key_string="0123456789abcdeffedcba9876543210",
+                    key_option="Hex",
+                    mode="ECB",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="68 1e df 34 d2 06 96 5e 86 b3 e9 4f 53 6e 42 46 00 2a 8a 4e fa 86 3c ca d0 24 ac 03 00 bb 40 d2",
+    ),
+    BakeVector(
+        name="sm4_decrypt_ecb_no_padding_standard_vector",
+        input_data="681edf34d206965e86b3e94f536e4246",
+        recipe=[
+            {
+                "op": "SM4 Decrypt",
+                "args": build_sm4_args(
+                    key_string="0123456789abcdeffedcba9876543210",
+                    key_option="Hex",
+                    mode="ECB/NoPadding",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="01 23 45 67 89 ab cd ef fe dc ba 98 76 54 32 10",
+    ),
+    BakeVector(
+        name="sm4_encrypt_decrypt_cbc_roundtrip_utf8_key",
+        input_data="SM4 roundtrip",
+        recipe=[
+            {
+                "op": "SM4 Encrypt",
+                "args": build_sm4_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    iv_string="0123456789ABCDEF",
+                    iv_option="UTF8",
+                    mode="CBC",
+                    input_type="Raw",
+                    output_type="Hex",
+                ),
+            },
+            {
+                "op": "SM4 Decrypt",
+                "args": build_sm4_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    iv_string="0123456789ABCDEF",
+                    iv_option="UTF8",
+                    mode="CBC",
+                    input_type="Hex",
+                    output_type="Raw",
+                ),
+            },
+        ],
+        expected="SM4 roundtrip",
+    ),
+    BakeVector(
+        name="salsa20_zero_key_nonce_keystream_prefix",
+        input_data="00000000000000000000000000000000",
+        recipe=[
+            {
+                "op": "Salsa20",
+                "args": build_salsa20_args(
+                    key_string="00000000000000000000000000000000",
+                    key_option="Hex",
+                    nonce_string="0000000000000000",
+                    nonce_option="Hex",
+                    counter=0,
+                    rounds="20",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="65 13 ad ae cf eb 12 4c 1c be 6b da ef 69 0b 4f",
+    ),
+    BakeVector(
+        name="salsa20_roundtrip_twelve_round_utf8_nonce",
+        input_data="hello salsa",
+        recipe=[
+            {
+                "op": "Salsa20",
+                "args": build_salsa20_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    nonce_string="12345678",
+                    nonce_option="UTF8",
+                    counter=1,
+                    rounds="12",
+                    input_type="Raw",
+                    output_type="Hex",
+                ),
+            },
+            {
+                "op": "Salsa20",
+                "args": build_salsa20_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    nonce_string="12345678",
+                    nonce_option="UTF8",
+                    counter=1,
+                    rounds="12",
+                    input_type="Hex",
+                    output_type="Raw",
+                ),
+            },
+        ],
+        expected="hello salsa",
+    ),
+    BakeVector(
+        name="salsa20_integer_nonce_eight_round_short_hex",
+        input_data="00010203",
+        recipe=[
+            {
+                "op": "Salsa20",
+                "args": build_salsa20_args(
+                    key_string="YELLOW SUBMARINE",
+                    key_option="UTF8",
+                    nonce_string="1",
+                    nonce_option="Integer",
+                    counter=0,
+                    rounds="8",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="ac ed 07 76",
+    ),
+    BakeVector(
+        name="scrypt_utf8_salt_hashlib_reference",
+        input_data="password",
+        recipe=[
+            {
+                "op": "Scrypt",
+                "args": {
+                    "Salt": {"string": "salt", "option": "UTF8"},
+                    "Iterations (N)": 16,
+                    "Memory factor (r)": 1,
+                    "Parallelization factor (p)": 1,
+                    "Key length": 16,
+                },
+            }
+        ],
+        expected=hashlib.scrypt(b"password", salt=b"salt", n=16, r=1, p=1, dklen=16).hex(),
+    ),
+    BakeVector(
+        name="scrypt_base64_salt_hashlib_reference",
+        input_data="password",
+        recipe=[
+            {
+                "op": "Scrypt",
+                "args": {
+                    "Salt": {"string": "c2FsdA==", "option": "Base64"},
+                    "Iterations (N)": 16,
+                    "Memory factor (r)": 2,
+                    "Parallelization factor (p)": 1,
+                    "Key length": 32,
+                },
+            }
+        ],
+        expected=hashlib.scrypt(b"password", salt=b"salt", n=16, r=2, p=1, dklen=32).hex(),
+    ),
+    BakeVector(
+        name="substitute_default_caesar_uppercase",
+        input_data="ABC XYZ",
+        recipe=["Substitute"],
+        expected="XYZ UVW",
+    ),
+    BakeVector(
+        name="substitute_ignore_case_preserves_input_case",
+        input_data="AbCaBc",
+        recipe=[
+            {"op": "Substitute", "args": {"Plaintext": "ABC", "Ciphertext": "XYZ", "Ignore case": True}}
+        ],
+        expected="XyZxYz",
+    ),
+    BakeVector(
+        name="substitute_warns_on_mismatched_alphabet_lengths",
+        input_data="abc",
+        recipe=[
+            {
+                "op": "Substitute",
+                "args": {"Plaintext": "ABCDEF", "Ciphertext": "XYZ", "Ignore case": True},
+            }
+        ],
+        expected="Warning: Plaintext and Ciphertext lengths differ\n\nxyz",
+    ),
+    BakeVector(
+        name="to_morse_code_empty_string",
+        input_data="",
+        recipe=["To Morse Code"],
+        expected="",
+    ),
+    BakeVector(
+        name="to_morse_code_default_word_delimiter_newline",
+        input_data="phase 24",
+        recipe=["To Morse Code"],
+        expected=".--. .... .- ... .\n..--- ....-",
+    ),
+    BakeVector(
+        name="to_morse_code_dash_dot_comma_forward_slash",
+        input_data="SOS HELP",
+        recipe=[
+            {
+                "op": "To Morse Code",
+                "args": {
+                    "Format options": "Dash/Dot",
+                    "Letter delimiter": "Comma",
+                    "Word delimiter": "Forward slash",
+                },
+            }
+        ],
+        expected=(
+            "DotDotDot,DashDashDash,DotDotDot/"
+            "DotDotDotDot,Dot,DotDashDotDot,DotDashDashDot"
+        ),
+    ),
+    BakeVector(
+        name="triple_des_encrypt_ecb_padding_openssl_vector",
+        input_data="0123456789abcdeffedcba9876543210",
+        recipe=[
+            {
+                "op": "Triple DES Encrypt",
+                "args": build_triple_des_args(
+                    key_string="0123456789abcdeffedcba98765432100123456789abcdef",
+                    key_option="Hex",
+                    mode="ECB",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="1a4d672dca6cb3351fd1b02b237af9ae2e24eeb85aef49ae",
+    ),
+    BakeVector(
+        name="triple_des_decrypt_ecb_no_padding_vector",
+        input_data="1a4d672dca6cb3351fd1b02b237af9ae",
+        recipe=[
+            {
+                "op": "Triple DES Decrypt",
+                "args": build_triple_des_args(
+                    key_string="0123456789abcdeffedcba98765432100123456789abcdef",
+                    key_option="Hex",
+                    mode="ECB/NoPadding",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            }
+        ],
+        expected="0123456789abcdeffedcba9876543210",
+    ),
+    BakeVector(
+        name="triple_des_encrypt_decrypt_cbc_roundtrip_utf8_key",
+        input_data="phase24 tdes",
+        recipe=[
+            {
+                "op": "Triple DES Encrypt",
+                "args": build_triple_des_args(
+                    key_string="ABCDEFGHIJKLMNOPQRSTUVWX",
+                    key_option="UTF8",
+                    iv_string="12345678",
+                    iv_option="UTF8",
+                    mode="CBC",
+                    input_type="Raw",
+                    output_type="Hex",
+                ),
+            },
+            {
+                "op": "Triple DES Decrypt",
+                "args": build_triple_des_args(
+                    key_string="ABCDEFGHIJKLMNOPQRSTUVWX",
+                    key_option="UTF8",
+                    iv_string="12345678",
+                    iv_option="UTF8",
+                    mode="CBC",
+                    input_type="Hex",
+                    output_type="Raw",
+                ),
+            },
+        ],
+        expected="phase24 tdes",
     ),
     BakeVector(
         name="to_base64_empty_bytes",
