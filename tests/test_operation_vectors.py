@@ -4826,6 +4826,12 @@ DATA_FORMAT_VECTORS = [
         expected=bytes.fromhex("81a16101"),
     ),
     BakeVector(
+        name="to_modhex_empty_input",
+        input_data=b"",
+        recipe=["To Modhex"],
+        expected="",
+    ),
+    BakeVector(
         name="to_modhex_default_ascii_bytes",
         input_data=b"Hi",
         recipe=["To Modhex"],
@@ -5639,6 +5645,12 @@ EXTRACTOR_VECTORS = [
         expected="Scores: , Keywords: \n3.5, test1 test2\n1.5, test2",
     ),
     BakeVector(
+        name="strings_default_match_extracts_ascii",
+        input_data="beta",
+        recipe=["Strings"],
+        expected="beta",
+    ),
+    BakeVector(
         name="strings_extracts_utf16le_matches",
         input_data="T\x00E\x00S\x00T\x00",
         recipe=[
@@ -6064,6 +6076,12 @@ ENCODING_VECTORS = [
         input_data="abc xyz!",
         recipe=[{"op": "A1Z26 Cipher Encode", "args": {"Delimiter": "Comma"}}],
         expected=build_a1z26_encode_string("abc xyz!", "Comma"),
+    ),
+    BakeVector(
+        name="a1z26_decode_empty_string",
+        input_data="",
+        recipe=["A1Z26 Cipher Decode"],
+        expected="",
     ),
     BakeVector(
         name="a1z26_decode_line_feed_values",
