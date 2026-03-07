@@ -389,6 +389,10 @@ def build_png_rgba_bytes(rows: list[list[tuple[int, int, int, int]]]) -> bytes:
     )
 
 
+def build_extract_rgba_text(rows: list[list[tuple[int, int, int, int]]]) -> str:
+    return ",".join(str(channel) for row in rows for pixel in row for channel in pixel)
+
+
 def build_randomized_palette_rgba_text(
     rows: list[list[tuple[int, int, int, int]]],
     *,
@@ -409,6 +413,40 @@ FORENSICS_RGBA_ROWS = [[(0, 255, 0, 255), (255, 0, 255, 0)]]
 FORENSICS_RGBA_PNG = build_png_rgba_bytes(FORENSICS_RGBA_ROWS)
 FORENSICS_LSB_PNG = build_png_rgba_bytes([[(int(bit), 0, 0, 255) for bit in "01000001"]])
 FORENSICS_EMBEDDED_PNG_SAMPLE = b"ABCD" + build_png_rgba_bytes([[(1, 2, 3, 255)]]) + b"XYZ"
+MULTIMEDIA_SOURCE_ROWS = [
+    [(255, 0, 0, 255), (0, 255, 0, 255)],
+    [(0, 0, 255, 255), (255, 255, 255, 255)],
+]
+MULTIMEDIA_SOURCE_PNG = build_png_rgba_bytes(MULTIMEDIA_SOURCE_ROWS)
+MULTIMEDIA_AUTOCROP_PNG = build_png_rgba_bytes(
+    [
+        [(0, 0, 0, 255), (0, 0, 0, 255), (0, 0, 0, 255)],
+        [(0, 0, 0, 255), (255, 0, 0, 255), (0, 0, 0, 255)],
+        [(0, 0, 0, 255), (0, 0, 0, 255), (0, 0, 0, 255)],
+    ]
+)
+
+
+def assert_heatmap_chart_with_headers(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<svg ")
+    assert 'class="bins"' in result
+    assert 'stroke="rgba(0, 0, 0, 0.5)"' in result
+    assert ">x</text>" in result
+    assert ">y</text>" in result
+    assert "Count: 2" in result
+    assert "Count: 1" in result
+
+
+def assert_heatmap_chart_with_custom_labels(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<svg ")
+    assert 'class="bins"' in result
+    assert 'stroke="none"' in result
+    assert ">X value</text>" in result
+    assert ">Y value</text>" in result
+    assert "Count: 2" in result
+    assert "Count: 1" in result
 
 
 def get_delimiter_text(name: str) -> str:
@@ -5099,6 +5137,32 @@ FORENSICS_BLOCKED_VECTORS = [
     ),
 ]
 
+MULTIMEDIA_BLOCKED_VECTORS = [
+    BlockedBakeVector(
+        name="add_text_to_image_bitmap_font_loader_requires_xhr",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[
+            {
+                "op": "Add Text To Image",
+                "args": {
+                    "Text": "A",
+                    "Horizontal align": "None",
+                    "Vertical align": "None",
+                    "X position": 0,
+                    "Y position": 0,
+                    "Size": 8,
+                    "Font face": "Roboto",
+                    "Red": 255,
+                    "Green": 255,
+                    "Blue": 255,
+                    "Alpha": 255,
+                },
+            }
+        ],
+        error_message="Error adding text to image. (TypeError: xhr.open is not a function)",
+    ),
+]
+
 HASH_BLOCKED_VECTORS = [
     BlockedBakeVector(
         name="argon2_default_hash_times_out_under_stpyv8",
@@ -5139,6 +5203,7 @@ BLOCKED_BAKE_VECTORS = [
     *COMPRESSION_BLOCKED_VECTORS,
     *FLOW_CONTROL_BLOCKED_VECTORS,
     *FORENSICS_BLOCKED_VECTORS,
+    *MULTIMEDIA_BLOCKED_VECTORS,
     *HASH_BLOCKED_VECTORS,
 ]
 
@@ -8011,6 +8076,209 @@ LANGUAGE_VECTORS = [
     ),
 ]
 
+MULTIMEDIA_VECTORS = [
+    BakeVector(
+        name="blur_image_fast_amount_one_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[{"op": "Blur Image", "args": {"Amount": 1, "Type": "Fast"}}, "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(128, 113, 113, 255), (125, 141, 113, 255)],
+                [(125, 113, 141, 255), (128, 141, 141, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="contain_image_left_top_transparent_letterbox_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[
+            {
+                "op": "Contain Image",
+                "args": {
+                    "Width": 4,
+                    "Height": 2,
+                    "Horizontal align": "Left",
+                    "Vertical align": "Top",
+                    "Resizing algorithm": "Nearest Neighbour",
+                    "Opaque background": False,
+                },
+            },
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text(
+            [
+                [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 0, 0), (0, 0, 0, 0)],
+                [(0, 0, 255, 255), (255, 255, 255, 255), (0, 0, 0, 0), (0, 0, 0, 0)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="convert_image_format_to_bmp_then_detect_file_type",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[
+            {
+                "op": "Convert Image Format",
+                "args": {
+                    "Output Format": "BMP",
+                    "JPEG Quality": 80,
+                    "PNG Filter Type": "None",
+                    "PNG Deflate Level": 9,
+                },
+            },
+            "Detect File Type",
+        ],
+        expected="File type:   Bitmap image\nExtension:   bmp\nMIME type:   image/bmp\n",
+    ),
+    BakeVector(
+        name="cover_image_left_top_clips_to_single_column",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[
+            {
+                "op": "Cover Image",
+                "args": {
+                    "Width": 1,
+                    "Height": 2,
+                    "Horizontal align": "Left",
+                    "Vertical align": "Top",
+                    "Resizing algorithm": "Nearest Neighbour",
+                },
+            },
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text([[(255, 0, 0, 255)], [(0, 0, 255, 255)]]),
+    ),
+    BakeVector(
+        name="crop_image_autocrop_single_red_center_pixel",
+        input_data=MULTIMEDIA_AUTOCROP_PNG,
+        recipe=[
+            {
+                "op": "Crop Image",
+                "args": {
+                    "X Position": 0,
+                    "Y Position": 0,
+                    "Width": 10,
+                    "Height": 10,
+                    "Autocrop": True,
+                    "Autocrop tolerance (%)": 0.02,
+                    "Only autocrop frames": True,
+                    "Symmetric autocrop": False,
+                    "Autocrop keep border (px)": 0,
+                },
+            },
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text([[(255, 0, 0, 255)]]),
+    ),
+    BakeVector(
+        name="dither_image_small_png_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=["Dither Image", "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(255, 1, 1, 255), (9, 255, 9, 255)],
+                [(13, 13, 255, 255), (255, 255, 255, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="flip_image_vertical_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[{"op": "Flip Image", "args": {"Axis": "Vertical"}}, "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(0, 0, 255, 255), (255, 255, 255, 255)],
+                [(255, 0, 0, 255), (0, 255, 0, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="generate_image_rgba_mode_extract_rgba",
+        input_data=bytes(
+            [
+                255,
+                0,
+                0,
+                255,
+                0,
+                255,
+                0,
+                255,
+                0,
+                0,
+                255,
+                255,
+                255,
+                255,
+                255,
+                255,
+            ]
+        ),
+        recipe=[
+            {"op": "Generate Image", "args": {"Mode": "RGBA", "Pixel Scale Factor": 1, "Pixels per row": 2}},
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text(MULTIMEDIA_SOURCE_ROWS),
+    ),
+    BakeVector(
+        name="generate_image_bits_mode_extract_rgba",
+        input_data=bytes([0b10100000]),
+        recipe=[
+            {"op": "Generate Image", "args": {"Mode": "Bits", "Pixel Scale Factor": 1, "Pixels per row": 4}},
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text(
+            [
+                [(0, 0, 0, 255), (255, 255, 255, 255), (0, 0, 0, 255), (255, 255, 255, 255)],
+                [(255, 255, 255, 255), (255, 255, 255, 255), (255, 255, 255, 255), (255, 255, 255, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="heatmap_chart_headers_edges_and_counts",
+        input_data="x,y\n0,0\n1,1\n2,2",
+        recipe=[
+            {
+                "op": "Heatmap chart",
+                "args": {
+                    "Record delimiter": "Line feed",
+                    "Field delimiter": "Comma",
+                    "Number of vertical bins": 2,
+                    "Number of horizontal bins": 2,
+                    "Use column headers as labels": True,
+                    "X label": "",
+                    "Y label": "",
+                    "Draw bin edges": True,
+                    "Min colour value": "white",
+                    "Max colour value": "black",
+                },
+            }
+        ],
+        expected=assert_heatmap_chart_with_headers,
+    ),
+    BakeVector(
+        name="heatmap_chart_custom_labels_without_headers",
+        input_data="0 0\n1 1\n2 2",
+        recipe=[
+            {
+                "op": "Heatmap chart",
+                "args": {
+                    "Record delimiter": "Line feed",
+                    "Field delimiter": "Space",
+                    "Number of vertical bins": 2,
+                    "Number of horizontal bins": 2,
+                    "Use column headers as labels": False,
+                    "X label": "X value",
+                    "Y label": "Y value",
+                    "Draw bin edges": False,
+                    "Min colour value": "white",
+                    "Max colour value": "black",
+                },
+            }
+        ],
+        expected=assert_heatmap_chart_with_custom_labels,
+    ),
+]
+
 TEXT_VECTORS = [
     BakeVector(
         name="url_encode_empty_string",
@@ -8591,6 +8859,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *LANGUAGE_VECTORS,
+    *MULTIMEDIA_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
     *ARITHMETIC_LOGIC_VECTORS,
