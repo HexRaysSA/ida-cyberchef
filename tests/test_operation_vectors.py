@@ -4568,9 +4568,114 @@ EXTRACTOR_VECTORS = [
     ),
 ]
 
+FLOW_CONTROL_BLOCKED_VECTORS = [
+    BlockedBakeVector(
+        name="magic_raises_typeerror_under_stpyv8_runtime",
+        input_data=b"hello",
+        recipe=["Magic"],
+        error_message="TypeError: Cannot read properties of undefined (reading 'undefined')",
+    ),
+]
+
+FLOW_CONTROL_VECTORS = [
+    BakeVector(
+        name="comment_is_a_noop_before_to_snake_case",
+        input_data="Comment Here",
+        recipe=[{"op": "Comment", "args": {"": "phase28"}}, "To Snake case"],
+        expected="comment_here",
+    ),
+    BakeVector(
+        name="jump_skips_to_label_then_runs_following_operations",
+        input_data="jump target",
+        recipe=[
+            {"op": "Jump", "args": {"Label name": "end"}},
+            "To Snake case",
+            {"op": "Label", "args": {"Name": "end"}},
+            "To Upper case",
+        ],
+        expected="JUMP TARGET",
+    ),
+    BakeVector(
+        name="conditional_jump_match_skips_to_label",
+        input_data="skip me",
+        recipe=[
+            {"op": "Conditional Jump", "args": {"Match (regex)": "^skip", "Label name": "end"}},
+            "To Snake case",
+            {"op": "Label", "args": {"Name": "end"}},
+            "To Upper case",
+        ],
+        expected="SKIP ME",
+    ),
+    BakeVector(
+        name="conditional_jump_invert_match_skips_to_label",
+        input_data="run me",
+        recipe=[
+            {
+                "op": "Conditional Jump",
+                "args": {"Match (regex)": "^skip", "Invert match": True, "Label name": "end"},
+            },
+            "To Snake case",
+            {"op": "Label", "args": {"Name": "end"}},
+            "To Upper case",
+        ],
+        expected="RUN ME",
+    ),
+    BakeVector(
+        name="fork_decodes_base64_lines_and_merges_with_newlines",
+        input_data="aGVsbG8=\nd29ybGQ=",
+        recipe=[
+            {"op": "Fork", "args": {"Split delimiter": "\n", "Merge delimiter": "\n"}},
+            "From Base64",
+            "Merge",
+        ],
+        expected="hello\nworld",
+    ),
+    BakeVector(
+        name="merge_all_false_only_closes_nearest_nested_fork",
+        input_data="a:1|b:2",
+        recipe=[
+            {"op": "Fork", "args": {"Split delimiter": "|", "Merge delimiter": "|"}},
+            {"op": "Fork", "args": {"Split delimiter": ":", "Merge delimiter": ":"}},
+            "To Upper case",
+            {"op": "Merge", "args": {"Merge All": False}},
+            "Reverse",
+            "Merge",
+        ],
+        expected="1:A|2:B",
+    ),
+    BakeVector(
+        name="return_stops_recipe_execution",
+        input_data="return here",
+        recipe=["To Snake case", "Return", "To Upper case"],
+        expected="return_here",
+    ),
+    BakeVector(
+        name="subsection_capture_group_only_mutates_group_contents",
+        input_data="keep [one] and [two]",
+        recipe=[
+            {"op": "Subsection", "args": {"Section (regex)": "\\[(.*?)\\]", "Global matching": True}},
+            "To Upper case",
+            "Merge",
+        ],
+        expected="keep [ONE] and [TWO]",
+    ),
+    BakeVector(
+        name="subsection_without_matches_skips_to_after_merge",
+        input_data="plain text",
+        recipe=[
+            {"op": "Subsection", "args": {"Section (regex)": "\\[(.*?)\\]"}},
+            "To Upper case",
+            "Merge",
+            "To Snake case",
+        ],
+        expected="plain_text",
+    ),
+]
+
 BLOCKED_BAKE_VECTORS = [
     *CODE_TIDY_BLOCKED_VECTORS,
     *COMPRESSION_BLOCKED_VECTORS,
+    *FLOW_CONTROL_BLOCKED_VECTORS,
 ]
 
 ENCODING_VECTORS = [
@@ -7400,6 +7505,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *COMPRESSION_VECTORS,
     *DATE_TIME_VECTORS,
     *EXTRACTOR_VECTORS,
+    *FLOW_CONTROL_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
     *TEXT_VECTORS,

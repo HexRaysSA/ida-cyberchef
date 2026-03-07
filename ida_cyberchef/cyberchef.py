@@ -1,4 +1,5 @@
 import json
+import re
 from enum import IntEnum
 from typing import Any, TypedDict
 
@@ -76,6 +77,39 @@ class RecipeOperation(TypedDict, total=False):
 
     op: str
     args: dict[str, Any]
+
+
+PYTHON_FLOW_CONTROL_OPERATIONS = {
+    "Comment",
+    "Conditional Jump",
+    "Fork",
+    "Jump",
+    "Label",
+    "Merge",
+    "Return",
+    "Subsection",
+}
+
+FLOW_CONTROL_DEFAULT_ARGUMENTS: dict[str, dict[str, Any]] = {
+    "Comment": {"": ""},
+    "Conditional Jump": {
+        "Match (regex)": "",
+        "Invert match": False,
+        "Label name": "",
+        "Maximum jumps (if jumping backwards)": 10,
+    },
+    "Fork": {"Split delimiter": "\n", "Merge delimiter": "\n", "Ignore errors": False},
+    "Jump": {"Label name": "", "Maximum jumps (if jumping backwards)": 10},
+    "Label": {"Name": ""},
+    "Merge": {"Merge All": True},
+    "Return": {},
+    "Subsection": {
+        "Section (regex)": "",
+        "Case sensitive matching": True,
+        "Global matching": True,
+        "Ignore errors": False,
+    },
+}
 
 
 def get_chef():
@@ -459,6 +493,285 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
             return {"value": str(v), "type": DishType.STRING}
 
 
+def normalise_recipe_operation(operation: str | RecipeOperation) -> tuple[str, dict[str, Any]]:
+    """Return a recipe operation name and merged argument mapping.
+
+    Args:
+        operation: Recipe operation configuration.
+
+    Returns:
+        The operation name and a shallow copy of its arguments with defaults applied
+        for Python-implemented flow-control operations.
+
+    Raises:
+        TypeError: If the recipe entry is not a supported string or dict shape.
+
+    """
+    if isinstance(operation, str):
+        return operation, dict(FLOW_CONTROL_DEFAULT_ARGUMENTS.get(operation, {}))
+
+    if not isinstance(operation, dict) or "op" not in operation:
+        raise TypeError("Recipe can only contain function names or functions")
+
+    name = str(operation["op"])
+    args = dict(FLOW_CONTROL_DEFAULT_ARGUMENTS.get(name, {}))
+    args.update(operation.get("args", {}))
+    return name, args
+
+
+
+def contains_python_flow_control(recipe: list[str | RecipeOperation]) -> bool:
+    """Return whether a recipe uses Python-emulated flow control.
+
+    Args:
+        recipe: Recipe to inspect.
+
+    Returns:
+        True when the recipe contains a flow-control operation implemented in
+        Python.
+
+    """
+    return any(normalise_recipe_operation(operation)[0] in PYTHON_FLOW_CONTROL_OPERATIONS for operation in recipe)
+
+
+
+def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
+    """Execute a recipe through the Node-targeted CyberChef API.
+
+    Args:
+        input_data: Input data as bytes or string.
+        recipe: Recipe without Python-emulated flow control.
+
+    Returns:
+        Native Python data matching the final CyberChef output type.
+
+    """
+    chef = get_chef()
+
+    if isinstance(input_data, bytes):
+        input_dish = plate(input_data, chef)
+    else:
+        input_dish = input_data
+
+    recipe_json = json.dumps(recipe)
+    ctx = chef._stpyv8_context
+    ctx.locals.input_dish = input_dish
+    result = await_js_promise(ctx, f"module.exports.__piBake(input_dish, {recipe_json})")
+    return plate(result, chef)  # type: ignore[return-value]
+
+
+
+def coerce_string_value(value: Any) -> str:
+    """Convert a recipe value to the string representation used by flow control.
+
+    Args:
+        value: Value to convert.
+
+    Returns:
+        A string suitable for Python-emulated flow-control operations.
+
+    """
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+
+def find_label_index(recipe: list[str | RecipeOperation], label_name: str) -> int:
+    """Return the index of the first matching Label operation.
+
+    Args:
+        recipe: Recipe to inspect.
+        label_name: Label name to search for.
+
+    Returns:
+        The label index, or -1 when the label is absent.
+
+    """
+    for index, operation in enumerate(recipe):
+        name, args = normalise_recipe_operation(operation)
+        if name == "Label" and args.get("Name", "") == label_name:
+            return index
+    return -1
+
+
+
+def collect_flow_subrecipe(
+    recipe: list[str | RecipeOperation],
+    start_index: int,
+) -> tuple[list[str | RecipeOperation], int]:
+    """Return the subrecipe controlled by a Fork or Subsection.
+
+    Args:
+        recipe: Full recipe.
+        start_index: Index of the Fork or Subsection operation.
+
+    Returns:
+        The controlled subrecipe and the index immediately after its matching
+        Merge, or the recipe length when no matching Merge is present.
+
+    """
+    depth = 1
+    subrecipe: list[str | RecipeOperation] = []
+
+    for index in range(start_index + 1, len(recipe)):
+        name, args = normalise_recipe_operation(recipe[index])
+
+        if name == "Merge":
+            depth -= 1
+            if depth == 0 or bool(args.get("Merge All", True)):
+                return subrecipe, index + 1
+            subrecipe.append(recipe[index])
+            continue
+
+        if name in {"Fork", "Subsection"}:
+            depth += 1
+        subrecipe.append(recipe[index])
+
+    return subrecipe, len(recipe)
+
+
+
+def execute_python_flow_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
+    """Execute a recipe containing Python-emulated flow-control operations.
+
+    Args:
+        input_data: Input data as bytes or string.
+        recipe: Recipe to execute.
+
+    Returns:
+        Native Python data matching the final CyberChef output type.
+
+    Raises:
+        re.error: If a flow-control regex is invalid.
+
+    """
+    current: Any = input_data
+    index = 0
+    num_jumps = 0
+
+    while index < len(recipe):
+        operation = recipe[index]
+        name, args = normalise_recipe_operation(operation)
+
+        if name not in PYTHON_FLOW_CONTROL_OPERATIONS:
+            current = bake_js_recipe(current, [operation])
+            index += 1
+            continue
+
+        if name in {"Comment", "Label", "Merge"}:
+            index += 1
+            continue
+
+        if name == "Return":
+            break
+
+        if name == "Jump":
+            label_index = find_label_index(recipe, str(args.get("Label name", "")))
+            max_jumps = int(args.get("Maximum jumps (if jumping backwards)", 10))
+            if num_jumps >= max_jumps or label_index == -1:
+                num_jumps = 0
+                index += 1
+            else:
+                num_jumps += 1
+                index = label_index + 1
+            continue
+
+        if name == "Conditional Jump":
+            label_index = find_label_index(recipe, str(args.get("Label name", "")))
+            max_jumps = int(args.get("Maximum jumps (if jumping backwards)", 10))
+            pattern = str(args.get("Match (regex)", ""))
+            invert = bool(args.get("Invert match", False))
+
+            if num_jumps >= max_jumps or label_index == -1:
+                num_jumps = 0
+                index += 1
+                continue
+
+            matched = bool(pattern) and re.search(pattern, coerce_string_value(current)) is not None
+            if pattern and ((matched and not invert) or (not matched and invert)):
+                num_jumps += 1
+                index = label_index + 1
+            else:
+                num_jumps = 0
+                index += 1
+            continue
+
+        if name == "Fork":
+            split_delimiter = str(args.get("Split delimiter", "\n"))
+            merge_delimiter = str(args.get("Merge delimiter", "\n"))
+            ignore_errors = bool(args.get("Ignore errors", False))
+            subrecipe, next_index = collect_flow_subrecipe(recipe, index)
+            inputs = coerce_string_value(current).split(split_delimiter) if current else []
+            outputs = []
+
+            for branch_input in inputs:
+                try:
+                    branch_output = bake(branch_input, subrecipe)
+                except Exception:
+                    if not ignore_errors:
+                        raise
+                    continue
+                outputs.append(coerce_string_value(branch_output))
+
+            current = merge_delimiter.join(outputs)
+            index = next_index
+            continue
+
+        if name == "Subsection":
+            section = str(args.get("Section (regex)", ""))
+            case_sensitive = bool(args.get("Case sensitive matching", True))
+            global_matching = bool(args.get("Global matching", True))
+            ignore_errors = bool(args.get("Ignore errors", False))
+            subrecipe, next_index = collect_flow_subrecipe(recipe, index)
+
+            if not current or section == "":
+                index += 1
+                continue
+
+            flags = 0 if case_sensitive else re.IGNORECASE
+            regex = re.compile(section, flags)
+            input_text = coerce_string_value(current)
+            matches = list(regex.finditer(input_text)) if global_matching else [regex.search(input_text)]
+            matches = [match for match in matches if match is not None]
+
+            if not matches:
+                index = next_index
+                continue
+
+            output_parts = []
+            input_offset = 0
+
+            for match in matches:
+                capture_group = 1 if match.lastindex else 0
+                start, end = match.span(capture_group)
+                output_parts.append(input_text[input_offset:start])
+                section_text = input_text[start:end]
+
+                try:
+                    section_output = bake(section_text, subrecipe)
+                except Exception:
+                    if not ignore_errors:
+                        raise
+                    section_output = section_text
+
+                output_parts.append(coerce_string_value(section_output))
+                input_offset = end
+
+                if not global_matching:
+                    break
+
+            output_parts.append(input_text[input_offset:])
+            current = "".join(output_parts)
+            index = next_index
+            continue
+
+        raise NotImplementedError(f"Unsupported Python flow-control operation: {name}")
+
+    return current
+
+
+
 def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
     """Execute CyberChef operations using the loaded JS runtime.
 
@@ -474,15 +787,7 @@ def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
     if not recipe:
         return input_data
 
-    chef = get_chef()
+    if contains_python_flow_control(recipe):
+        return execute_python_flow_recipe(input_data, recipe)
 
-    if isinstance(input_data, bytes):
-        input_dish = plate(input_data, chef)
-    else:
-        input_dish = input_data
-
-    recipe_json = json.dumps(recipe)
-    ctx = chef._stpyv8_context
-    ctx.locals.input_dish = input_dish
-    result = await_js_promise(ctx, f"module.exports.__piBake(input_dish, {recipe_json})")
-    return plate(result, chef)  # type: ignore[return-value]
+    return bake_js_recipe(input_data, recipe)
