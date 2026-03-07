@@ -128,6 +128,29 @@ MINIMAL_ID3_TAG = bytes.fromhex("49443303000000000010545432000000000600000054697
 FERNET_TEST_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 FERNET_PHASE21_TOKEN = "gAAAAABpq-NaiTYSdio-mpGASNZAteHn6Q-ga8cYUUzCsmHyy73m1QsCRsqj0i-4QbAMBD6rIshNSOicC5CVLLIBXtg64AnOPw=="
 JWT_PHASE22_PAYLOAD = {"sub": "123", "name": "John Doe", "admin": True, "iat": 1_700_000_000}
+HASSH_CLIENT_SAMPLE_HEX = (
+    "000003140814c639665f5425dcb80bf9f0a048380a410000007e6469666669652d68656c6c6d616e2d67726f75702d65786368616e67652d7368613235362c"
+    "6469666669652d68656c6c6d616e2d67726f75702d65786368616e67652d736861312c6469666669652d68656c6c6d616e2d67726f757031342d736861312c"
+    "6469666669652d68656c6c6d616e2d67726f7570312d736861310000000f7373682d7273612c7373682d6473730000009d6165733132382d6374722c61657331"
+    "39322d6374722c6165733235362d6374722c617263666f75723235362c617263666f75723132382c6165733132382d6362632c336465732d6362632c626c6f"
+    "77666973682d6362632c636173743132382d6362632c6165733139322d6362632c6165733235362d6362632c617263666f75722c72696a6e6461656c2d6362"
+    "63406c797361746f722e6c69752e73650000009d6165733132382d6374722c6165733139322d6374722c6165733235362d6374722c617263666f7572323536"
+    "2c617263666f75723132382c6165733132382d6362632c336465732d6362632c626c6f77666973682d6362632c636173743132382d6362632c616573313932"
+    "2d6362632c6165733235362d6362632c617263666f75722c72696a6e6461656c2d636263406c797361746f722e6c69752e736500000069686d61632d6d6435"
+    "2c686d61632d736861312c756d61632d3634406f70656e7373682e636f6d2c686d61632d726970656d643136302c686d61632d726970656d64313630406f70"
+    "656e7373682e636f6d2c686d61632d736861312d39362c686d61632d6d64352d393600000069686d61632d6d64352c686d61632d736861312c756d61632d36"
+    "34406f70656e7373682e636f6d2c686d61632d726970656d643136302c686d61632d726970656d64313630406f70656e7373682e636f6d2c686d61632d7368"
+    "61312d39362c686d61632d6d64352d39360000001a6e6f6e652c7a6c6962406f70656e7373682e636f6d2c7a6c69620000001a6e6f6e652c7a6c6962406f70"
+    "656e7373682e636f6d2c7a6c6962000000000000000000000000000000000000000000"
+)
+HASSH_CLIENT_ALGORITHMS = (
+    "diffie-hellman-group-exchange-sha256,diffie-hellman-group-exchange-sha1,"
+    "diffie-hellman-group14-sha1,diffie-hellman-group1-sha1;"
+    "aes128-ctr,aes192-ctr,aes256-ctr,arcfour256,arcfour128,aes128-cbc,3des-cbc,"
+    "blowfish-cbc,cast128-cbc,aes192-cbc,aes256-cbc,arcfour,rijndael-cbc@lysator.liu.se;"
+    "hmac-md5,hmac-sha1,umac-64@openssh.com,hmac-ripemd160,hmac-ripemd160@openssh.com,"
+    "hmac-sha1-96,hmac-md5-96;none,zlib@openssh.com,zlib"
+)
 TYPEX_PHASE25_CUSTOM_ARGS = {
     "1st (left-hand) rotor": "KHWENRCBISXJQGOFMAPVYZDLTU<BFHNQUW",
     "1st rotor reversed": True,
@@ -2178,6 +2201,64 @@ def build_unix_timestamp_from_windows_filetime_string(
         return str(unix_intervals // 10)
 
     return str(unix_intervals * 100)
+
+
+def build_netbios_name(value: str, offset: int = 65) -> bytes:
+    padded = value.encode("latin1").ljust(16, b" ")
+    encoded = bytearray()
+
+    for byte in padded:
+        encoded.append((byte >> 4) + offset)
+        encoded.append((byte & 0x0F) + offset)
+
+    return bytes(encoded)
+
+
+def build_group_ip_addresses_output(values: list[str], cidr: int, *, only_subnets: bool = False) -> str:
+    ipv4_networks: dict[ipaddress.IPv4Network, list[ipaddress.IPv4Address]] = {}
+    ipv6_networks: dict[ipaddress.IPv6Network, list[ipaddress.IPv6Address]] = {}
+
+    for value in values:
+        ip = ipaddress.ip_address(value)
+        network = ipaddress.ip_network(f"{value}/{cidr}", strict=False)
+
+        if isinstance(ip, ipaddress.IPv4Address):
+            ipv4_networks.setdefault(network, []).append(ip)
+        else:
+            ipv6_networks.setdefault(network, []).append(ip)
+
+    output = []
+
+    for network, addresses in ipv4_networks.items():
+        output.append(f"{network.network_address}/{cidr}\n")
+
+        if not only_subnets:
+            for address in sorted(addresses):
+                output.append(f"  {address}\n")
+            output.append("\n")
+
+    for network, addresses in ipv6_networks.items():
+        output.append(f"{network.network_address.compressed}/{cidr}\n")
+
+        if not only_subnets:
+            for address in addresses:
+                output.append(f"  {address.compressed}\n")
+            output.append("\n")
+
+    return "".join(output)
+
+
+def build_hassh_full_details(algorithms: str) -> str:
+    digest = hashlib.md5(algorithms.encode()).hexdigest()
+    kex_algorithms, encryption_algorithms, mac_algorithms, compression_algorithms = algorithms.split(";")
+    return (
+        f"Hash digest:\n{digest}\n\n"
+        f"Full HASSH algorithms string:\n{algorithms}\n\n"
+        f"Key Exchange Algorithms:\n{kex_algorithms}\n"
+        f"Encryption Algorithms Client to Server:\n{encryption_algorithms}\n"
+        f"MAC Algorithms Client to Server:\n{mac_algorithms}\n"
+        f"Compression Algorithms Client to Server:\n{compression_algorithms}"
+    )
 
 
 CODE_TIDY_VECTORS = [
@@ -5294,6 +5375,15 @@ HASH_BLOCKED_VECTORS = [
     ),
 ]
 
+NETWORK_BLOCKED_VECTORS = [
+    BlockedBakeVector(
+        name="dns_over_https_default_reference_error_under_stpyv8",
+        input_data="example.com",
+        recipe=["DNS over HTTPS"],
+        error_message="ReferenceError: URL is not defined",
+    ),
+]
+
 BLOCKED_BAKE_VECTORS = [
     *CODE_TIDY_BLOCKED_VECTORS,
     *COMPRESSION_BLOCKED_VECTORS,
@@ -5301,6 +5391,7 @@ BLOCKED_BAKE_VECTORS = [
     *FORENSICS_BLOCKED_VECTORS,
     *MULTIMEDIA_BLOCKED_VECTORS,
     *HASH_BLOCKED_VECTORS,
+    *NETWORK_BLOCKED_VECTORS,
 ]
 
 ENCODING_VECTORS = [
@@ -8567,6 +8658,211 @@ MULTIMEDIA_VECTORS = [
     ),
 ]
 
+NETWORK_VECTORS = [
+    BakeVector(
+        name="dechunk_http_response_empty_string",
+        input_data="",
+        recipe=["Dechunk HTTP response"],
+        expected="",
+    ),
+    BakeVector(
+        name="dechunk_http_response_crlf_chunks",
+        input_data="4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n",
+        recipe=["Dechunk HTTP response"],
+        expected="Wikipedia",
+    ),
+    BakeVector(
+        name="dechunk_http_response_lf_chunks",
+        input_data="4\nWiki\n0\n\n",
+        recipe=["Dechunk HTTP response"],
+        expected="Wiki",
+    ),
+    BakeVector(
+        name="dechunk_http_response_md5_composition",
+        input_data="4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n",
+        recipe=["Dechunk HTTP response", "MD5"],
+        expected=hashlib.md5(b"Wikipedia").hexdigest(),
+    ),
+    BakeVector(
+        name="encode_netbios_name_short_ascii",
+        input_data="ABC",
+        recipe=["Encode NetBIOS Name"],
+        expected=build_netbios_name("ABC"),
+    ),
+    BakeVector(
+        name="decode_netbios_name_known_string",
+        input_data="FEGIGFCAEOGFHEECEJEPFDCAGOGBGNGF",
+        recipe=["Decode NetBIOS Name"],
+        expected=b"The NetBIOS name",
+    ),
+    BakeVector(
+        name="netbios_roundtrip_custom_offset",
+        input_data="ABC",
+        recipe=[
+            {"op": "Encode NetBIOS Name", "args": {"Offset": 97}},
+            {"op": "Decode NetBIOS Name", "args": {"Offset": 97}},
+        ],
+        expected=b"ABC",
+    ),
+    BakeVector(
+        name="defang_ip_addresses_ipv4",
+        input_data="192.168.1.1",
+        recipe=["Defang IP Addresses"],
+        expected="192[.]168[.]1[.]1",
+    ),
+    BakeVector(
+        name="defang_ip_addresses_ipv6_shorthand",
+        input_data="2001:db8:3c4d:15::1a2f:1a2b",
+        recipe=["Defang IP Addresses"],
+        expected="2001[:]db8[:]3c4d[:]15[:][:]1a2f[:]1a2b",
+    ),
+    BakeVector(
+        name="defang_ip_addresses_preserves_ipv4_cidr_suffix",
+        input_data="203.0.113.0/24",
+        recipe=["Defang IP Addresses"],
+        expected="203[.]0[.]113[.]0/24",
+    ),
+    BakeVector(
+        name="defang_url_domain_default_process",
+        input_data="example.com",
+        recipe=["Defang URL"],
+        expected="example[.]com",
+    ),
+    BakeVector(
+        name="defang_url_only_full_urls",
+        input_data="example.com and http://x.y",
+        recipe=[{"op": "Defang URL", "args": {"Process": "Only full URLs"}}],
+        expected="example.com and hxxp[://]x[.]y",
+    ),
+    BakeVector(
+        name="defang_url_everything_slashes_only",
+        input_data="http://example.com",
+        recipe=[
+            {
+                "op": "Defang URL",
+                "args": {
+                    "Escape dots": False,
+                    "Escape http": False,
+                    "Escape ://": True,
+                    "Process": "Everything",
+                },
+            }
+        ],
+        expected="http[://]example.com",
+    ),
+    BakeVector(
+        name="fang_url_default_restore",
+        input_data="hxxp[://]example[.]com/path",
+        recipe=["Fang URL"],
+        expected="http://example.com/path",
+    ),
+    BakeVector(
+        name="fang_url_partial_restore",
+        input_data="hxxps[://]example[.]com",
+        recipe=[
+            {
+                "op": "Fang URL",
+                "args": {"Restore [.]": True, "Restore hxxp": False, "Restore ://": True},
+            }
+        ],
+        expected="hxxps://example.com",
+    ),
+    BakeVector(
+        name="defang_then_fang_url_roundtrip",
+        input_data="http://example.com/path?x=1#frag",
+        recipe=["Defang URL", "Fang URL"],
+        expected="http://example.com/path?x=1#frag",
+    ),
+    BakeVector(
+        name="format_mac_addresses_empty_string",
+        input_data="",
+        recipe=["Format MAC addresses"],
+        expected="",
+    ),
+    BakeVector(
+        name="format_mac_addresses_default_single_input",
+        input_data="00-01-02-03-04-05",
+        recipe=["Format MAC addresses"],
+        expected=(
+            "000102030405\n"
+            "000102030405\n"
+            "00-01-02-03-04-05\n"
+            "00-01-02-03-04-05\n"
+            "00:01:02:03:04:05\n"
+            "00:01:02:03:04:05\n"
+        ),
+    ),
+    BakeVector(
+        name="format_mac_addresses_upper_cisco_and_ipv6",
+        input_data="00-01-02-03-04-05",
+        recipe=[
+            {
+                "op": "Format MAC addresses",
+                "args": {
+                    "Output case": "Upper only",
+                    "No delimiter": False,
+                    "Dash delimiter": False,
+                    "Colon delimiter": False,
+                    "Cisco style": True,
+                    "IPv6 interface ID": True,
+                },
+            }
+        ],
+        expected="0001.0203.0405\n0201:02FF:FE03:0405\n",
+    ),
+    BakeVector(
+        name="group_ip_addresses_empty_string",
+        input_data="",
+        recipe=["Group IP addresses"],
+        expected="",
+    ),
+    BakeVector(
+        name="group_ip_addresses_ipv4_default_subnet",
+        input_data="192.168.1.1\n192.168.1.5\n192.168.2.1",
+        recipe=["Group IP addresses"],
+        expected=build_group_ip_addresses_output(["192.168.1.1", "192.168.1.5", "192.168.2.1"], 24),
+    ),
+    BakeVector(
+        name="group_ip_addresses_comma_delimited_subnets_only",
+        input_data="192.168.1.1,192.168.1.5,192.168.2.1",
+        recipe=[
+            {
+                "op": "Group IP addresses",
+                "args": {"Delimiter": "Comma", "Only show the subnets": True},
+            }
+        ],
+        expected=build_group_ip_addresses_output(
+            ["192.168.1.1", "192.168.1.5", "192.168.2.1"],
+            24,
+            only_subnets=True,
+        ),
+    ),
+    BakeVector(
+        name="group_ip_addresses_ipv6_64_subnet",
+        input_data="2001:db8::1\n2001:db8::2\n2001:db9::1",
+        recipe=[{"op": "Group IP addresses", "args": {"Subnet (CIDR)": 64}}],
+        expected=build_group_ip_addresses_output(["2001:db8::1", "2001:db8::2", "2001:db9::1"], 64),
+    ),
+    BakeVector(
+        name="hassh_client_fingerprint_default_hash_digest",
+        input_data=HASSH_CLIENT_SAMPLE_HEX,
+        recipe=["HASSH Client Fingerprint"],
+        expected=hashlib.md5(HASSH_CLIENT_ALGORITHMS.encode()).hexdigest(),
+    ),
+    BakeVector(
+        name="hassh_client_fingerprint_algorithms_string",
+        input_data=HASSH_CLIENT_SAMPLE_HEX,
+        recipe=[{"op": "HASSH Client Fingerprint", "args": {"Output format": "HASSH algorithms string"}}],
+        expected=HASSH_CLIENT_ALGORITHMS,
+    ),
+    BakeVector(
+        name="hassh_client_fingerprint_full_details",
+        input_data=HASSH_CLIENT_SAMPLE_HEX,
+        recipe=[{"op": "HASSH Client Fingerprint", "args": {"Output format": "Full details"}}],
+        expected=build_hassh_full_details(HASSH_CLIENT_ALGORITHMS),
+    ),
+]
+
 TEXT_VECTORS = [
     BakeVector(
         name="url_encode_empty_string",
@@ -9148,6 +9444,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *HASH_VECTORS,
     *LANGUAGE_VECTORS,
     *MULTIMEDIA_VECTORS,
+    *NETWORK_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
     *ARITHMETIC_LOGIC_VECTORS,
