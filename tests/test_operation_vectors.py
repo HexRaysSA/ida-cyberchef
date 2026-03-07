@@ -96,6 +96,13 @@ AMF0_SINGLE_FIELD_OBJECT_DECODED = {
     "marker": 3,
     "properties": [{"keyLength": 1, "key": "a", "value": {"marker": 2, "length": 4, "$value": "test"}}],
 }
+SIMPLE_DER_HEX = "3003020105"
+SIMPLE_CERTIFICATE_PEM = "-----BEGIN CERTIFICATE-----\r\nMAMCAQU=\r\n-----END CERTIFICATE-----\r\n"
+SIMPLE_PUBLIC_KEY_PEM = "-----BEGIN PUBLIC KEY-----\r\nMAMCAQU=\r\n-----END PUBLIC KEY-----\r\n"
+SIMPLE_TLV_HI = bytes.fromhex("01024869")
+SIMPLE_LV_SEQUENCE = bytes.fromhex("02486903627965")
+SIMPLE_TWO_BYTE_LENGTH_TLV = bytes.fromhex("0102004869")
+SIMPLE_BER_TLV = bytes.fromhex("01024142")
 
 
 def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
@@ -1488,6 +1495,194 @@ DATA_FORMAT_VECTORS = [
             {"op": "From Modhex", "args": {"Delimiter": "Colon"}},
         ],
         expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_octal_space_delimited_ascii",
+        input_data="110 151",
+        recipe=[{"op": "From Octal", "args": {"Delimiter": "Space"}}],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_octal_roundtrip_utf8_greek_text",
+        input_data="Γειά",
+        recipe=[
+            {"op": "Encode text", "args": {"Encoding": "UTF-8 (65001)"}},
+            {"op": "To Octal", "args": {"Delimiter": "Space"}},
+            {"op": "From Octal", "args": {"Delimiter": "Space"}},
+            {"op": "Decode text", "args": {"Encoding": "UTF-8 (65001)"}},
+        ],
+        expected="Γειά",
+    ),
+    BakeVector(
+        name="from_punycode_decode_label",
+        input_data="mnchen-3ya",
+        recipe=["From Punycode"],
+        expected="münchen",
+    ),
+    BakeVector(
+        name="from_punycode_decode_idn_domain",
+        input_data="xn--mnchen-3ya.de",
+        recipe=[{"op": "From Punycode", "args": {"Internationalised domain name": True}}],
+        expected="münchen.de",
+    ),
+    BakeVector(
+        name="from_punycode_roundtrip_idn_domain",
+        input_data="münchen.de",
+        recipe=[
+            {"op": "To Punycode", "args": {"Internationalised domain name": True}},
+            {"op": "From Punycode", "args": {"Internationalised domain name": True}},
+        ],
+        expected="münchen.de",
+    ),
+    BakeVector(
+        name="from_quoted_printable_decode_space_escape",
+        input_data="hello=20world",
+        recipe=["From Quoted Printable"],
+        expected=b"hello world",
+    ),
+    BakeVector(
+        name="from_quoted_printable_remove_soft_line_break",
+        input_data="soft=\r\nbreak",
+        recipe=["From Quoted Printable"],
+        expected=b"softbreak",
+    ),
+    BakeVector(
+        name="from_quoted_printable_lowercase_hex_byte",
+        input_data="caf=e9",
+        recipe=["From Quoted Printable"],
+        expected=b"caf\xe9",
+    ),
+    BakeVector(
+        name="hex_to_pem_default_certificate_header",
+        input_data=SIMPLE_DER_HEX,
+        recipe=["Hex to PEM"],
+        expected=SIMPLE_CERTIFICATE_PEM,
+    ),
+    BakeVector(
+        name="hex_to_pem_custom_public_key_header",
+        input_data=SIMPLE_DER_HEX,
+        recipe=[{"op": "Hex to PEM", "args": {"Header string": "PUBLIC KEY"}}],
+        expected=SIMPLE_PUBLIC_KEY_PEM,
+    ),
+    BakeVector(
+        name="json_to_csv_default_row_delimiter_uses_literal_escape_sequence",
+        input_data='{"a":1,"b":2}',
+        recipe=["JSON to CSV"],
+        expected="a,b\\r\\n1,2\\r\\n",
+    ),
+    BakeVector(
+        name="json_to_csv_flattens_nested_object_with_explicit_crlf",
+        input_data='{"a":{"b":1},"c":2}',
+        recipe=[{"op": "JSON to CSV", "args": {"Cell delimiter": ",", "Row delimiter": "\r\n"}}],
+        expected="a.b,c\r\n1,2\r\n",
+    ),
+    BakeVector(
+        name="json_to_csv_custom_delimiters_with_multiline_cell",
+        input_data='[[1,2],[3,"a\\nb"]]',
+        recipe=[{"op": "JSON to CSV", "args": {"Cell delimiter": ";", "Row delimiter": "|"}}],
+        expected='1;2|3;"a\nb"|',
+    ),
+    BakeVector(
+        name="json_to_yaml_nested_object",
+        input_data='{"a":1,"b":[2,3]}',
+        recipe=["JSON to YAML"],
+        expected="a: 1\nb:\n  - 2\n  - 3\n",
+    ),
+    BakeVector(
+        name="json_to_yaml_roundtrip_via_yaml_to_json",
+        input_data='{"a":1,"b":[2,3]}',
+        recipe=["JSON to YAML", "YAML to JSON"],
+        expected={"a": 1, "b": [2, 3]},
+    ),
+    BakeVector(
+        name="mime_decoding_q_encoded_utf8_header",
+        input_data=b"Subject: =?UTF-8?Q?caf=C3=A9?=",
+        recipe=["MIME Decoding"],
+        expected="Subject: café",
+    ),
+    BakeVector(
+        name="mime_decoding_folded_adjacent_encoded_words",
+        input_data=b"Subject: =?UTF-8?Q?caf=C3=A9?=\r\n =?UTF-8?Q?_au_lait?=",
+        recipe=["MIME Decoding"],
+        expected="Subject: café au lait",
+    ),
+    BakeVector(
+        name="mime_decoding_base64_encoded_word",
+        input_data=b"Subject: =?UTF-8?B?Y2Fmw6k=?=",
+        recipe=["MIME Decoding"],
+        expected="Subject: café",
+    ),
+    BakeVector(
+        name="normalise_unicode_nfd_decomposition",
+        input_data="é",
+        recipe=[{"op": "Normalise Unicode", "args": {"Normal Form": "NFD"}}],
+        expected="é",
+    ),
+    BakeVector(
+        name="normalise_unicode_nfkc_compatibility_digit",
+        input_data="①",
+        recipe=[{"op": "Normalise Unicode", "args": {"Normal Form": "NFKC"}}],
+        expected="1",
+    ),
+    BakeVector(
+        name="normalise_unicode_nfd_then_nfc_roundtrip",
+        input_data="é",
+        recipe=[
+            {"op": "Normalise Unicode", "args": {"Normal Form": "NFD"}},
+            {"op": "Normalise Unicode", "args": {"Normal Form": "NFC"}},
+        ],
+        expected="é",
+    ),
+    BakeVector(
+        name="pem_to_hex_single_certificate_block",
+        input_data=SIMPLE_CERTIFICATE_PEM,
+        recipe=["PEM to Hex"],
+        expected=SIMPLE_DER_HEX,
+    ),
+    BakeVector(
+        name="pem_to_hex_multiple_blocks",
+        input_data=SIMPLE_CERTIFICATE_PEM + SIMPLE_PUBLIC_KEY_PEM,
+        recipe=["PEM to Hex"],
+        expected=f"{SIMPLE_DER_HEX}\n{SIMPLE_DER_HEX}",
+    ),
+    BakeVector(
+        name="pem_to_hex_roundtrip_via_hex_to_pem",
+        input_data=SIMPLE_DER_HEX,
+        recipe=["Hex to PEM", "PEM to Hex"],
+        expected=SIMPLE_DER_HEX,
+    ),
+    BakeVector(
+        name="parse_tlv_simple_tag_length_value",
+        input_data=SIMPLE_TLV_HI,
+        recipe=["Parse TLV"],
+        expected=[{"key": [1], "length": 2, "value": [72, 105]}],
+    ),
+    BakeVector(
+        name="parse_tlv_length_value_sequence_without_key",
+        input_data=SIMPLE_LV_SEQUENCE,
+        recipe=[
+            {"op": "Parse TLV", "args": {"Type/Key size": 0, "Length size": 1, "Use BER": False}}
+        ],
+        expected=[
+            {"length": 2, "value": [72, 105]},
+            {"length": 3, "value": [98, 121, 101]},
+        ],
+    ),
+    BakeVector(
+        name="parse_tlv_two_byte_length_field",
+        input_data=SIMPLE_TWO_BYTE_LENGTH_TLV,
+        recipe=[
+            {"op": "Parse TLV", "args": {"Type/Key size": 1, "Length size": 2, "Use BER": False}}
+        ],
+        expected=[{"key": [1], "length": 2, "value": [72, 105]}],
+    ),
+    BakeVector(
+        name="parse_tlv_ber_short_form_length",
+        input_data=SIMPLE_BER_TLV,
+        recipe=[
+            {"op": "Parse TLV", "args": {"Type/Key size": 1, "Length size": 1, "Use BER": True}}
+        ],
+        expected=[{"key": [1], "length": 2, "value": [65, 66]}],
     ),
 ]
 
