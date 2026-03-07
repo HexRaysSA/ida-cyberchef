@@ -5,6 +5,7 @@ import hashlib
 import io
 import ipaddress
 import re
+import struct
 import tarfile
 import zipfile
 from dataclasses import dataclass
@@ -1243,6 +1244,249 @@ DATA_FORMAT_VECTORS = [
         name="from_binary_colon_delimited_bytes",
         input_data="01001000:01101001",
         recipe=[{"op": "From Binary", "args": {"Delimiter": "Colon", "Byte Length": 8}}],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_braille_hello_text",
+        input_data="⠓⠑⠇⠇⠕",
+        recipe=["From Braille"],
+        expected="HELLO",
+    ),
+    BakeVector(
+        name="from_braille_preserves_unknown_symbols",
+        input_data="⠓⠑?⠇⠕",
+        recipe=["From Braille"],
+        expected="HE?LO",
+    ),
+    BakeVector(
+        name="from_charcode_base10_comma_ascii",
+        input_data="72,101,108,108,111",
+        recipe=[{"op": "From Charcode", "args": {"Delimiter": "Comma", "Base": 10}}],
+        expected=b"Hello",
+    ),
+    BakeVector(
+        name="from_charcode_concatenated_hex_ascii",
+        input_data="48656c6c6f20776f726c64",
+        recipe=[{"op": "From Charcode", "args": {"Delimiter": "Space", "Base": 16}}],
+        expected=b"Hello world",
+    ),
+    BakeVector(
+        name="from_charcode_roundtrip_colon_hex",
+        input_data="Hello",
+        recipe=[
+            {"op": "To Charcode", "args": {"Delimiter": "Colon", "Base": 16}},
+            {"op": "From Charcode", "args": {"Delimiter": "Colon", "Base": 16}},
+        ],
+        expected=b"Hello",
+    ),
+    BakeVector(
+        name="from_decimal_colon_delimited_ascii",
+        input_data="72:101:108:108:111",
+        recipe=[
+            {
+                "op": "From Decimal",
+                "args": {"Delimiter": "Colon", "Support signed values": False},
+            }
+        ],
+        expected=b"Hello",
+    ),
+    BakeVector(
+        name="from_decimal_signed_comma_values",
+        input_data="-1,-128,127",
+        recipe=[
+            {
+                "op": "From Decimal",
+                "args": {"Delimiter": "Comma", "Support signed values": True},
+            }
+        ],
+        expected=b"\xff\x80\x7f",
+    ),
+    BakeVector(
+        name="from_decimal_roundtrip_signed_values",
+        input_data=b"\xff\x80\x7f",
+        recipe=[
+            {"op": "To Decimal", "args": {"Delimiter": "Comma", "Support signed values": True}},
+            {"op": "From Decimal", "args": {"Delimiter": "Comma", "Support signed values": True}},
+        ],
+        expected=b"\xff\x80\x7f",
+    ),
+    BakeVector(
+        name="from_float_big_endian_float_one",
+        input_data="1",
+        recipe=[
+            {
+                "op": "From Float",
+                "args": {
+                    "Endianness": "Big Endian",
+                    "Size": "Float (4 bytes)",
+                    "Delimiter": "Space",
+                },
+            }
+        ],
+        expected=struct.pack(">f", 1.0),
+    ),
+    BakeVector(
+        name="from_float_little_endian_double_pair",
+        input_data="3.141592653589793,2.5",
+        recipe=[
+            {
+                "op": "From Float",
+                "args": {
+                    "Endianness": "Little Endian",
+                    "Size": "Double (8 bytes)",
+                    "Delimiter": "Comma",
+                },
+            }
+        ],
+        expected=struct.pack("<d", 3.141592653589793) + struct.pack("<d", 2.5),
+    ),
+    BakeVector(
+        name="from_float_roundtrip_little_endian_float_values",
+        input_data=bytes.fromhex("0000803f000020c0"),
+        recipe=[
+            {
+                "op": "To Float",
+                "args": {
+                    "Endianness": "Little Endian",
+                    "Size": "Float (4 bytes)",
+                    "Delimiter": "Comma",
+                },
+            },
+            {
+                "op": "From Float",
+                "args": {
+                    "Endianness": "Little Endian",
+                    "Size": "Float (4 bytes)",
+                    "Delimiter": "Comma",
+                },
+            },
+        ],
+        expected=bytes.fromhex("0000803f000020c0"),
+    ),
+    BakeVector(
+        name="from_html_entity_named_numeric_hex_mix",
+        input_data="&amp;&lt;&#169;&#x1F600;",
+        recipe=["From HTML Entity"],
+        expected="&<©😀",
+    ),
+    BakeVector(
+        name="from_html_entity_preserves_unknown_entity",
+        input_data="A&bogus;B",
+        recipe=["From HTML Entity"],
+        expected="A&bogus;B",
+    ),
+    BakeVector(
+        name="from_html_entity_roundtrip_named_entities",
+        input_data="5 < 7 & π",
+        recipe=[
+            {
+                "op": "To HTML Entity",
+                "args": {
+                    "Convert all characters": False,
+                    "Convert to": "Named entities",
+                },
+            },
+            "From HTML Entity",
+        ],
+        expected="5 < 7 & π",
+    ),
+    BakeVector(
+        name="from_hex_percent_delimited_ascii",
+        input_data="%48%69",
+        recipe=[{"op": "From Hex", "args": {"Delimiter": "Percent"}}],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_hex_0x_with_comma_ascii",
+        input_data="0x48,0x69",
+        recipe=[{"op": "From Hex", "args": {"Delimiter": "0x with comma"}}],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_hex_content_special_chars",
+        input_data="foo|3d|bar",
+        recipe=["From Hex Content"],
+        expected=b"foo=bar",
+    ),
+    BakeVector(
+        name="from_hex_content_preserves_invalid_segment",
+        input_data="foo|zz|bar",
+        recipe=["From Hex Content"],
+        expected=b"foo|zz|bar",
+    ),
+    BakeVector(
+        name="from_hex_content_roundtrip_with_spaces",
+        input_data=b"foo=bar baz",
+        recipe=[
+            {
+                "op": "To Hex Content",
+                "args": {
+                    "Convert": "Only special chars including spaces",
+                    "Print spaces between bytes": True,
+                },
+            },
+            "From Hex Content",
+        ],
+        expected=b"foo=bar baz",
+    ),
+    BakeVector(
+        name="from_hexdump_classic_multiline",
+        input_data=(
+            "00000000  68 65 6C 6C 6F 00 77 6F  |hello.wo|\n"
+            "00000008  72 6C 64                 |rld|\n"
+            "0000000b"
+        ),
+        recipe=["From Hexdump"],
+        expected=b"hello\x00world",
+    ),
+    BakeVector(
+        name="from_hexdump_roundtrip_uppercase_with_final_length",
+        input_data=b"hello\x00world",
+        recipe=[
+            {
+                "op": "To Hexdump",
+                "args": {
+                    "Width": 8,
+                    "Upper case hex": True,
+                    "Include final length": True,
+                    "UNIX format": False,
+                },
+            },
+            "From Hexdump",
+        ],
+        expected=b"hello\x00world",
+    ),
+    BakeVector(
+        name="from_messagepack_single_map",
+        input_data=bytes.fromhex("81a16101"),
+        recipe=["From MessagePack"],
+        expected={"a": 1},
+    ),
+    BakeVector(
+        name="from_messagepack_roundtrip_nested_value",
+        input_data='{"a":1,"b":[true,false]}',
+        recipe=["To MessagePack", "From MessagePack"],
+        expected={"a": 1, "b": [True, False]},
+    ),
+    BakeVector(
+        name="from_modhex_auto_delimited_ascii",
+        input_data="fjhk",
+        recipe=["From Modhex"],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_modhex_space_delimited_ascii",
+        input_data="fj hk",
+        recipe=[{"op": "From Modhex", "args": {"Delimiter": "Space"}}],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="from_modhex_roundtrip_colon_delimited",
+        input_data=b"Hi",
+        recipe=[
+            {"op": "To Modhex", "args": {"Delimiter": "Colon", "Bytes per line": 0}},
+            {"op": "From Modhex", "args": {"Delimiter": "Colon"}},
+        ],
         expected=b"Hi",
     ),
 ]
