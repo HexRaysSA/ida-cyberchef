@@ -3,6 +3,7 @@ import bz2
 import calendar
 import gzip
 import hashlib
+import hmac
 import io
 import ipaddress
 import re
@@ -110,6 +111,8 @@ SIMPLE_TLV_HI = bytes.fromhex("01024869")
 SIMPLE_LV_SEQUENCE = bytes.fromhex("02486903627965")
 SIMPLE_TWO_BYTE_LENGTH_TLV = bytes.fromhex("0102004869")
 SIMPLE_BER_TLV = bytes.fromhex("01024142")
+FERNET_TEST_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+FERNET_PHASE21_TOKEN = "gAAAAABpq-NaiTYSdio-mpGASNZAteHn6Q-ga8cYUUzCsmHyy73m1QsCRsqj0i-4QbAMBD6rIshNSOicC5CVLLIBXtg64AnOPw=="
 
 
 def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
@@ -642,6 +645,36 @@ def build_evp_key_hex(
     return derived[:key_size_bytes].hex()
 
 
+def build_hkdf_hex(
+    ikm: bytes,
+    salt: bytes,
+    info: bytes,
+    *,
+    length: int,
+    hash_name: str,
+    extract_mode: str,
+) -> str:
+    algorithm = hash_name.lower().replace("/", "")
+    hash_length = hashlib.new(algorithm).digest_size
+
+    if extract_mode == "skip":
+        pseudo_random_key = ikm
+    else:
+        effective_salt = salt if extract_mode == "with salt" else b"\x00" * hash_length
+        pseudo_random_key = hmac.new(effective_salt, ikm, algorithm).digest()
+
+    output_key_material = b""
+    block = b""
+    counter = 1
+
+    while len(output_key_material) < length:
+        block = hmac.new(pseudo_random_key, block + info + bytes([counter]), algorithm).digest()
+        output_key_material += block
+        counter += 1
+
+    return output_key_material[:length].hex()
+
+
 def build_colossus_args(program_to_run: str) -> dict[str, object]:
     return {
         "Input": "",
@@ -702,6 +735,90 @@ def build_colossus_args(program_to_run: str) -> dict[str, object]:
         "Start Ψ4": 1,
         "Start Ψ5": 1,
     }
+
+
+def build_enigma_four_rotor_args() -> dict[str, object]:
+    return {
+        "Model": "4-rotor",
+        "Left-most (4th) rotor": "FSOKANUERHMBTIYCWLQPZXVGJD",
+        "Left-most rotor ring setting": "B",
+        "Left-most rotor initial value": "D",
+        "Left-hand rotor": "ESOVPZJAYQUIRHXLNFTGKDCMWB<K",
+        "Left-hand rotor ring setting": "C",
+        "Left-hand rotor initial value": "M",
+        "Middle rotor": "VZBRGITYUPSDNHLXAWMJQOFECK<A",
+        "Middle rotor ring setting": "D",
+        "Middle rotor initial value": "C",
+        "Right-hand rotor": "BDFHJLCPRTXVZNYEIWGAKMUSQO<W",
+        "Right-hand rotor ring setting": "E",
+        "Right-hand rotor initial value": "K",
+        "Reflector": "AE BN CK DQ FU GY HW IJ LO MP RX SZ TV",
+        "Plugboard": "PO ML IU KJ NH YT GB VF RE DC",
+        "Strict output": False,
+    }
+
+
+def build_fernet_encrypt_verifier(expected_plaintext: str) -> Callable[[object], None]:
+    def verify(result: object) -> None:
+        assert isinstance(result, str)
+        assert re.fullmatch(r"gAAAAA[A-Za-z0-9_-]+=*", result)
+        assert bake(result, [{"op": "Fernet Decrypt", "args": {"Key": FERNET_TEST_KEY}}]) == expected_plaintext
+
+    return verify
+
+
+def build_gost_cipher_args(
+    *,
+    key_hex: str,
+    algorithm: str,
+    input_type: str,
+    output_type: str,
+    iv_hex: str = "",
+    s_box: str | None = None,
+    block_mode: str = "ECB",
+    key_meshing_mode: str = "NO",
+    padding: str = "NO",
+) -> dict[str, object]:
+    args: dict[str, object] = {
+        "Key": {"string": key_hex, "option": "Hex"},
+        "IV": {"string": iv_hex, "option": "Hex"},
+        "Input type": input_type,
+        "Output type": output_type,
+        "Algorithm": algorithm,
+        "Block mode": block_mode,
+        "Key meshing mode": key_meshing_mode,
+        "Padding": padding,
+    }
+
+    if s_box is not None:
+        args["sBox"] = s_box
+
+    return args
+
+
+def build_gost_key_wrap_args(
+    *,
+    key_hex: str,
+    ukm_hex: str,
+    algorithm: str,
+    input_type: str,
+    output_type: str,
+    s_box: str | None = None,
+    key_wrapping: str = "NO",
+) -> dict[str, object]:
+    args: dict[str, object] = {
+        "Key": {"string": key_hex, "option": "Hex"},
+        "User Key Material": {"string": ukm_hex, "option": "Hex"},
+        "Input type": input_type,
+        "Output type": output_type,
+        "Algorithm": algorithm,
+        "Key wrapping": key_wrapping,
+    }
+
+    if s_box is not None:
+        args["sBox"] = s_box
+
+    return args
 
 
 def verify_bcrypt_rounds_four_hash(result: object) -> None:
@@ -4302,6 +4419,296 @@ ENCODING_VECTORS = [
             iterations=2,
             hash_name="SHA256",
         ),
+    ),
+    BakeVector(
+        name="derive_hkdf_key_rfc5869_sha256",
+        input_data=b"\x0b" * 22,
+        recipe=[
+            {
+                "op": "Derive HKDF key",
+                "args": {
+                    "Salt": {"string": "000102030405060708090a0b0c", "option": "Hex"},
+                    "Info": {"string": "f0f1f2f3f4f5f6f7f8f9", "option": "Hex"},
+                    "Hashing function": "SHA256",
+                    "Extract mode": "with salt",
+                    "L (number of output octets)": 42,
+                },
+            }
+        ],
+        expected=build_hkdf_hex(
+            b"\x0b" * 22,
+            bytes.fromhex("000102030405060708090a0b0c"),
+            bytes.fromhex("f0f1f2f3f4f5f6f7f8f9"),
+            length=42,
+            hash_name="SHA256",
+            extract_mode="with salt",
+        ),
+    ),
+    BakeVector(
+        name="derive_hkdf_key_skip_extract_mode",
+        input_data=bytes.fromhex("077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"),
+        recipe=[
+            {
+                "op": "Derive HKDF key",
+                "args": {
+                    "Salt": {"string": "", "option": "Hex"},
+                    "Info": {"string": "f0f1f2f3f4f5f6f7f8f9", "option": "Hex"},
+                    "Hashing function": "SHA256",
+                    "Extract mode": "skip",
+                    "L (number of output octets)": 42,
+                },
+            }
+        ],
+        expected=build_hkdf_hex(
+            bytes.fromhex("077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"),
+            b"",
+            bytes.fromhex("f0f1f2f3f4f5f6f7f8f9"),
+            length=42,
+            hash_name="SHA256",
+            extract_mode="skip",
+        ),
+    ),
+    BakeVector(
+        name="derive_hkdf_key_no_salt_utf8_info",
+        input_data=b"input key material",
+        recipe=[
+            {
+                "op": "Derive HKDF key",
+                "args": {
+                    "Salt": {"string": "", "option": "Hex"},
+                    "Info": {"string": "context", "option": "UTF8"},
+                    "Hashing function": "SHA256",
+                    "Extract mode": "no salt",
+                    "L (number of output octets)": 16,
+                },
+            }
+        ],
+        expected=build_hkdf_hex(
+            b"input key material",
+            b"",
+            b"context",
+            length=16,
+            hash_name="SHA256",
+            extract_mode="no salt",
+        ),
+    ),
+    BakeVector(
+        name="derive_pbkdf2_key_sha1_rfc6070",
+        input_data="",
+        recipe=[
+            {
+                "op": "Derive PBKDF2 key",
+                "args": {
+                    "Passphrase": {"string": "password", "option": "UTF8"},
+                    "Key size": 160,
+                    "Iterations": 2,
+                    "Hashing function": "SHA1",
+                    "Salt": {"string": "salt", "option": "UTF8"},
+                },
+            }
+        ],
+        expected=hashlib.pbkdf2_hmac("sha1", b"password", b"salt", 2, dklen=20).hex(),
+    ),
+    BakeVector(
+        name="derive_pbkdf2_key_sha256_hex_passphrase_base64_salt",
+        input_data="",
+        recipe=[
+            {
+                "op": "Derive PBKDF2 key",
+                "args": {
+                    "Passphrase": {"string": "70686173653231", "option": "Hex"},
+                    "Key size": 256,
+                    "Iterations": 1000,
+                    "Hashing function": "SHA256",
+                    "Salt": {"string": "c2FsdCEh", "option": "Base64"},
+                },
+            }
+        ],
+        expected=hashlib.pbkdf2_hmac("sha256", b"phase21", b"salt!!", 1000, dklen=32).hex(),
+    ),
+    BakeVector(
+        name="enigma_default_hello",
+        input_data="HELLO",
+        recipe=["Enigma"],
+        expected="GUCNI",
+    ),
+    BakeVector(
+        name="enigma_non_strict_preserves_punctuation",
+        input_data="HELLO, WORLD!",
+        recipe=[{"op": "Enigma", "args": {"Strict output": False}}],
+        expected="GUCNI, DJZQG!",
+    ),
+    BakeVector(
+        name="enigma_four_rotor_roundtrip_custom_configuration",
+        input_data="PHASE TWENTYONE",
+        recipe=[
+            {"op": "Enigma", "args": build_enigma_four_rotor_args()},
+            {"op": "Enigma", "args": build_enigma_four_rotor_args()},
+        ],
+        expected="PHASE TWENTYONE",
+    ),
+    BakeVector(
+        name="fernet_encrypt_roundtrip_unicode_text",
+        input_data="phase21 ✓",
+        recipe=[{"op": "Fernet Encrypt", "args": {"Key": FERNET_TEST_KEY}}],
+        expected=build_fernet_encrypt_verifier("phase21 ✓"),
+    ),
+    BakeVector(
+        name="fernet_decrypt_static_token",
+        input_data=FERNET_PHASE21_TOKEN,
+        recipe=[{"op": "Fernet Decrypt", "args": {"Key": FERNET_TEST_KEY}}],
+        expected="phase21 ✓",
+    ),
+    BakeVector(
+        name="from_morse_code_empty_string",
+        input_data="",
+        recipe=["From Morse Code"],
+        expected="",
+    ),
+    BakeVector(
+        name="from_morse_code_sos_default_delimiters",
+        input_data="... --- ...",
+        recipe=["From Morse Code"],
+        expected="SOS",
+    ),
+    BakeVector(
+        name="from_morse_code_forward_slash_word_delimiter",
+        input_data=".... . .-.. .-.. ---/.-- --- .-. .-.. -..",
+        recipe=[
+            {
+                "op": "From Morse Code",
+                "args": {"Letter delimiter": "Space", "Word delimiter": "Forward slash"},
+            }
+        ],
+        expected="HELLO WORLD",
+    ),
+    BakeVector(
+        name="from_morse_code_roundtrip_with_to_morse_code",
+        input_data="phase 21",
+        recipe=["To Morse Code", "From Morse Code"],
+        expected="PHASE 21",
+    ),
+    BakeVector(
+        name="gost_encrypt_1989_ecb_no_padding_vector",
+        input_data="0123456789abcdef",
+        recipe=[
+            {
+                "op": "GOST Encrypt",
+                "args": build_gost_cipher_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    output_type="Hex",
+                    s_box="E-A",
+                ),
+            }
+        ],
+        expected="ae9300ec3ec60ca9",
+    ),
+    BakeVector(
+        name="gost_decrypt_1989_ecb_no_padding_vector",
+        input_data="ae9300ec3ec60ca9",
+        recipe=[
+            {
+                "op": "GOST Decrypt",
+                "args": build_gost_cipher_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    output_type="Hex",
+                    s_box="E-A",
+                ),
+            }
+        ],
+        expected="0123456789abcdef",
+    ),
+    BakeVector(
+        name="gost_roundtrip_kuznyechik_ecb_no_padding",
+        input_data="1122334455667700ffeeddccbbaa9988",
+        recipe=[
+            {
+                "op": "GOST Encrypt",
+                "args": build_gost_cipher_args(
+                    key_hex="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+                    algorithm="GOST R 34.12 (Kuznyechik, 2015)",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            },
+            {
+                "op": "GOST Decrypt",
+                "args": build_gost_cipher_args(
+                    key_hex="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+                    algorithm="GOST R 34.12 (Kuznyechik, 2015)",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            },
+        ],
+        expected="1122334455667700ffeeddccbbaa9988",
+    ),
+    BakeVector(
+        name="gost_key_wrap_1989_vector",
+        input_data="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+        recipe=[
+            {
+                "op": "GOST Key Wrap",
+                "args": build_gost_key_wrap_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    ukm_hex="1234567890abcdef",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    output_type="Hex",
+                    s_box="E-A",
+                ),
+            }
+        ],
+        expected="7e7f3d47d98c416bd557f7c2e453bbc1520c0a12b4ac4a07ae9300ec3ec60ca9\r\n58e32eb0",
+    ),
+    BakeVector(
+        name="gost_key_unwrap_1989_vector",
+        input_data="7e7f3d47d98c416bd557f7c2e453bbc1520c0a12b4ac4a07ae9300ec3ec60ca9\r\n58e32eb0",
+        recipe=[
+            {
+                "op": "GOST Key Unwrap",
+                "args": build_gost_key_wrap_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    ukm_hex="1234567890abcdef",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    output_type="Hex",
+                    s_box="E-A",
+                ),
+            }
+        ],
+        expected="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+    ),
+    BakeVector(
+        name="gost_key_wrap_roundtrip_magma",
+        input_data="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+        recipe=[
+            {
+                "op": "GOST Key Wrap",
+                "args": build_gost_key_wrap_args(
+                    key_hex="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+                    ukm_hex="1234567890abcdef",
+                    algorithm="GOST R 34.12 (Magma, 2015)",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            },
+            {
+                "op": "GOST Key Unwrap",
+                "args": build_gost_key_wrap_args(
+                    key_hex="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+                    ukm_hex="1234567890abcdef",
+                    algorithm="GOST R 34.12 (Magma, 2015)",
+                    input_type="Hex",
+                    output_type="Hex",
+                ),
+            },
+        ],
+        expected="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
     ),
     BakeVector(
         name="to_base64_empty_bytes",
