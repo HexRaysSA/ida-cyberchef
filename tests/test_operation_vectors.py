@@ -112,6 +112,54 @@ AMF0_SINGLE_FIELD_OBJECT_DECODED = {
 SIMPLE_DER_HEX = "3003020105"
 SIMPLE_CERTIFICATE_PEM = "-----BEGIN CERTIFICATE-----\r\nMAMCAQU=\r\n-----END CERTIFICATE-----\r\n"
 SIMPLE_PUBLIC_KEY_PEM = "-----BEGIN PUBLIC KEY-----\r\nMAMCAQU=\r\n-----END PUBLIC KEY-----\r\n"
+ECDSA_TEST_MESSAGE = (
+    "A common mistake that people make when trying to design something completely foolproof is to "
+    "underestimate the ingenuity of complete fools."
+)
+ECDSA_P256_PRIVATE_KEY_PKCS1_PEM = """-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEINtTjwUkgfAiSwqgcGAXWyE0ueIW6n2k395dmQZ3vGr4oAoGCCqGSM49
+AwEHoUQDQgAEDUc8A0EDNKoCYIPWMHz1yUzqE5mJgusgcAE8H6810fkJ8ZmTNiCC
+a6sLgR2vD1VNh2diirWgKPH4PVMKav5e6Q==
+-----END EC PRIVATE KEY-----"""
+ECDSA_P256_PRIVATE_KEY_PKCS8_PEM = """-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg21OPBSSB8CJLCqBw
+YBdbITS54hbqfaTf3l2ZBne8avihRANCAAQNRzwDQQM0qgJgg9YwfPXJTOoTmYmC
+6yBwATwfrzXR+QnxmZM2IIJrqwuBHa8PVU2HZ2KKtaAo8fg9Uwpq/l7p
+-----END PRIVATE KEY-----"""
+ECDSA_P256_PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDUc8A0EDNKoCYIPWMHz1yUzqE5mJ
+gusgcAE8H6810fkJ8ZmTNiCCa6sLgR2vD1VNh2diirWgKPH4PVMKav5e6Q==
+-----END PUBLIC KEY-----"""
+ECDSA_P256_PUBLIC_KEY_PEM_CRLF = ECDSA_P256_PUBLIC_KEY_PEM.replace("\n", "\r\n") + "\r\n"
+ECDSA_P256_PRIVATE_KEY_PKCS8_PEM_CRLF = ECDSA_P256_PRIVATE_KEY_PKCS8_PEM.replace("\n", "\r\n") + "\r\n"
+ECDSA_P256_SIGNATURE_SHA256_ASN1 = (
+    "3046022100e06905608a2fa7dbda9e284c2a7959dfb68fb527a5f003b2d7975ff135145127"
+    "022100b6baa253793334f8b93ea1dd622bc600124d8090babd807efe3f77b8b324388d"
+)
+ECDSA_P256_SIGNATURE_SHA256_P1363 = (
+    "e06905608a2fa7dbda9e284c2a7959dfb68fb527a5f003b2d7975ff135145127"
+    "b6baa253793334f8b93ea1dd622bc600124d8090babd807efe3f77b8b324388d"
+)
+ECDSA_P256_SIGNATURE_SHA256_JWS = (
+    "4GkFYIovp9vanihMKnlZ37aPtSel8AOy15df8TUUUSe2uqJTeTM0-Lk-od1iK8YAEk2AkLq9gH7-P3e4syQ4jQ"
+)
+ECDSA_P256_SIGNATURE_SHA256_JSON_OBJECT = {
+    "r": "00e06905608a2fa7dbda9e284c2a7959dfb68fb527a5f003b2d7975ff135145127",
+    "s": "00b6baa253793334f8b93ea1dd622bc600124d8090babd807efe3f77b8b324388d",
+}
+ECDSA_P256_SIGNATURE_SHA256_JSON = json.dumps(ECDSA_P256_SIGNATURE_SHA256_JSON_OBJECT, separators=(",", ":"))
+ECDSA_P256_PUBLIC_JWK_OBJECT = {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "DUc8A0EDNKoCYIPWMHz1yUzqE5mJgusgcAE8H6810fk",
+    "y": "CfGZkzYggmurC4Edrw9VTYdnYoq1oCjx-D1TCmr-Xuk",
+}
+ECDSA_P256_PRIVATE_JWK_OBJECT = {
+    **ECDSA_P256_PUBLIC_JWK_OBJECT,
+    "d": "21OPBSSB8CJLCqBwYBdbITS54hbqfaTf3l2ZBne8avg",
+}
+ECDSA_P256_PUBLIC_JWK = json.dumps(ECDSA_P256_PUBLIC_JWK_OBJECT, separators=(",", ":"))
+ECDSA_P256_PRIVATE_JWK = json.dumps(ECDSA_P256_PRIVATE_JWK_OBJECT, separators=(",", ":"))
 SIMPLE_TLV_HI = bytes.fromhex("01024869")
 SIMPLE_LV_SEQUENCE = bytes.fromhex("02486903627965")
 SIMPLE_TWO_BYTE_LENGTH_TLV = bytes.fromhex("0102004869")
@@ -9885,6 +9933,217 @@ def assert_html_to_text_preserves_raw_parse_ipv4_markup(result: object) -> None:
     assert decoded.endswith("</table>")
 
 
+def parse_json_lines(value: str) -> list[dict[str, object]]:
+    return [json.loads(line) for line in value.splitlines() if line.strip()]
+
+
+def assert_generated_ecdsa_pem_key_pair(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("-----BEGIN PUBLIC KEY-----\n")
+    assert "\n\n-----BEGIN PRIVATE KEY-----\n" in result
+    keys = parse_json_lines(bake(result, ["PEM to JWK"]))
+    assert len(keys) == 2
+    assert all(key["kty"] == "EC" for key in keys)
+    assert {key["crv"] for key in keys} == {"P-256"}
+    assert sum("d" in key for key in keys) == 1
+
+
+def assert_generated_ecdsa_jwk_key_pair(result: object) -> None:
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert list(parsed) == ["keys"]
+    assert len(parsed["keys"]) == 2
+    private_key, public_key = parsed["keys"]
+    assert private_key["kty"] == "EC"
+    assert private_key["crv"] == "P-256"
+    assert private_key["kid"] == "PrivateKey"
+    assert private_key["key_ops"] == ["sign"]
+    assert "d" in private_key
+    assert public_key["kty"] == "EC"
+    assert public_key["crv"] == "P-256"
+    assert public_key["kid"] == "PublicKey"
+    assert public_key["key_ops"] == ["verify"]
+    assert "d" not in public_key
+    pem_output = bake(result, ["JWK to PEM"])
+    assert isinstance(pem_output, str)
+    assert "-----BEGIN PRIVATE KEY-----\r\n" in pem_output
+    assert "-----BEGIN PUBLIC KEY-----\r\n" in pem_output
+
+
+def assert_generated_rsa_pem_key_pair(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("-----BEGIN PUBLIC KEY-----\r\n")
+    assert "-----BEGIN RSA PRIVATE KEY-----\r\n" in result
+    keys = parse_json_lines(bake(result, ["PEM to JWK"]))
+    assert len(keys) == 2
+    assert all(key["kty"] == "RSA" for key in keys)
+    assert all("n" in key and "e" in key for key in keys)
+    assert sum("d" in key for key in keys) == 1
+
+
+PUBLIC_KEY_VECTORS = [
+    BakeVector(
+        name="ecdsa_sign_verify_pkcs1_asn1_roundtrip",
+        input_data=ECDSA_TEST_MESSAGE,
+        recipe=[
+            {
+                "op": "ECDSA Sign",
+                "args": {
+                    "ECDSA Private Key (PEM)": ECDSA_P256_PRIVATE_KEY_PKCS1_PEM,
+                    "Message Digest Algorithm": "SHA-256",
+                    "Output Format": "ASN.1 HEX",
+                },
+            },
+            {
+                "op": "ECDSA Verify",
+                "args": {
+                    "Input Format": "ASN.1 HEX",
+                    "Message Digest Algorithm": "SHA-256",
+                    "ECDSA Public Key (PEM)": ECDSA_P256_PUBLIC_KEY_PEM,
+                    "Message": ECDSA_TEST_MESSAGE,
+                    "Message format": "Raw",
+                },
+            },
+        ],
+        expected="Verified OK",
+    ),
+    BakeVector(
+        name="ecdsa_sign_verify_hex_message_format_roundtrip",
+        input_data="cdb23f958e018418621d9e489b7bba0f0c481f604eba2eb1ea35e38f99490cc0",
+        recipe=[
+            {"op": "From Hex", "args": {"Delimiter": "Auto"}},
+            {
+                "op": "ECDSA Sign",
+                "args": {
+                    "ECDSA Private Key (PEM)": ECDSA_P256_PRIVATE_KEY_PKCS1_PEM,
+                    "Message Digest Algorithm": "SHA-256",
+                    "Output Format": "ASN.1 HEX",
+                },
+            },
+            {
+                "op": "ECDSA Verify",
+                "args": {
+                    "Input Format": "ASN.1 HEX",
+                    "Message Digest Algorithm": "SHA-256",
+                    "ECDSA Public Key (PEM)": ECDSA_P256_PUBLIC_KEY_PEM,
+                    "Message": "cdb23f958e018418621d9e489b7bba0f0c481f604eba2eb1ea35e38f99490cc0",
+                    "Message format": "Hex",
+                },
+            },
+        ],
+        expected="Verified OK",
+    ),
+    BakeVector(
+        name="ecdsa_verify_known_jws_signature",
+        input_data=ECDSA_P256_SIGNATURE_SHA256_JWS,
+        recipe=[
+            {
+                "op": "ECDSA Verify",
+                "args": {
+                    "Input Format": "Auto",
+                    "Message Digest Algorithm": "SHA-256",
+                    "ECDSA Public Key (PEM)": ECDSA_P256_PUBLIC_KEY_PEM,
+                    "Message": ECDSA_TEST_MESSAGE,
+                    "Message format": "Raw",
+                },
+            }
+        ],
+        expected="Verified OK",
+    ),
+    BakeVector(
+        name="ecdsa_signature_conversion_asn1_to_jws",
+        input_data=ECDSA_P256_SIGNATURE_SHA256_ASN1,
+        recipe=[
+            {
+                "op": "ECDSA Signature Conversion",
+                "args": {"Input Format": "Auto", "Output Format": "JSON Web Signature"},
+            }
+        ],
+        expected=ECDSA_P256_SIGNATURE_SHA256_JWS,
+    ),
+    BakeVector(
+        name="ecdsa_signature_conversion_json_to_p1363",
+        input_data=ECDSA_P256_SIGNATURE_SHA256_JSON,
+        recipe=[
+            {
+                "op": "ECDSA Signature Conversion",
+                "args": {"Input Format": "Auto", "Output Format": "P1363 HEX"},
+            }
+        ],
+        expected=ECDSA_P256_SIGNATURE_SHA256_P1363,
+    ),
+    BakeVector(
+        name="generate_ecdsa_key_pair_pem_structure",
+        input_data="",
+        recipe=[
+            {
+                "op": "Generate ECDSA Key Pair",
+                "args": {"Elliptic Curve": "P-256", "Output Format": "PEM"},
+            }
+        ],
+        expected=assert_generated_ecdsa_pem_key_pair,
+    ),
+    BakeVector(
+        name="generate_ecdsa_key_pair_jwk_roundtrip_to_pem",
+        input_data="",
+        recipe=[
+            {
+                "op": "Generate ECDSA Key Pair",
+                "args": {"Elliptic Curve": "P-256", "Output Format": "JWK"},
+            }
+        ],
+        expected=assert_generated_ecdsa_jwk_key_pair,
+    ),
+    BakeVector(
+        name="generate_rsa_key_pair_pem_roundtrip_to_jwk",
+        input_data="",
+        recipe=[
+            {
+                "op": "Generate RSA Key Pair",
+                "args": {"RSA Key Length": "1024", "Output Format": "PEM"},
+            }
+        ],
+        expected=assert_generated_rsa_pem_key_pair,
+    ),
+    BakeVector(
+        name="hex_to_object_identifier_server_auth_oid",
+        input_data="2b06010505070301",
+        recipe=["Hex to Object Identifier"],
+        expected="1.3.6.1.5.5.7.3.1",
+    ),
+    BakeVector(
+        name="object_identifier_to_hex_server_auth_oid",
+        input_data="1.3.6.1.5.5.7.3.1",
+        recipe=["Object Identifier to Hex"],
+        expected="2b06010505070301",
+    ),
+    BakeVector(
+        name="pem_to_jwk_ec_public_key_exact",
+        input_data=ECDSA_P256_PUBLIC_KEY_PEM,
+        recipe=["PEM to JWK"],
+        expected=ECDSA_P256_PUBLIC_JWK,
+    ),
+    BakeVector(
+        name="pem_to_jwk_ec_private_key_exact",
+        input_data=ECDSA_P256_PRIVATE_KEY_PKCS1_PEM,
+        recipe=["PEM to JWK"],
+        expected=ECDSA_P256_PRIVATE_JWK,
+    ),
+    BakeVector(
+        name="jwk_to_pem_ec_public_key_exact",
+        input_data=ECDSA_P256_PUBLIC_JWK,
+        recipe=["JWK to PEM"],
+        expected=ECDSA_P256_PUBLIC_KEY_PEM_CRLF,
+    ),
+    BakeVector(
+        name="jwk_to_pem_ec_private_key_exact",
+        input_data=ECDSA_P256_PRIVATE_JWK,
+        recipe=["JWK to PEM"],
+        expected=ECDSA_P256_PRIVATE_KEY_PKCS8_PEM_CRLF,
+    ),
+]
+
+
 OTHER_VECTORS = [
     BakeVector(
         name="analyse_uuid_version_1_namespace_dns",
@@ -10721,6 +10980,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *LANGUAGE_VECTORS,
     *MULTIMEDIA_VECTORS,
     *NETWORK_VECTORS,
+    *PUBLIC_KEY_VECTORS,
     *OTHER_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,

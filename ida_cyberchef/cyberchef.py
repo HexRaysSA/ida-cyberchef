@@ -165,15 +165,36 @@ def install_bake_helper(ctx: STPyV8.JSContext) -> None:
                 throw new TypeError("Recipe can only contain function names or functions");
             }
 
-            const operation = module.exports.operations.find(function(candidate) {
-                return sanitise(candidate.opName) === sanitise(operationName);
+            const exportedOperationName = Object.keys(module.exports).find(function(candidateName) {
+                const candidate = module.exports[candidateName];
+                return typeof candidate === "function" &&
+                    ![
+                        "__piBake",
+                        "bake",
+                        "help",
+                        "register",
+                        "Dish",
+                        "DishError",
+                        "OperationError",
+                        "ExcludedOperationError",
+                    ].includes(candidateName) &&
+                    sanitise(candidateName) === sanitise(operationName);
             });
 
-            if (!operation) {
-                throw new TypeError("Couldn't find an operation with name '" + operationName + "'.");
-            }
+            if (exportedOperationName) {
+                const exportedOperation = module.exports[exportedOperationName];
+                current = args ? exportedOperation(current, args) : exportedOperation(current);
+            } else {
+                const operation = module.exports.operations.find(function(candidate) {
+                    return sanitise(candidate.opName) === sanitise(operationName);
+                });
 
-            current = args ? operation(current, args) : operation(current);
+                if (!operation) {
+                    throw new TypeError("Couldn't find an operation with name '" + operationName + "'.");
+                }
+
+                current = args ? operation(current, args) : operation(current);
+            }
 
             if (current && typeof current.then === "function") {
                 current = await current;
