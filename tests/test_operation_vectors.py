@@ -561,6 +561,113 @@ WHERE id = 1
             "function anotherFunctionName() { return myVariableName; }"
         ),
     ),
+    BakeVector(
+        name="to_kebab_case_empty_string",
+        input_data="",
+        recipe=["To Kebab case"],
+        expected="",
+    ),
+    BakeVector(
+        name="to_kebab_case_default_transformation",
+        input_data="hello_world-Test value",
+        recipe=["To Kebab case"],
+        expected="hello-world-test-value",
+    ),
+    BakeVector(
+        name="to_kebab_case_context_aware_variable_names",
+        input_data=(
+            "const myVariableName = 1;\n"
+            "function anotherFunctionName() { return myVariableName; }"
+        ),
+        recipe=[{"op": "To Kebab case", "args": {"Attempt to be context aware": True}}],
+        expected=(
+            "const my-variable-name = 1;\n"
+            "function another-function-name() { return my-variable-name; }"
+        ),
+    ),
+    BakeVector(
+        name="to_snake_case_empty_string",
+        input_data="",
+        recipe=["To Snake case"],
+        expected="",
+    ),
+    BakeVector(
+        name="to_snake_case_default_transformation",
+        input_data="helloWorld-Test value",
+        recipe=["To Snake case"],
+        expected="hello_world_test_value",
+    ),
+    BakeVector(
+        name="to_snake_case_context_aware_variable_names",
+        input_data=(
+            "const myVariableName = 1;\n"
+            "function anotherFunctionName() { return myVariableName; }"
+        ),
+        recipe=[{"op": "To Snake case", "args": {"Attempt to be context aware": True}}],
+        expected=(
+            "const my_variable_name = 1;\n"
+            "function another_function_name() { return my_variable_name; }"
+        ),
+    ),
+    BakeVector(
+        name="xml_beautify_empty_string",
+        input_data="",
+        recipe=["XML Beautify"],
+        expected="",
+    ),
+    BakeVector(
+        name="xml_beautify_default_indent_string",
+        input_data='<root><item id="1">x</item><item id="2"/></root>',
+        recipe=["XML Beautify"],
+        expected='''<root>
+\\t<item id="1">x</item>
+\\t<item id="2"/>
+</root>''',
+    ),
+    BakeVector(
+        name="xml_beautify_custom_indent_string",
+        input_data="<root><item>1</item></root>",
+        recipe=[{"op": "XML Beautify", "args": {"Indent string": "  "}}],
+        expected='''<root>
+  <item>1</item>
+</root>''',
+    ),
+    BakeVector(
+        name="xml_minify_empty_string",
+        input_data="",
+        recipe=["XML Minify"],
+        expected="",
+    ),
+    BakeVector(
+        name="xml_minify_removes_comments_and_whitespace",
+        input_data='''<root>
+  <!--x-->
+  <item id="1">x</item>
+</root>''',
+        recipe=["XML Minify"],
+        expected='<root><item id="1">x</item></root>',
+    ),
+    BakeVector(
+        name="xml_minify_preserves_comments",
+        input_data='''<root>
+  <!--x-->
+  <item id="1">x</item>
+</root>''',
+        recipe=[{"op": "XML Minify", "args": {"Preserve comments": True}}],
+        expected='<root><!--x--><item id="1">x</item></root>',
+    ),
+    BakeVector(
+        name="xml_minify_then_beautify_roundtrip",
+        input_data='''<root>
+  <item id="1">x</item>
+  <item id="2"/>
+</root>''',
+        recipe=["XML Minify", "XML Beautify"],
+        expected='''<root>
+\\t<item id="1">x</item>
+\\t<item id="2"/>
+</root>''',
+    ),
 ]
 
 CODE_TIDY_BLOCKED_VECTORS = [
