@@ -5,6 +5,7 @@ import gzip
 import hashlib
 import hmac
 import io
+import json
 import ipaddress
 import re
 import struct
@@ -113,6 +114,7 @@ SIMPLE_TWO_BYTE_LENGTH_TLV = bytes.fromhex("0102004869")
 SIMPLE_BER_TLV = bytes.fromhex("01024142")
 FERNET_TEST_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 FERNET_PHASE21_TOKEN = "gAAAAABpq-NaiTYSdio-mpGASNZAteHn6Q-ga8cYUUzCsmHyy73m1QsCRsqj0i-4QbAMBD6rIshNSOicC5CVLLIBXtg64AnOPw=="
+JWT_PHASE22_PAYLOAD = {"sub": "123", "name": "John Doe", "admin": True, "iat": 1_700_000_000}
 
 
 def build_base45(value: bytes, alphabet: str = BASE45_ALPHABET) -> str:
@@ -821,6 +823,68 @@ def build_gost_key_wrap_args(
     return args
 
 
+def build_gost_mac_args(
+    *,
+    key_hex: str,
+    algorithm: str,
+    input_type: str,
+    iv_hex: str = "",
+    s_box: str | None = None,
+    output_type: str | None = None,
+    mac_length: int | None = None,
+    mac_hex: str | None = None,
+) -> dict[str, object]:
+    args: dict[str, object] = {
+        "Key": {"string": key_hex, "option": "Hex"},
+        "IV": {"string": iv_hex, "option": "Hex"},
+        "Input type": input_type,
+        "Algorithm": algorithm,
+    }
+
+    if output_type is not None:
+        args["Output type"] = output_type
+
+    if mac_length is not None:
+        args["MAC length"] = mac_length
+
+    if mac_hex is not None:
+        args["MAC"] = {"string": mac_hex, "option": "Hex"}
+
+    if s_box is not None:
+        args["sBox"] = s_box
+
+    return args
+
+
+def build_base64url_text(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode().rstrip("=")
+
+
+def build_jwt_hs256_token(payload: dict[str, object], secret: str) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    encoded_header = build_base64url_text(json.dumps(header, separators=(",", ":")).encode())
+    encoded_payload = build_base64url_text(json.dumps(payload, separators=(",", ":")).encode())
+    signing_input = f"{encoded_header}.{encoded_payload}"
+    signature = hmac.new(secret.encode(), signing_input.encode(), hashlib.sha256).digest()
+    return f"{signing_input}.{build_base64url_text(signature)}"
+
+
+def build_multiple_bombe_args() -> dict[str, object]:
+    return {
+        "Standard Enigmas": "User defined",
+        "Main rotors": (
+            "EKMFLGDQVZNTOWYHXUSPAIBRCJ<R\n"
+            "AJDKSIRUXBLHWTMCQGZNPYFVOE<F\n"
+            "BDFHJLCPRTXVZNYEIWGAKMUSQO<W"
+        ),
+        "4th rotor": "",
+        "Reflectors": "AY BR CU DH EQ FS GL IP JX KN MO TZ VW",
+        "Crib": "BBBB",
+        "Crib offset": 0,
+        "Use checking machine": True,
+    }
+
+
 def verify_bcrypt_rounds_four_hash(result: object) -> None:
     assert isinstance(result, str)
     assert re.fullmatch(r"\$2a\$04\$[./A-Za-z0-9]{53}", result)
@@ -843,6 +907,36 @@ def verify_bombe_default_crib_bbbb(result: object) -> None:
     assert result["result"][150] == ["PSWK", "??", "SGVG"]
     assert result["result"][200] == ["UJAX", "??", "EHCN"]
     assert result["result"][-1] == ["ZUNM", "AS BB", "BBBB"]
+
+
+def verify_multiple_bombe_user_defined_three_rotor(result: object) -> None:
+    assert isinstance(result, dict)
+    assert result["nLoops"] == 3
+    assert isinstance(result["bombeRuns"], list)
+    assert len(result["bombeRuns"]) == 6
+    assert result["bombeRuns"][0] == {
+        "rotors": [
+            "EKMFLGDQVZNTOWYHXUSPAIBRCJ",
+            "AJDKSIRUXBLHWTMCQGZNPYFVOE",
+            "BDFHJLCPRTXVZNYEIWGAKMUSQO",
+        ],
+        "reflector": "AY BR CU DH EQ FS GL IP JX KN MO TZ VW",
+        "result": [
+            ["ALG", "??", "EWFG"],
+            ["BWX", "??", "BXEQ"],
+            ["ICZ", "AA BR", "BBBB"],
+            ["LND", "??", "DCBP"],
+            ["PTF", "AB", "BBBB"],
+            ["SFG", "??", "RGEX"],
+            ["ULI", "??", "QMDO"],
+            ["UVI", "??", "SIBS"],
+            ["UXR", "??", "DVLV"],
+            ["YTV", "??", "TKMP"],
+            ["ZAY", "??", "TFZG"],
+            ["ZLZ", "??", "XTEB"],
+        ],
+    }
+    assert result["bombeRuns"][-1]["result"][-1] == ["XXZ", "AU BB", "BBBB"]
 
 
 def build_binary_string(value: bytes, delimiter: str, byte_length: int) -> str:
@@ -4709,6 +4803,221 @@ ENCODING_VECTORS = [
             },
         ],
         expected="8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef",
+    ),
+    BakeVector(
+        name="gost_sign_1989_mac_vector",
+        input_data="0123456789abcdef",
+        recipe=[
+            {
+                "op": "GOST Sign",
+                "args": build_gost_mac_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    output_type="Hex",
+                    s_box="E-A",
+                    mac_length=32,
+                ),
+            }
+        ],
+        expected="cb417441",
+    ),
+    BakeVector(
+        name="gost_verify_1989_matching_mac",
+        input_data="0123456789abcdef",
+        recipe=[
+            {
+                "op": "GOST Verify",
+                "args": build_gost_mac_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    mac_hex="cb417441",
+                    s_box="E-A",
+                ),
+            }
+        ],
+        expected="The signature matches",
+    ),
+    BakeVector(
+        name="gost_verify_1989_mismatched_mac",
+        input_data="0123456789abcdef",
+        recipe=[
+            {
+                "op": "GOST Verify",
+                "args": build_gost_mac_args(
+                    key_hex="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+                    algorithm="GOST 28147 (1989)",
+                    input_type="Hex",
+                    mac_hex="00000000",
+                    s_box="E-A",
+                ),
+            }
+        ],
+        expected="The signature does not match",
+    ),
+    BakeVector(
+        name="jwt_decode_static_hs256_token",
+        input_data=build_jwt_hs256_token(JWT_PHASE22_PAYLOAD, "secret"),
+        recipe=["JWT Decode"],
+        expected=JWT_PHASE22_PAYLOAD,
+    ),
+    BakeVector(
+        name="jwt_sign_hs256_fixed_iat_payload",
+        input_data=json.dumps(JWT_PHASE22_PAYLOAD, separators=(",", ":")),
+        recipe=[
+            {
+                "op": "JWT Sign",
+                "args": {
+                    "Private/Secret Key": "secret",
+                    "Signing algorithm": "HS256",
+                    "Header": "{}",
+                },
+            }
+        ],
+        expected=build_jwt_hs256_token(JWT_PHASE22_PAYLOAD, "secret"),
+    ),
+    BakeVector(
+        name="jwt_verify_static_hs256_token",
+        input_data=build_jwt_hs256_token(JWT_PHASE22_PAYLOAD, "secret"),
+        recipe=[{"op": "JWT Verify", "args": {"Public/Secret Key": "secret"}}],
+        expected=JWT_PHASE22_PAYLOAD,
+    ),
+    BakeVector(
+        name="ls47_encrypt_zero_padding_with_signature",
+        input_data="hello_world",
+        recipe=[
+            {
+                "op": "LS47 Encrypt",
+                "args": {"Password": "secret", "Padding": 0, "Signature": "pi"},
+            }
+        ],
+        expected=")-9nmfa,/l7a54o/",
+    ),
+    BakeVector(
+        name="ls47_decrypt_zero_padding_with_signature",
+        input_data=")-9nmfa,/l7a54o/",
+        recipe=[{"op": "LS47 Decrypt", "args": {"Password": "secret", "Padding": 0}}],
+        expected="hello_world---pi",
+    ),
+    BakeVector(
+        name="lorenz_sz40_send_plaintext_to_ita2",
+        input_data="HELLO",
+        recipe=[
+            {
+                "op": "Lorenz",
+                "args": {
+                    "Model": "SZ40",
+                    "Wheel Pattern": "KH Pattern",
+                    "KT-Schalter": False,
+                    "Mode": "Send",
+                    "Input Type": "Plaintext",
+                    "Output Type": "ITA2",
+                    "ITA2 Format": "5/8/9",
+                },
+            }
+        ],
+        expected="VIC3T",
+    ),
+    BakeVector(
+        name="lorenz_sz40_send_then_receive_roundtrip",
+        input_data="HELLO",
+        recipe=[
+            {
+                "op": "Lorenz",
+                "args": {
+                    "Model": "SZ40",
+                    "Wheel Pattern": "KH Pattern",
+                    "KT-Schalter": False,
+                    "Mode": "Send",
+                    "Input Type": "Plaintext",
+                    "Output Type": "ITA2",
+                    "ITA2 Format": "5/8/9",
+                },
+            },
+            {
+                "op": "Lorenz",
+                "args": {
+                    "Model": "SZ40",
+                    "Wheel Pattern": "KH Pattern",
+                    "KT-Schalter": False,
+                    "Mode": "Receive",
+                    "Input Type": "ITA2",
+                    "Output Type": "Plaintext",
+                    "ITA2 Format": "5/8/9",
+                },
+            },
+        ],
+        expected="HELLO",
+    ),
+    BakeVector(
+        name="lorenz_sz42b_with_kt_switch_and_alt_ita2_format",
+        input_data="TEST 123",
+        recipe=[
+            {
+                "op": "Lorenz",
+                "args": {
+                    "Model": "SZ42b",
+                    "Wheel Pattern": "ZMUG Pattern",
+                    "KT-Schalter": True,
+                    "Mode": "Send",
+                    "Input Type": "Plaintext",
+                    "Output Type": "ITA2",
+                    "ITA2 Format": "+/-/.",
+                },
+            },
+            {
+                "op": "Lorenz",
+                "args": {
+                    "Model": "SZ42b",
+                    "Wheel Pattern": "ZMUG Pattern",
+                    "KT-Schalter": True,
+                    "Mode": "Receive",
+                    "Input Type": "ITA2",
+                    "Output Type": "Plaintext",
+                    "ITA2 Format": "+/-/.",
+                },
+            },
+        ],
+        expected="TEST.123",
+    ),
+    BakeVector(
+        name="multiple_bombe_user_defined_three_rotor_menu",
+        input_data="AAAA",
+        recipe=[{"op": "Multiple Bombe", "args": build_multiple_bombe_args()}],
+        expected=verify_multiple_bombe_user_defined_three_rotor,
+    ),
+    BakeVector(
+        name="rc2_decrypt_hex_to_raw_cbc",
+        input_data="84feeb41042de66e",
+        recipe=[
+            {
+                "op": "RC2 Decrypt",
+                "args": {
+                    "Key": {"string": "secret12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Input": "Hex",
+                    "Output": "Raw",
+                },
+            }
+        ],
+        expected="hello",
+    ),
+    BakeVector(
+        name="rc2_decrypt_hex_to_hex_cbc",
+        input_data="84feeb41042de66e",
+        recipe=[
+            {
+                "op": "RC2 Decrypt",
+                "args": {
+                    "Key": {"string": "secret12", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="68656c6c6f",
     ),
     BakeVector(
         name="to_base64_empty_bytes",
