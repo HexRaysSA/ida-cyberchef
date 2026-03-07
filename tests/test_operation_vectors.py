@@ -2251,6 +2251,120 @@ def build_hamming_distance(sample_a: str, sample_b: str, *, unit: str, input_typ
     return str(sum((left_byte ^ right_byte).bit_count() for left_byte, right_byte in zip(left, right, strict=True)))
 
 
+def build_levenshtein_distance(
+    source: str,
+    destination: str,
+    *,
+    insertion_cost: int = 1,
+    deletion_cost: int = 1,
+    substitution_cost: int = 1,
+) -> float:
+    current_cost = [deletion_cost * index for index in range(len(source) + 1)]
+    next_cost = [0] * (len(source) + 1)
+
+    for destination_character in destination:
+        next_cost[0] = current_cost[0] + insertion_cost
+        for index, source_character in enumerate(source):
+            next_cost[index + 1] = min(
+                current_cost[index + 1] + insertion_cost,
+                next_cost[index] + deletion_cost,
+                current_cost[index] + (0 if source_character == destination_character else substitution_cost),
+            )
+        current_cost, next_cost = next_cost, current_cost
+
+    return float(current_cost[-1])
+
+
+def build_pad_lines(value: str, *, position: str, length: int, character: str) -> str:
+    lines = value.split("\n")
+    if position == "Start":
+        return "\n".join(line.rjust(len(line) + length, character) for line in lines)
+    return "\n".join(line.ljust(len(line) + length, character) for line in lines)
+
+
+def build_object_id_timestamp(value: str) -> str:
+    return datetime.fromtimestamp(int(value[:8], 16), tz=timezone.utc).isoformat(timespec="milliseconds").replace(
+        "+00:00", "Z"
+    )
+
+
+def build_remove_line_numbers(value: str) -> str:
+    return re.sub(r"^[ \t]{0,5}\d+[\s:|\-,.)\]]", "", value, flags=re.MULTILINE)
+
+
+def build_remove_whitespace(
+    value: str,
+    *,
+    spaces: bool = True,
+    carriage_returns: bool = True,
+    line_feeds: bool = True,
+    tabs: bool = True,
+    form_feeds: bool = True,
+    full_stops: bool = False,
+) -> str:
+    result = value
+    if spaces:
+        result = result.replace(" ", "")
+    if carriage_returns:
+        result = result.replace("\r", "")
+    if line_feeds:
+        result = result.replace("\n", "")
+    if tabs:
+        result = result.replace("\t", "")
+    if form_feeds:
+        result = result.replace("\f", "")
+    if full_stops:
+        result = result.replace(".", "")
+    return result
+
+
+def assert_offset_checker_common_positions(result: object) -> None:
+    assert isinstance(result, str)
+    parts = result.split("\n\n")
+    assert len(parts) == 3
+    assert result.count("class='hl5'") == 6
+    assert all("<span class='hl5'>a</span>" in part for part in parts)
+    assert all("<span class='hl5'>c</span>" in part for part in parts)
+    assert "b" in parts[0]
+    assert "x" in parts[1]
+    assert "q" in parts[2]
+
+
+def assert_parse_unix_file_permissions_directory(result: object) -> None:
+    assert isinstance(result, str)
+    assert "Textual representation: drwxr-xr-x" in result
+    assert "Octal representation:   0755" in result
+    assert "File type: Directory" in result
+    assert "| Execute |   X   |   X   |   X   |" in result
+
+
+def assert_parse_unix_file_permissions_sticky_bit(result: object) -> None:
+    assert isinstance(result, str)
+    assert "Textual representation: -rwxr-xr-t" in result
+    assert "Octal representation:   1755" in result
+    assert "The sticky bit is set" in result
+    assert "|   Write |   X   |       |       |" in result
+
+
+def assert_parse_colour_code_green(result: object) -> None:
+    assert isinstance(result, str)
+    assert "Hex:  #00ff00" in result
+    assert "RGB:  rgb(0, 255, 0)" in result
+    assert "HSLA: hsla(120, 100%, 50%, 1)" in result
+    assert "CMYK: cmyk(1.00, 0.00, 1.00, 0.00)" in result
+    assert "colorpicker" in result
+    assert "color: 'rgba(0, 255, 0, 1)'" in result
+
+
+def assert_parse_colour_code_alpha_red(result: object) -> None:
+    assert isinstance(result, str)
+    assert "Hex:  #ff0000" in result
+    assert "RGBA: rgba(255, 0, 0, 0.5)" in result
+    assert "HSLA: hsla(0, 100%, 50%, 0.5)" in result
+    assert "CMYK: cmyk(0.00, 1.00, 1.00, 0.00)" in result
+    assert "color: 'rgba(255, 0, 0, 0.5)'" in result
+
+
 def build_cartesian_product(samples: list[list[str]], item_delimiter: str) -> str:
     return item_delimiter.join(f"({','.join(items)})" for items in product(*samples))
 
@@ -11337,6 +11451,194 @@ UTILS_VECTORS = [
         input_data="a,b,c,d",
         recipe=[{"op": "Head", "args": {"Delimiter": "Comma", "Number": -1}}],
         expected="a,b,c",
+    ),
+    BakeVector(
+        name="levenshtein_distance_explicit_newline_delimiter",
+        input_data="kitten\nsitting",
+        recipe=[
+            {
+                "op": "Levenshtein Distance",
+                "args": {
+                    "Sample delimiter": "\n",
+                    "Insertion cost": 1,
+                    "Deletion cost": 1,
+                    "Substitution cost": 1,
+                },
+            }
+        ],
+        expected=build_levenshtein_distance("kitten", "sitting"),
+    ),
+    BakeVector(
+        name="levenshtein_distance_custom_substitution_cost",
+        input_data="abc|adc",
+        recipe=[
+            {
+                "op": "Levenshtein Distance",
+                "args": {
+                    "Sample delimiter": "|",
+                    "Insertion cost": 1,
+                    "Deletion cost": 1,
+                    "Substitution cost": 2,
+                },
+            }
+        ],
+        expected=build_levenshtein_distance(
+            "abc",
+            "adc",
+            insertion_cost=1,
+            deletion_cost=1,
+            substitution_cost=2,
+        ),
+    ),
+    BakeVector(
+        name="offset_checker_highlights_common_positions",
+        input_data="abc\n\naxc\n\naqc",
+        recipe=[{"op": "Offset checker", "args": {"Sample delimiter": "\n\n"}}],
+        expected=assert_offset_checker_common_positions,
+    ),
+    BakeVector(
+        name="pad_lines_default_start_padding",
+        input_data="a\nbb",
+        recipe=["Pad lines"],
+        expected=build_pad_lines("a\nbb", position="Start", length=5, character=" "),
+    ),
+    BakeVector(
+        name="pad_lines_end_padding_with_zeroes",
+        input_data="a\nbb",
+        recipe=[{"op": "Pad lines", "args": {"Position": "End", "Length": 4, "Character": "0"}}],
+        expected=build_pad_lines("a\nbb", position="End", length=4, character="0"),
+    ),
+    BakeVector(
+        name="parse_objectid_timestamp_known_example",
+        input_data="507f1f77bcf86cd799439011",
+        recipe=["Parse ObjectID timestamp"],
+        expected=build_object_id_timestamp("507f1f77bcf86cd799439011"),
+    ),
+    BakeVector(
+        name="parse_objectid_timestamp_zero_epoch",
+        input_data="000000000000000000000000",
+        recipe=["Parse ObjectID timestamp"],
+        expected=build_object_id_timestamp("000000000000000000000000"),
+    ),
+    BakeVector(
+        name="parse_unix_file_permissions_textual_directory",
+        input_data="drwxr-xr-x",
+        recipe=["Parse UNIX file permissions"],
+        expected=assert_parse_unix_file_permissions_directory,
+    ),
+    BakeVector(
+        name="parse_unix_file_permissions_octal_sticky_bit",
+        input_data="1755",
+        recipe=["Parse UNIX file permissions"],
+        expected=assert_parse_unix_file_permissions_sticky_bit,
+    ),
+    BakeVector(
+        name="parse_colour_code_hex_green",
+        input_data="#00ff00",
+        recipe=["Parse colour code"],
+        expected=assert_parse_colour_code_green,
+    ),
+    BakeVector(
+        name="parse_colour_code_rgba_preserves_alpha",
+        input_data="rgba(255,0,0,0.5)",
+        recipe=["Parse colour code"],
+        expected=assert_parse_colour_code_alpha_red,
+    ),
+    BakeVector(
+        name="regular_expression_highlight_matches",
+        input_data="abc123def456",
+        recipe=[
+            {
+                "op": "Regular expression",
+                "args": {
+                    "Regex": "\\d+",
+                    "Case insensitive": True,
+                    "^ and $ match at newlines": True,
+                    "Dot matches all": False,
+                    "Unicode support": False,
+                    "Astral support": False,
+                    "Display total": False,
+                    "Output format": "Highlight matches",
+                },
+            }
+        ],
+        expected="abc<span class='hl2' title='Offset: 3\n'>123</span>def<span class='hl1' title='Offset: 9\n'>456</span>",
+    ),
+    BakeVector(
+        name="regular_expression_lists_capture_groups_with_total",
+        input_data="abc123def456",
+        recipe=[
+            {
+                "op": "Regular expression",
+                "args": {
+                    "Regex": "([a-z]+)(\\d+)",
+                    "Case insensitive": True,
+                    "^ and $ match at newlines": True,
+                    "Dot matches all": False,
+                    "Unicode support": False,
+                    "Astral support": False,
+                    "Display total": True,
+                    "Output format": "List capture groups",
+                },
+            }
+        ],
+        expected="Total found: 2\n\nabc\n123\ndef\n456",
+    ),
+    BakeVector(
+        name="remove_line_numbers_simple_prefixes",
+        input_data="1 alpha\n2 beta",
+        recipe=["Remove line numbers"],
+        expected=build_remove_line_numbers("1 alpha\n2 beta"),
+    ),
+    BakeVector(
+        name="remove_line_numbers_roundtrip_add_line_numbers",
+        input_data="alpha\nbeta",
+        recipe=["Add line numbers", "Remove line numbers"],
+        expected="alpha\nbeta",
+    ),
+    BakeVector(
+        name="remove_null_bytes_empty_input",
+        input_data=b"",
+        recipe=["Remove null bytes"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="remove_null_bytes_interspersed_bytes",
+        input_data=b"a\x00b\x00\x00c",
+        recipe=["Remove null bytes"],
+        expected=b"abc",
+    ),
+    BakeVector(
+        name="remove_whitespace_default_categories",
+        input_data=" a\r\n\tb\f. c ",
+        recipe=["Remove whitespace"],
+        expected=build_remove_whitespace(" a\r\n\tb\f. c "),
+    ),
+    BakeVector(
+        name="remove_whitespace_full_stops_only",
+        input_data="a . b",
+        recipe=[
+            {
+                "op": "Remove whitespace",
+                "args": {
+                    "Spaces": False,
+                    "Carriage returns (\\r)": False,
+                    "Line feeds (\\n)": False,
+                    "Tabs": False,
+                    "Form feeds (\\f)": False,
+                    "Full stops": True,
+                },
+            }
+        ],
+        expected=build_remove_whitespace(
+            "a . b",
+            spaces=False,
+            carriage_returns=False,
+            line_feeds=False,
+            tabs=False,
+            form_feeds=False,
+            full_stops=True,
+        ),
     ),
 ]
 
