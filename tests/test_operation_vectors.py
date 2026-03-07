@@ -2381,6 +2381,38 @@ def build_ja3s_full_details(ja3s: str) -> str:
     )
 
 
+def build_udp_datagram(source_port: int, destination_port: int, payload: bytes, checksum: int) -> bytes:
+    return struct.pack("!HHHH", source_port, destination_port, 8 + len(payload), checksum) + payload
+
+
+def build_varint_bytes(value: int) -> bytes:
+    if value < 0:
+        raise ValueError("VarInt only supports non-negative integers")
+
+    encoded = bytearray()
+    remaining = value
+
+    while remaining >= 0x80:
+        encoded.append((remaining & 0x7F) | 0x80)
+        remaining >>= 7
+
+    encoded.append(remaining)
+    return bytes(encoded)
+
+
+def build_varint_string(data: bytes) -> str:
+    result = 0
+    shift = 0
+
+    for byte in data:
+        result |= (byte & 0x7F) << shift
+        if (byte & 0x80) == 0:
+            break
+        shift += 7
+
+    return str(result)
+
+
 def assert_parse_ipv4_header_html(result: object) -> None:
     assert isinstance(result, str)
     assert result.startswith("<table ")
@@ -9595,6 +9627,66 @@ NETWORK_VECTORS = [
         input_data=bytes.fromhex("7f900050000fa4b2000cb2a45010bff10000000048656c6c6f"),
         recipe=["Strip TCP header", {"op": "Decode text", "args": {"Encoding": "UTF-8 (65001)"}}],
         expected="Hello",
+    ),
+    BakeVector(
+        name="strip_udp_header_without_payload",
+        input_data=build_udp_datagram(1161, 53, b"", 0x0101),
+        recipe=["Strip UDP header"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="strip_udp_header_binary_payload",
+        input_data=build_udp_datagram(1161, 53, b"\x00\xffpayload", 0x1A2B),
+        recipe=["Strip UDP header"],
+        expected=b"\x00\xffpayload",
+    ),
+    BakeVector(
+        name="strip_udp_header_then_decode_text",
+        input_data=build_udp_datagram(33041, 53, b"hello", 0x0000),
+        recipe=["Strip UDP header", {"op": "Decode text", "args": {"Encoding": "UTF-8 (65001)"}}],
+        expected="hello",
+    ),
+    BakeVector(
+        name="varint_encode_zero",
+        input_data="0",
+        recipe=["VarInt Encode"],
+        expected=build_varint_bytes(0),
+    ),
+    BakeVector(
+        name="varint_encode_multibyte_300",
+        input_data="300",
+        recipe=["VarInt Encode"],
+        expected=build_varint_bytes(300),
+    ),
+    BakeVector(
+        name="varint_encode_large_uint64",
+        input_data=str(2**64 - 1),
+        recipe=["VarInt Encode"],
+        expected=build_varint_bytes(2**64 - 1),
+    ),
+    BakeVector(
+        name="varint_decode_empty_bytes_to_zero",
+        input_data=b"",
+        recipe=["VarInt Decode"],
+        expected=build_varint_string(b""),
+    ),
+    BakeVector(
+        name="varint_decode_multibyte_300",
+        input_data=build_varint_bytes(300),
+        recipe=["VarInt Decode"],
+        expected=build_varint_string(build_varint_bytes(300)),
+    ),
+    BakeVector(
+        name="varint_decode_large_uint64",
+        input_data=build_varint_bytes(2**64 - 1),
+        recipe=["VarInt Decode"],
+        expected=build_varint_string(build_varint_bytes(2**64 - 1)),
+    ),
+    BakeVector(
+        name="varint_encode_then_decode_roundtrip",
+        input_data=str(2**64 - 1),
+        recipe=["VarInt Encode", "VarInt Decode"],
+        expected=str(2**64 - 1),
     ),
 ]
 
