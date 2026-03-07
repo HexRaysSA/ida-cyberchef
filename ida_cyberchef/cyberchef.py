@@ -279,6 +279,33 @@ def load_cyberchef(path: str | None = None):
     return chef
 
 
+def convert_js_json_value(value: Any, chef: Any) -> Any:
+    """Convert JSON-like JS values into native Python structures.
+
+    Args:
+        value: JS value returned by CyberChef.
+        chef: Loaded CyberChef module with an attached STPyV8 context.
+
+    Returns:
+        A Python-native JSON value when a JS context is available.
+    """
+    if not chef or not hasattr(chef, "_stpyv8_context"):
+        return value
+
+    ctx = chef._stpyv8_context
+    ctx.locals.json_value = value
+    json_text = ctx.eval("""
+    (function() {
+        return JSON.stringify(json_value);
+    })
+    """)()
+
+    if json_text is None:
+        return None
+
+    return json.loads(json_text)
+
+
 def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberChefFile] | Any:
     """Convert CyberChef File values into native Python structures.
 
@@ -384,6 +411,8 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
         elif dish_type == DishType.BIG_NUMBER:
             return str(value)
         elif dish_type == DishType.JSON:
+            if isinstance(value, STPyV8.JSObject):
+                return convert_js_json_value(value, chef)
             return value
         elif dish_type == DishType.FILE:
             return convert_js_file_value(value, chef)

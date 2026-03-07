@@ -3,6 +3,7 @@ import bz2
 import gzip
 import hashlib
 import io
+import ipaddress
 import re
 import tarfile
 import zipfile
@@ -56,6 +57,41 @@ HELLO_HELLO_HELLO_ZLIB_FIXED_STREAM = bytes.fromhex("785ecb48cdc9c9574022013a2e0
 HELLO_HELLO_HELLO_ZLIB_STORE_STREAM = bytes.fromhex(
     "7801011100eeff68656c6c6f2068656c6c6f2068656c6c6f3a2e067d"
 )
+AMF3_SINGLE_FIELD_OBJECT = b"\x0a\x13\x01\x03a\x06\x09test"
+AMF0_SINGLE_FIELD_OBJECT = b"\x03\x00\x01a\x02\x00\x04test\x00\x00\t"
+AVRO_SINGLE_RECORD_CONTAINER = (
+    b"\x4f\x62\x6a\x01\x04\x16\x61\x76\x72\x6f\x2e\x73\x63\x68\x65\x6d\x61\x96\x01\x7b\x22\x74\x79\x70\x65\x22\x3a\x22\x72\x65"
+    b"\x63\x6f\x72\x64\x22\x2c\x22\x6e\x61\x6d\x65\x22\x3a\x22\x73\x6d\x61\x6c\x6c\x22\x2c\x22\x66\x69\x65\x6c\x64\x73\x22\x3a"
+    b"\x5b\x7b\x22\x6e\x61\x6d\x65\x22\x3a\x22\x6e\x61\x6d\x65\x22\x2c\x22\x74\x79\x70\x65\x22\x3a\x22\x73\x74\x72\x69\x6e\x67"
+    b"\x22\x7d\x5d\x7d\x14\x61\x76\x72\x6f\x2e\x63\x6f\x64\x65\x63\x08\x6e\x75\x6c\x6c\x00\x4e\x02\x47\x63\x2e\x37\x02\xe5\xb7"
+    b"\x5c\xda\xb9\xa6\x2f\x15\x41\x02\x0e\x0c\x6d\x79\x6e\x61\x6d\x65\x4e\x02\x47\x63\x2e\x37\x02\xe5\xb7\x5c\xda\xb9\xa6\x2f"
+    b"\x15\x41"
+)
+CSV_COMPLEX_SAMPLE = (
+    "A,B,C,D,E,F\r\n"
+    "1,2,3,4,5,6\r\n"
+    "\",\",;,',\"\"\"\",,\r\n"
+    '"""hello""","a""1","multi\r\nline",,,end\r\n'
+)
+CSV_COMPLEX_ARRAY_OF_DICTS = [
+    {"A": "1", "B": "2", "C": "3", "D": "4", "E": "5", "F": "6"},
+    {"A": ",", "B": ";", "C": "'", "D": '"', "E": "", "F": ""},
+    {"A": '"hello"', "B": 'a"1', "C": "multi\r\nline", "D": "", "E": "", "F": "end"},
+]
+AMF3_SINGLE_FIELD_OBJECT_DECODED = {
+    "marker": 10,
+    "$objectTypeIndicator": 19,
+    "$traits": {
+        "className": {"$lengthOrReference": 1, "$value": ""},
+        "sealedMemberNames": [{"$lengthOrReference": 3, "$value": "a"}],
+    },
+    "_dynamicMembers": [],
+    "_values": [{"marker": 6, "stringOrReference": {"$lengthOrReference": 9, "$value": "test"}}],
+}
+AMF0_SINGLE_FIELD_OBJECT_DECODED = {
+    "marker": 3,
+    "properties": [{"keyLength": 1, "key": "a", "value": {"marker": 2, "length": 4, "$value": "test"}}],
+}
 
 
 def build_base58_bitcoin(value: bytes) -> str:
@@ -758,6 +794,212 @@ CODE_TIDY_BLOCKED_VECTORS = [
         error_message=(
             "Sorry, the SyntaxHighlighter operation is not available in the Node.js version of CyberChef."
         ),
+    ),
+]
+
+DATA_FORMAT_VECTORS = [
+    BakeVector(
+        name="amf_encode_amf3_single_string_field_object",
+        input_data='{"a":"test"}',
+        recipe=[{"op": "AMF Encode", "args": {"Format": "AMF3"}}],
+        expected=AMF3_SINGLE_FIELD_OBJECT,
+    ),
+    BakeVector(
+        name="amf_encode_amf0_single_string_field_object",
+        input_data='{"a":"test"}',
+        recipe=[{"op": "AMF Encode", "args": {"Format": "AMF0"}}],
+        expected=AMF0_SINGLE_FIELD_OBJECT,
+    ),
+    BakeVector(
+        name="amf_decode_amf3_single_string_field_object",
+        input_data=AMF3_SINGLE_FIELD_OBJECT,
+        recipe=[{"op": "AMF Decode", "args": {"Format": "AMF3"}}],
+        expected=AMF3_SINGLE_FIELD_OBJECT_DECODED,
+    ),
+    BakeVector(
+        name="amf_decode_amf0_single_string_field_object",
+        input_data=AMF0_SINGLE_FIELD_OBJECT,
+        recipe=[{"op": "AMF Decode", "args": {"Format": "AMF0"}}],
+        expected=AMF0_SINGLE_FIELD_OBJECT_DECODED,
+    ),
+    BakeVector(
+        name="avro_to_json_force_valid_json",
+        input_data=AVRO_SINGLE_RECORD_CONTAINER,
+        recipe=[{"op": "Avro to JSON", "args": {"Force Valid JSON": True}}],
+        expected='''{
+    "name": "myname"
+}''',
+    ),
+    BakeVector(
+        name="avro_to_json_newline_delimited_json",
+        input_data=AVRO_SINGLE_RECORD_CONTAINER,
+        recipe=[{"op": "Avro to JSON", "args": {"Force Valid JSON": False}}],
+        expected='{"name":"myname"}\n',
+    ),
+    BakeVector(
+        name="cbor_encode_map",
+        input_data='{"a":1,"b":2,"c":3}',
+        recipe=["CBOR Encode"],
+        expected=bytes.fromhex("a3616101616202616303"),
+    ),
+    BakeVector(
+        name="cbor_decode_map",
+        input_data=bytes.fromhex("a3616101616202616303"),
+        recipe=["CBOR Decode"],
+        expected={"a": 1, "b": 2, "c": 3},
+    ),
+    BakeVector(
+        name="cbor_roundtrip_nested_json_value",
+        input_data='{"a":1,"b":false,"c":[1,2,3]}',
+        recipe=["CBOR Encode", "CBOR Decode"],
+        expected={"a": 1, "b": False, "c": [1, 2, 3]},
+    ),
+    BakeVector(
+        name="csv_to_json_array_of_dictionaries",
+        input_data=CSV_COMPLEX_SAMPLE,
+        recipe=[
+            {
+                "op": "CSV to JSON",
+                "args": {
+                    "Cell delimiters": ",",
+                    "Row delimiters": "\r\n",
+                    "Format": "Array of dictionaries",
+                },
+            }
+        ],
+        expected=CSV_COMPLEX_ARRAY_OF_DICTS,
+    ),
+    BakeVector(
+        name="csv_to_json_array_of_arrays_with_custom_delimiters",
+        input_data="name;score|alice;10|bob;20",
+        recipe=[
+            {
+                "op": "CSV to JSON",
+                "args": {
+                    "Cell delimiters": ";",
+                    "Row delimiters": "|",
+                    "Format": "Array of arrays",
+                },
+            }
+        ],
+        expected=[["name", "score"], ["alice", "10"], ["bob", "20"]],
+    ),
+    BakeVector(
+        name="change_ip_format_dotted_decimal_to_hex",
+        input_data="192.168.1.1",
+        recipe=[
+            {
+                "op": "Change IP format",
+                "args": {"Input format": "Dotted Decimal", "Output format": "Hex"},
+            }
+        ],
+        expected=ipaddress.IPv4Address("192.168.1.1").packed.hex(),
+    ),
+    BakeVector(
+        name="change_ip_format_hex_to_octal",
+        input_data="c0a80101",
+        recipe=[
+            {
+                "op": "Change IP format",
+                "args": {"Input format": "Hex", "Output format": "Octal"},
+            }
+        ],
+        expected=f"0{int(ipaddress.IPv4Address('192.168.1.1')):o}",
+    ),
+    BakeVector(
+        name="change_ip_format_multiline_decimal_to_dotted_decimal",
+        input_data="3232235777\n167772161",
+        recipe=[
+            {
+                "op": "Change IP format",
+                "args": {"Input format": "Decimal", "Output format": "Dotted Decimal"},
+            }
+        ],
+        expected="\n".join([
+            str(ipaddress.IPv4Address(3232235777)),
+            str(ipaddress.IPv4Address(167772161)),
+        ]),
+    ),
+    BakeVector(
+        name="decode_text_utf16le_powershell_command",
+        input_data=base64.b64decode("ZABpAHIAIAAiAGMAOgBcAHAAcgBvAGcAcgBhAG0AIABmAGkAbABlAHMAIgAgAA=="),
+        recipe=[{"op": "Decode text", "args": {"Encoding": "UTF-16LE (1200)"}}],
+        expected='dir "c:\\program files" ',
+    ),
+    BakeVector(
+        name="decode_text_ebcdic_cp500_hello",
+        input_data="hello".encode("cp500"),
+        recipe=[{"op": "Decode text", "args": {"Encoding": "IBM EBCDIC International (500)"}}],
+        expected="hello",
+    ),
+    BakeVector(
+        name="encode_text_utf8_cafe",
+        input_data="café",
+        recipe=[{"op": "Encode text", "args": {"Encoding": "UTF-8 (65001)"}}],
+        expected="café".encode("utf-8"),
+    ),
+    BakeVector(
+        name="encode_text_ebcdic_cp500_hello",
+        input_data="hello",
+        recipe=[{"op": "Encode text", "args": {"Encoding": "IBM EBCDIC International (500)"}}],
+        expected="hello".encode("cp500"),
+    ),
+    BakeVector(
+        name="encode_decode_text_roundtrip_utf16le",
+        input_data="pi ✓",
+        recipe=[
+            {"op": "Encode text", "args": {"Encoding": "UTF-16LE (1200)"}},
+            {"op": "Decode text", "args": {"Encoding": "UTF-16LE (1200)"}},
+        ],
+        expected="pi ✓",
+    ),
+    BakeVector(
+        name="escape_unicode_characters_default_greek_text",
+        input_data="σου",
+        recipe=[
+            {
+                "op": "Escape Unicode Characters",
+                "args": {
+                    "Prefix": "\\u",
+                    "Encode all chars": False,
+                    "Padding": 4,
+                    "Uppercase hex": True,
+                },
+            }
+        ],
+        expected="\\u03C3\\u03BF\\u03C5",
+    ),
+    BakeVector(
+        name="escape_unicode_characters_preserve_ascii_with_percent_prefix",
+        input_data="Aβ",
+        recipe=[
+            {
+                "op": "Escape Unicode Characters",
+                "args": {
+                    "Prefix": "%u",
+                    "Encode all chars": False,
+                    "Padding": 4,
+                    "Uppercase hex": True,
+                },
+            }
+        ],
+        expected="A%u03B2",
+    ),
+    BakeVector(
+        name="escape_unicode_characters_encode_all_with_uplus_prefix",
+        input_data="A!",
+        recipe=[
+            {
+                "op": "Escape Unicode Characters",
+                "args": {
+                    "Prefix": "U+",
+                    "Encode all chars": True,
+                    "Padding": 6,
+                    "Uppercase hex": False,
+                },
+            }
+        ],
+        expected="U+000041U+000021",
     ),
 ]
 
@@ -1791,6 +2033,7 @@ ARITHMETIC_LOGIC_VECTORS = [
 
 BITE_SIZED_BAKE_VECTORS = [
     *CODE_TIDY_VECTORS,
+    *DATA_FORMAT_VECTORS,
     *COMPRESSION_VECTORS,
     *ENCODING_VECTORS,
     *HASH_VECTORS,
