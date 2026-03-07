@@ -284,6 +284,60 @@ def get_delimiter_text(name: str) -> str:
     }[name]
 
 
+def build_a1z26_encode_string(value: str, delimiter: str) -> str:
+    separator = get_delimiter_text(delimiter)
+    encoded = []
+
+    for character in value.lower():
+        if "a" <= character <= "z":
+            encoded.append(str(ord(character) - 96))
+
+    return separator.join(encoded)
+
+
+def build_a1z26_decode_string(value: str, delimiter: str) -> str:
+    if not value:
+        return ""
+
+    separator = get_delimiter_text(delimiter)
+    return "".join(chr(int(part) + 96) for part in value.split(separator))
+
+
+def build_affine_encode_string(value: str, *, a: int, b: int) -> str:
+    result = []
+
+    for character in value:
+        if character.isalpha():
+            base = ord("A") if character.isupper() else ord("a")
+            offset = ord(character.lower()) - ord("a")
+            result.append(chr((((a * offset) + b) % 26) + base))
+            continue
+
+        result.append(character)
+
+    return "".join(result)
+
+
+def build_affine_decode_string(value: str, *, a: int, b: int) -> str:
+    inverse = pow(a, -1, 26)
+    result = []
+
+    for character in value:
+        if character.isalpha():
+            base = ord("A") if character.isupper() else ord("a")
+            offset = ord(character.lower()) - ord("a")
+            result.append(chr((inverse * (offset - b) % 26) + base))
+            continue
+
+        result.append(character)
+
+    return "".join(result)
+
+
+def build_atbash_string(value: str) -> str:
+    return build_affine_encode_string(value, a=25, b=25)
+
+
 def build_binary_string(value: bytes, delimiter: str, byte_length: int) -> str:
     separator = get_delimiter_text(delimiter)
     return separator.join(format(byte, "b").zfill(byte_length) for byte in value)
@@ -3241,6 +3295,171 @@ BLOCKED_BAKE_VECTORS = [
 ]
 
 ENCODING_VECTORS = [
+    BakeVector(
+        name="a1z26_encode_empty_string",
+        input_data="",
+        recipe=[{"op": "A1Z26 Cipher Encode", "args": {"Delimiter": "Space"}}],
+        expected="",
+    ),
+    BakeVector(
+        name="a1z26_encode_comma_delimited_letters_only",
+        input_data="abc xyz!",
+        recipe=[{"op": "A1Z26 Cipher Encode", "args": {"Delimiter": "Comma"}}],
+        expected=build_a1z26_encode_string("abc xyz!", "Comma"),
+    ),
+    BakeVector(
+        name="a1z26_decode_line_feed_values",
+        input_data="1\n2\n3\n24\n25\n26",
+        recipe=[{"op": "A1Z26 Cipher Decode", "args": {"Delimiter": "Line feed"}}],
+        expected=build_a1z26_decode_string("1\n2\n3\n24\n25\n26", "Line feed"),
+    ),
+    BakeVector(
+        name="a1z26_roundtrip_crlf_delimiter",
+        input_data="Phase",
+        recipe=[
+            {"op": "A1Z26 Cipher Encode", "args": {"Delimiter": "CRLF"}},
+            {"op": "A1Z26 Cipher Decode", "args": {"Delimiter": "CRLF"}},
+        ],
+        expected="phase",
+    ),
+    BakeVector(
+        name="aes_encrypt_cbc_no_padding_nist_vector",
+        input_data="6bc1bee22e409f96e93d7e117393172a",
+        recipe=[
+            {
+                "op": "AES Encrypt",
+                "args": {
+                    "Key": {"string": "2b7e151628aed2a6abf7158809cf4f3c", "option": "Hex"},
+                    "IV": {"string": "000102030405060708090a0b0c0d0e0f", "option": "Hex"},
+                    "Mode": "CBC/NoPadding",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                    "Additional Authenticated Data": {"string": "", "option": "Hex"},
+                },
+            }
+        ],
+        expected="7649abac8119b246cee98e9b12e9197d",
+    ),
+    BakeVector(
+        name="aes_decrypt_cbc_no_padding_nist_vector",
+        input_data="7649abac8119b246cee98e9b12e9197d",
+        recipe=[
+            {
+                "op": "AES Decrypt",
+                "args": {
+                    "Key": {"string": "2b7e151628aed2a6abf7158809cf4f3c", "option": "Hex"},
+                    "IV": {"string": "000102030405060708090a0b0c0d0e0f", "option": "Hex"},
+                    "Mode": "CBC/NoPadding",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                    "GCM Tag": {"string": "", "option": "Hex"},
+                    "Additional Authenticated Data": {"string": "", "option": "Hex"},
+                },
+            }
+        ],
+        expected="6bc1bee22e409f96e93d7e117393172a",
+    ),
+    BakeVector(
+        name="aes_encrypt_decrypt_cbc_roundtrip_utf8_key",
+        input_data="phase18 message",
+        recipe=[
+            {
+                "op": "AES Encrypt",
+                "args": {
+                    "Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"},
+                    "IV": {"string": "000102030405060708090a0b0c0d0e0f", "option": "Hex"},
+                    "Mode": "CBC",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                    "Additional Authenticated Data": {"string": "", "option": "Hex"},
+                },
+            },
+            {
+                "op": "AES Decrypt",
+                "args": {
+                    "Key": {"string": "YELLOW SUBMARINE", "option": "UTF8"},
+                    "IV": {"string": "000102030405060708090a0b0c0d0e0f", "option": "Hex"},
+                    "Mode": "CBC",
+                    "Input": "Hex",
+                    "Output": "Raw",
+                    "GCM Tag": {"string": "", "option": "Hex"},
+                    "Additional Authenticated Data": {"string": "", "option": "Hex"},
+                },
+            },
+        ],
+        expected="phase18 message",
+    ),
+    BakeVector(
+        name="aes_key_wrap_rfc3394_vector",
+        input_data="00112233445566778899aabbccddeeff",
+        recipe=[
+            {
+                "op": "AES Key Wrap",
+                "args": {
+                    "Key (KEK)": {"string": "000102030405060708090a0b0c0d0e0f", "option": "Hex"},
+                    "IV": {"string": "a6a6a6a6a6a6a6a6", "option": "Hex"},
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5",
+    ),
+    BakeVector(
+        name="aes_key_unwrap_rfc3394_vector",
+        input_data="1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5",
+        recipe=[
+            {
+                "op": "AES Key Unwrap",
+                "args": {
+                    "Key (KEK)": {"string": "000102030405060708090a0b0c0d0e0f", "option": "Hex"},
+                    "IV": {"string": "a6a6a6a6a6a6a6a6", "option": "Hex"},
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="00112233445566778899aabbccddeeff",
+    ),
+    BakeVector(
+        name="affine_encode_identity_preserves_mixed_text",
+        input_data="Affine Cipher 123!",
+        recipe=[{"op": "Affine Cipher Encode", "args": {"a": 1, "b": 0}}],
+        expected=build_affine_encode_string("Affine Cipher 123!", a=1, b=0),
+    ),
+    BakeVector(
+        name="affine_encode_non_default_key",
+        input_data="Affine Cipher!",
+        recipe=[{"op": "Affine Cipher Encode", "args": {"a": 5, "b": 8}}],
+        expected=build_affine_encode_string("Affine Cipher!", a=5, b=8),
+    ),
+    BakeVector(
+        name="affine_decode_non_default_key",
+        input_data="Ihhwvc Swfrcp!",
+        recipe=[{"op": "Affine Cipher Decode", "args": {"a": 5, "b": 8}}],
+        expected=build_affine_decode_string("Ihhwvc Swfrcp!", a=5, b=8),
+    ),
+    BakeVector(
+        name="affine_roundtrip_mixed_case",
+        input_data="Affine Cipher 123!",
+        recipe=[
+            {"op": "Affine Cipher Encode", "args": {"a": 11, "b": 6}},
+            {"op": "Affine Cipher Decode", "args": {"a": 11, "b": 6}},
+        ],
+        expected="Affine Cipher 123!",
+    ),
+    BakeVector(
+        name="atbash_known_phrase",
+        input_data="Hello, Zebra!",
+        recipe=["Atbash Cipher"],
+        expected=build_atbash_string("Hello, Zebra!"),
+    ),
+    BakeVector(
+        name="atbash_roundtrip_self_inverse",
+        input_data="Attack at dawn.",
+        recipe=["Atbash Cipher", "Atbash Cipher"],
+        expected="Attack at dawn.",
+    ),
     BakeVector(
         name="to_base64_empty_bytes",
         input_data=b"",
