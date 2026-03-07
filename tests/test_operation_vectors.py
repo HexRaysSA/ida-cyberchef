@@ -29,6 +29,11 @@ class BlockedBakeVector:
 
 EMPTY_BSON_DOCUMENT = b"\x05\x00\x00\x00\x00"
 HELLO_WORLD_BSON_DOCUMENT = bytes.fromhex("160000000268656c6c6f0006000000776f726c640000")
+MICROSOFT_SCRIPT_SAMPLE_ENCODED = (
+    "#@~^RQAAAA==-mD~sX|:/TP{~J:+dYbxL~@!F@*@!+@*@!&@*eEI@#@&@#@&.jm.raY "
+    "214Wv:zms/obI0xEAAA==^#~@"
+)
+MICROSOFT_SCRIPT_SAMPLE_DECODED = 'var my_msg = "Testing <1><2><3>!";\r\n\r\nVScript.Echo(my_msg);'
 
 
 def build_base58_bitcoin(value: bytes) -> str:
@@ -362,6 +367,200 @@ CODE_TIDY_VECTORS = [
     "a": 2
 }''',
     ),
+    BakeVector(
+        name="jq_identity_object",
+        input_data='{"a":1,"b":[2,3]}',
+        recipe=[{"op": "Jq", "args": {"Query": "."}}],
+        expected='{"a":1,"b":[2,3]}',
+    ),
+    BakeVector(
+        name="jq_extract_array_element",
+        input_data='{"a":1,"b":[2,3]}',
+        recipe=[{"op": "Jq", "args": {"Query": ".b[1]"}}],
+        expected="3",
+    ),
+    BakeVector(
+        name="jq_map_then_beautify",
+        input_data='[{"a":1},{"a":2}]',
+        recipe=[{"op": "Jq", "args": {"Query": "map(.a)"}}, "JSON Beautify"],
+        expected='''[
+    1,
+    2
+]''',
+    ),
+    BakeVector(
+        name="microsoft_script_decoder_empty_string",
+        input_data="",
+        recipe=["Microsoft Script Decoder"],
+        expected="",
+    ),
+    BakeVector(
+        name="microsoft_script_decoder_docs_sample",
+        input_data=MICROSOFT_SCRIPT_SAMPLE_ENCODED,
+        recipe=["Microsoft Script Decoder"],
+        expected=MICROSOFT_SCRIPT_SAMPLE_DECODED,
+    ),
+    BakeVector(
+        name="php_deserialize_nested_array_valid_json",
+        input_data='a:2:{s:1:"a";i:10;i:0;a:1:{s:2:"ab";b:1;}}',
+        recipe=["PHP Deserialize"],
+        expected='{"a": 10,"0": {"ab": true}}',
+    ),
+    BakeVector(
+        name="php_deserialize_preserves_numeric_keys_when_not_valid_json",
+        input_data='a:2:{s:1:"a";i:10;i:0;a:1:{s:2:"ab";b:1;}}',
+        recipe=[{"op": "PHP Deserialize", "args": {"Output valid JSON": False}}],
+        expected='{"a": 10,0: {"ab": true}}',
+    ),
+    BakeVector(
+        name="php_serialize_array_docs_example",
+        input_data='[5,"abc",true]',
+        recipe=["PHP Serialize"],
+        expected='a:3:{i:0;i:5;i:1;s:3:"abc";i:2;b:1;}',
+    ),
+    BakeVector(
+        name="php_serialize_then_deserialize_array_roundtrip",
+        input_data='[5,"abc",true]',
+        recipe=["PHP Serialize", "PHP Deserialize"],
+        expected='{"0": 5,"1": "abc","2": true}',
+    ),
+    BakeVector(
+        name="render_markdown_empty_string",
+        input_data="",
+        recipe=["Render Markdown"],
+        expected='<div style="font-family: var(--primary-font-family)"></div>',
+    ),
+    BakeVector(
+        name="render_markdown_heading",
+        input_data="# hi",
+        recipe=["Render Markdown"],
+        expected='<div style="font-family: var(--primary-font-family)"><h1>hi</h1>\n</div>',
+    ),
+    BakeVector(
+        name="render_markdown_linkify_urls",
+        input_data="Visit https://example.com",
+        recipe=[
+            {
+                "op": "Render Markdown",
+                "args": {
+                    "Autoconvert URLs to links": True,
+                    "Enable syntax highlighting": True,
+                },
+            }
+        ],
+        expected=(
+            '<div style="font-family: var(--primary-font-family)"><p>Visit '
+            '<a href="https://example.com">https://example.com</a></p>\n</div>'
+        ),
+    ),
+    BakeVector(
+        name="render_markdown_disables_html_rendering",
+        input_data="<b>x</b>",
+        recipe=["Render Markdown"],
+        expected='<div style="font-family: var(--primary-font-family)"><p>&lt;b&gt;x&lt;/b&gt;</p>\n</div>',
+    ),
+    BakeVector(
+        name="sql_beautify_empty_string",
+        input_data="",
+        recipe=["SQL Beautify"],
+        expected="",
+    ),
+    BakeVector(
+        name="sql_beautify_default_layout",
+        input_data="select * from users where id=1",
+        recipe=["SQL Beautify"],
+        expected='''SELECT *
+FROM users
+WHERE id=1''',
+    ),
+    BakeVector(
+        name="sql_beautify_custom_indent_string",
+        input_data='select a, b from users where id=1 and name="x"',
+        recipe=[{"op": "SQL Beautify", "args": {"Indent string": "  "}}],
+        expected='''SELECT a,
+         b
+FROM users
+WHERE id=1
+        AND name="x"''',
+    ),
+    BakeVector(
+        name="sql_minify_empty_string",
+        input_data="",
+        recipe=["SQL Minify"],
+        expected="",
+    ),
+    BakeVector(
+        name="sql_minify_multiline_query",
+        input_data='''SELECT a,
+       b
+FROM users
+WHERE id = 1 AND name = "x"''',
+        recipe=["SQL Minify"],
+        expected='SELECT a, b FROM users WHERE id = 1 AND name = "x"',
+    ),
+    BakeVector(
+        name="sql_minify_then_beautify_roundtrip",
+        input_data='''SELECT a,
+       b
+FROM users
+WHERE id = 1 AND name = "x"''',
+        recipe=["SQL Minify", "SQL Beautify"],
+        expected='''SELECT a,
+         b
+FROM users
+WHERE id = 1
+        AND name = "x"''',
+    ),
+    BakeVector(
+        name="strip_html_tags_empty_string",
+        input_data="",
+        recipe=["Strip HTML tags"],
+        expected="",
+    ),
+    BakeVector(
+        name="strip_html_tags_default_cleanup",
+        input_data="<div>one</div>\n    <div>two</div>\n\n<div>three</div>",
+        recipe=["Strip HTML tags"],
+        expected="one\ntwo\nthree",
+    ),
+    BakeVector(
+        name="strip_html_tags_preserve_indentation_and_line_breaks",
+        input_data="<div>one</div>\n    <div>two</div>\n\n<div>three</div>",
+        recipe=[
+            {
+                "op": "Strip HTML tags",
+                "args": {
+                    "Remove indentation": False,
+                    "Remove excess line breaks": False,
+                },
+            }
+        ],
+        expected="one\n    two\n\nthree",
+    ),
+    BakeVector(
+        name="to_camel_case_empty_string",
+        input_data="",
+        recipe=["To Camel case"],
+        expected="",
+    ),
+    BakeVector(
+        name="to_camel_case_default_transformation",
+        input_data="hello_world-test value",
+        recipe=["To Camel case"],
+        expected="helloWorldTestValue",
+    ),
+    BakeVector(
+        name="to_camel_case_context_aware_variable_names",
+        input_data=(
+            "const my_variable_name = 1;\n"
+            "function another_function_name() { return my_variable_name; }"
+        ),
+        recipe=[{"op": "To Camel case", "args": {"Attempt to be context aware": True}}],
+        expected=(
+            "const myVariableName = 1;\n"
+            "function anotherFunctionName() { return myVariableName; }"
+        ),
+    ),
 ]
 
 CODE_TIDY_BLOCKED_VECTORS = [
@@ -387,6 +586,14 @@ CODE_TIDY_BLOCKED_VECTORS = [
         recipe=["JavaScript Parser"],
         error_message=(
             "Sorry, the JavaScriptParser operation is not available in the Node.js version of CyberChef."
+        ),
+    ),
+    BlockedBakeVector(
+        name="syntax_highlighter_excluded_from_node_bundle",
+        input_data="const answer = 42;",
+        recipe=["Syntax highlighter"],
+        error_message=(
+            "Sorry, the SyntaxHighlighter operation is not available in the Node.js version of CyberChef."
         ),
     ),
 ]
