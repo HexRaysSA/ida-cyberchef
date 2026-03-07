@@ -1,6 +1,7 @@
 import json
 import re
 from enum import IntEnum
+from pathlib import Path
 from typing import Any, TypedDict
 
 import STPyV8
@@ -110,6 +111,269 @@ FLOW_CONTROL_DEFAULT_ARGUMENTS: dict[str, dict[str, Any]] = {
         "Ignore errors": False,
     },
 }
+
+_OPERATION_SCHEMA: dict[str, Any] | None = None
+_OPERATION_SCHEMA_BY_NAME: dict[str, list[dict[str, Any]]] | None = None
+
+
+def sanitise_operation_name(value: str) -> str:
+    """Return the name form used by CyberChef's name matching."""
+    return value.replace(" ", "").lower()
+
+
+def get_operation_schema() -> dict[str, Any]:
+    """Load the generated operation schema."""
+    global _OPERATION_SCHEMA
+    if _OPERATION_SCHEMA is None:
+        schema_path = Path(__file__).parent / "data" / "operation_schema.json"
+        _OPERATION_SCHEMA = json.loads(schema_path.read_text())
+    return _OPERATION_SCHEMA
+
+
+def get_operation_schema_by_name() -> dict[str, list[dict[str, Any]]]:
+    """Index schema operations by sanitised operation name."""
+    global _OPERATION_SCHEMA_BY_NAME
+    if _OPERATION_SCHEMA_BY_NAME is None:
+        operations = get_operation_schema().get("operations", [])
+        schema_by_name: dict[str, list[dict[str, Any]]] = {}
+        for operation in operations:
+            schema_by_name.setdefault(
+                sanitise_operation_name(str(operation.get("name", ""))), []
+            ).append(operation)
+        _OPERATION_SCHEMA_BY_NAME = schema_by_name
+    return _OPERATION_SCHEMA_BY_NAME
+
+
+def get_schema_operation(name: str) -> dict[str, Any] | None:
+    """Return schema metadata for an operation name."""
+    return get_operation_schema_by_name().get(sanitise_operation_name(name), [None])[0]
+
+
+def decode_escaped_string(value: str) -> str:
+    """Decode the escape sequences used in CyberChef argument defaults."""
+    return bytes(value, "utf-8").decode("unicode_escape")
+
+
+def coerce_schema_boolean(value: Any) -> bool:
+    """Convert schema boolean values into native booleans."""
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+    return bool(value)
+
+
+def get_argument_default_index(arg: dict[str, Any]) -> int:
+    """Return the default index for list-like argument values."""
+    default_index = arg.get("defaultIndex")
+    if isinstance(default_index, int):
+        return default_index
+    return 0
+
+
+def get_argument_default_value(op_name: str, arg: dict[str, Any]) -> Any:
+    """Return the normalised default value for a schema argument."""
+    arg_type = arg.get("type")
+    value = arg.get("value")
+
+    if arg_type in {"binaryString", "binaryShortString"} and isinstance(value, str):
+        return decode_escaped_string(value)
+
+    if arg_type == "boolean":
+        return coerce_schema_boolean(value)
+
+    if arg_type == "argSelector":
+        if isinstance(value, list) and value:
+            default_entry = value[get_argument_default_index(arg)]
+            if isinstance(default_entry, dict):
+                return default_entry.get("name", "")
+            return default_entry
+        return value
+
+    if arg_type in {"editableOption", "editableOptionShort"}:
+        if isinstance(value, list) and value:
+            default_entry = value[get_argument_default_index(arg)]
+            if isinstance(default_entry, dict):
+                default_value = default_entry.get("value", default_entry.get("name", ""))
+            else:
+                default_value = default_entry
+            if isinstance(default_value, str):
+                return decode_escaped_string(default_value)
+            return default_value
+        return value
+
+    if arg_type == "populateMultiOption":
+        if isinstance(value, list) and value:
+            default_entry = value[get_argument_default_index(arg)]
+            if isinstance(default_entry, dict):
+                return default_entry.get("name", "")
+            return default_entry
+        return value
+
+    return value
+
+
+def canonicalise_argument_name(args: list[dict[str, Any]], key: str) -> str | None:
+    """Return the canonical schema argument name for a provided key."""
+    sanitised_key = sanitise_operation_name(key)
+    for arg in args:
+        arg_name = str(arg.get("name", ""))
+        if sanitise_operation_name(arg_name) == sanitised_key:
+            return arg_name
+    return None
+
+
+def canonicalise_option_value(arg: dict[str, Any], value: Any) -> Any:
+    """Resolve display names to the values expected by the runtime."""
+    if not isinstance(value, str):
+        return value
+
+    options = arg.get("value")
+    if not isinstance(options, list):
+        return value
+
+    for option in options:
+        if isinstance(option, dict):
+            option_name = str(option.get("name", ""))
+            option_value = option.get("value", option_name)
+            if sanitise_operation_name(option_name) == sanitise_operation_name(value):
+                if isinstance(option_value, str):
+                    return decode_escaped_string(option_value)
+                return option_value
+            if isinstance(option_value, str) and option_value == value:
+                return decode_escaped_string(option_value)
+        elif sanitise_operation_name(str(option)) == sanitise_operation_name(value):
+            return option
+
+    return value
+
+
+def expand_populate_multi_option(arg: dict[str, Any], value: Any) -> dict[str, Any]:
+    """Expand populateMultiOption selections into their target arguments."""
+    if not isinstance(value, str):
+        return {}
+
+    options = arg.get("value")
+    targets = arg.get("target")
+    if not isinstance(options, list) or not isinstance(targets, list):
+        return {}
+
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        option_name = str(option.get("name", ""))
+        if sanitise_operation_name(option_name) != sanitise_operation_name(value):
+            continue
+        expanded_values = option.get("value", [])
+        if not isinstance(expanded_values, list):
+            return {}
+        return {
+            str(target_index): expanded_values[index]
+            for index, target_index in enumerate(targets)
+            if index < len(expanded_values)
+        }
+
+    return {}
+
+
+def normalise_recipe_argument_value(op_name: str, arg: dict[str, Any], value: Any) -> Any:
+    """Return a recipe argument value in the form CyberChef expects."""
+    arg_type = arg.get("type")
+
+    if arg_type in {"binaryString", "binaryShortString"} and isinstance(value, str):
+        return decode_escaped_string(value)
+
+    if arg_type == "boolean":
+        return coerce_schema_boolean(value)
+
+    if arg_type in {"option", "editableOption", "editableOptionShort", "argSelector", "populateMultiOption"}:
+        return canonicalise_option_value(arg, value)
+
+    return value
+
+
+def should_apply_schema_default(arg: dict[str, Any]) -> bool:
+    """Return whether the bridge should materialise this argument's default."""
+    return str(arg.get("type", "")) in {
+        "argSelector",
+        "binaryShortString",
+        "binaryString",
+        "boolean",
+        "editableOption",
+        "editableOptionShort",
+        "populateMultiOption",
+    }
+
+
+def normalise_js_recipe_operation(operation: str | RecipeOperation) -> str | RecipeOperation:
+    """Normalise a JS-backed recipe operation against schema metadata."""
+    if isinstance(operation, str):
+        name = operation
+        provided_args: dict[str, Any] = {}
+    elif isinstance(operation, dict) and "op" in operation:
+        name = str(operation["op"])
+        provided_args = dict(operation.get("args", {}))
+    else:
+        raise TypeError("Recipe can only contain function names or functions")
+
+    schema_operation = get_schema_operation(name)
+    if not schema_operation:
+        return operation
+
+    schema_args = list(schema_operation.get("args", []))
+    if not schema_args and isinstance(operation, str):
+        return operation
+
+    provided_by_name: dict[str, Any] = {}
+    extra_args: dict[str, Any] = {}
+
+    for key, value in provided_args.items():
+        canonical_name = canonicalise_argument_name(schema_args, key)
+        if canonical_name is None:
+            extra_args[key] = value
+            continue
+        provided_by_name[canonical_name] = value
+
+    populate_expansions: dict[str, Any] = {}
+    for arg in schema_args:
+        arg_name = str(arg.get("name", ""))
+        if str(arg.get("type", "")) != "populateMultiOption" or arg_name not in provided_by_name:
+            continue
+        for target_index, expanded_value in expand_populate_multi_option(arg, provided_by_name[arg_name]).items():
+            try:
+                target_name = str(schema_args[int(target_index)].get("name", ""))
+            except (IndexError, ValueError):
+                continue
+            populate_expansions.setdefault(target_name, expanded_value)
+
+    normalised_args = dict(extra_args)
+
+    for arg in schema_args:
+        arg_name = str(arg.get("name", ""))
+        if arg_name in provided_by_name:
+            normalised_args[arg_name] = normalise_recipe_argument_value(
+                name, arg, provided_by_name[arg_name]
+            )
+            continue
+        if arg_name in populate_expansions:
+            normalised_args[arg_name] = normalise_recipe_argument_value(
+                name, arg, populate_expansions[arg_name]
+            )
+            continue
+        if should_apply_schema_default(arg):
+            normalised_args[arg_name] = get_argument_default_value(name, arg)
+
+    if not normalised_args:
+        return name
+
+    return {"op": name, "args": normalised_args}
+
+
+def normalise_js_recipe(recipe: list[str | RecipeOperation]) -> list[str | RecipeOperation]:
+    """Return a JS-backed recipe with bridge-compatible argument defaults."""
+    return [normalise_js_recipe_operation(operation) for operation in recipe]
 
 
 def get_chef():
@@ -254,8 +518,6 @@ def load_cyberchef(path: str | None = None):
     Returns: CyberChef module exports object
     """
     if path is None:
-        from pathlib import Path
-
         path = str(Path(__file__).parent / "data" / "CyberChef.js")
     ctx = STPyV8.JSContext()
     ctx.enter()
@@ -339,6 +601,23 @@ def load_cyberchef(path: str | None = None):
                 const utf8 = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
                 return decodeURIComponent(escape(utf8));
             }
+        };
+    }
+
+    if (typeof Uint8Array !== 'undefined' && !Uint8Array.prototype.concat) {
+        Uint8Array.prototype.concat = function() {
+            const output = Array.from(this);
+            for (let index = 0; index < arguments.length; index++) {
+                const value = arguments[index];
+                if (ArrayBuffer.isView(value)) {
+                    output.push.apply(output, Array.from(value));
+                } else if (Array.isArray(value)) {
+                    output.push.apply(output, value);
+                } else {
+                    output.push(value);
+                }
+            }
+            return output;
         };
     }
 
@@ -671,7 +950,8 @@ def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation])
     else:
         input_dish = input_data
 
-    recipe_json = json.dumps(recipe)
+    normalised_recipe = normalise_js_recipe(recipe)
+    recipe_json = json.dumps(normalised_recipe)
     ctx = chef._stpyv8_context
     ctx.locals.input_dish = input_dish
     result = await_js_promise(ctx, f"module.exports.__piBake(input_dish, {recipe_json})")

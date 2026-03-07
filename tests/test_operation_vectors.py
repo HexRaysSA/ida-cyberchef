@@ -249,6 +249,7 @@ JA4S_TLS12_SAMPLE_HEX = "16030300640200006003035f0236c07f47bfb12dc2da706ecb3fe7f
 JA4S_TLS12_SAMPLE_BASE64 = base64.b64encode(bytes.fromhex(JA4S_TLS12_SAMPLE_HEX)).decode()
 JA4S_TLS13_SAMPLE_HEX = "160303007a020000760303236d214556452c55a0754487e64b1a8b0262c50ba23004c9d504166a6de3439920d0b0099243c9296a0c84153ea4ada7d87ad017f4211c2ea1350b0b3cc5514d5f130100002e00330024001d002099e3cc43a2c9941ae75af1b2c7a629bee3ee7031973cad85c82f2f23677fb244002b00020304"
 IPV4_HEADER_SAMPLE_HEX = "45 c0 00 c4 02 89 00 00 ff 11 1e 8c c0 a8 0c 01 c0 a8 0c 02"
+IPV4_RAW_SAFE_HEADER_HEX = "45 00 00 14 00 47 00 00 30 11 7a 7f 01 02 03 04 05 06 07 08"
 PARSE_TCP_NO_OPTIONS_HEX = "c2eb0050a138132e70dc9fb9501804025ea70000"
 PARSE_TCP_OPTIONS_HEX = "c2eb0050a1380c1f000000008002faf080950000020405b40103030801010402"
 PARSE_UDP_NO_DATA_HEX = "04 89 00 35 00 2c 01 01"
@@ -1890,19 +1891,24 @@ def verify_bombe_default_crib_bbbb(result: object) -> None:
     assert isinstance(result, dict)
     assert result["nLoops"] == 3
     assert isinstance(result["result"], list)
-    assert len(result["result"]) == 267
+    assert len(result["result"]) == 15
     assert result["result"][:5] == [
-        ["AFVM", "??", "VOHX"],
-        ["AKSV", "??", "YYKX"],
-        ["AOUM", "??", "QNXS"],
-        ["AQEA", "??", "SMIW"],
-        ["AYCG", "??", "IGWB"],
+        ["EAB", "??", "DTEJ"],
+        ["GJK", "??", "XPEI"],
+        ["HVJ", "??", "SQRR"],
+        ["JRJ", "??", "CTOB"],
+        ["MAR", "??", "PGFB"],
     ]
-    assert result["result"][50] == ["GIGF", "AA BJ", "BBBB"]
-    assert result["result"][100] == ["LEJP", "??", "TPOG"]
-    assert result["result"][150] == ["PSWK", "??", "SGVG"]
-    assert result["result"][200] == ["UJAX", "??", "EHCN"]
-    assert result["result"][-1] == ["ZUNM", "AS BB", "BBBB"]
+    assert result["result"][10] == ["SLJ", "??", "OCLJ"]
+    assert result["result"][-1] == ["XXZ", "AU BB", "BBBB"]
+
+
+def verify_bombe_display_name_result(result: object) -> None:
+    assert isinstance(result, dict)
+    assert result["nLoops"] == 3
+    assert isinstance(result["result"], list)
+    assert len(result["result"]) > 0
+    assert all(isinstance(entry, list) and len(entry) == 3 for entry in result["result"])
 
 
 def verify_multiple_bombe_user_defined_three_rotor(result: object) -> None:
@@ -2825,6 +2831,18 @@ def assert_parse_ipv4_header_html(result: object) -> None:
     assert "<td>Destination IP address</td><td>192.168.12.2</td>" in result
 
 
+def assert_parse_ipv4_raw_header_text(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("FieldValue\nVersion4\n")
+    assert "Internet Header Length (IHL)5 (20 bytes)" in result
+    assert "Total length20 bytes" in result
+    assert "Identification0x47 (71)" in result
+    assert "Protocol17, User Datagram (UDP)" in result
+    assert "Header checksum7a7f" in result
+    assert "Source IP address1.2.3.4" in result
+    assert "Destination IP address5.6.7.8" in result
+
+
 CODE_TIDY_VECTORS = [
     BakeVector(
         name="bson_serialise_empty_json_object",
@@ -2870,7 +2888,7 @@ CODE_TIDY_VECTORS = [
         name="css_beautify_default_tab_indent",
         input_data="body{color:red;margin:0}",
         recipe=["CSS Beautify"],
-        expected="body{\n\\tcolor:red;\n\\tmargin:0\n}\n",
+        expected="body{\n\tcolor:red;\n\tmargin:0\n}\n",
     ),
     BakeVector(
         name="css_beautify_custom_space_indent",
@@ -3225,8 +3243,8 @@ WHERE id = 1
         input_data='<root><item id="1">x</item><item id="2"/></root>',
         recipe=["XML Beautify"],
         expected='''<root>
-\\t<item id="1">x</item>
-\\t<item id="2"/>
+	<item id="1">x</item>
+	<item id="2"/>
 </root>''',
     ),
     BakeVector(
@@ -3269,8 +3287,8 @@ WHERE id = 1
 </root>''',
         recipe=["XML Minify", "XML Beautify"],
         expected='''<root>
-\\t<item id="1">x</item>
-\\t<item id="2"/>
+	<item id="1">x</item>
+	<item id="2"/>
 </root>''',
     ),
 ]
@@ -4018,10 +4036,10 @@ DATA_FORMAT_VECTORS = [
         expected=SIMPLE_PUBLIC_KEY_PEM,
     ),
     BakeVector(
-        name="json_to_csv_default_row_delimiter_uses_literal_escape_sequence",
+        name="json_to_csv_default_row_delimiter_uses_crlf",
         input_data='{"a":1,"b":2}',
         recipe=["JSON to CSV"],
-        expected="a,b\\r\\n1,2\\r\\n",
+        expected="a,b\r\n1,2\r\n",
     ),
     BakeVector(
         name="json_to_csv_flattens_nested_object_with_explicit_crlf",
@@ -4190,6 +4208,12 @@ DATA_FORMAT_VECTORS = [
         input_data="1,x,!f",
         recipe=[{"op": "Rison Decode", "args": {"Decode Option": "Decode Array"}}],
         expected=[1, "x", False],
+    ),
+    BakeVector(
+        name="rison_decode_default_option",
+        input_data="(a:1,b:!t)",
+        recipe=["Rison Decode"],
+        expected={"a": 1, "b": True},
     ),
     BakeVector(
         name="rison_roundtrip_default_encode_decode",
@@ -6335,6 +6359,17 @@ ENCODING_VECTORS = [
         expected=verify_bombe_default_crib_bbbb,
     ),
     BakeVector(
+        name="bombe_accepts_reflector_display_name",
+        input_data="AAAA",
+        recipe=[
+            {
+                "op": "Bombe",
+                "args": {"Reflector": "B", "Crib": "BBBB", "Use checking machine": True},
+            }
+        ],
+        expected=verify_bombe_display_name_result,
+    ),
+    BakeVector(
         name="caesar_box_height_three_ignores_spaces",
         input_data="WE ARE DISCOVERED",
         recipe=[{"op": "Caesar Box Cipher", "args": {"Box Height": 3}}],
@@ -6475,6 +6510,17 @@ ENCODING_VECTORS = [
         input_data="pi ✓",
         recipe=["Citrix CTX1 Encode", "Citrix CTX1 Decode"],
         expected="pi ✓",
+    ),
+    BakeVector(
+        name="colossus_letter_count_program_with_default_switches",
+        input_data="AAAA",
+        recipe=[
+            {
+                "op": "Colossus",
+                "args": {"Program to run": "Letter Count"},
+            }
+        ],
+        expected={"printout": " \n00 00 : a4 \n", "counters": [4, 0, 0, 0, 0], "runcount": 2},
     ),
     BakeVector(
         name="colossus_letter_count_program",
@@ -6704,13 +6750,62 @@ ENCODING_VECTORS = [
         name="enigma_default_hello",
         input_data="HELLO",
         recipe=["Enigma"],
-        expected="GUCNI",
+        expected="ILBDA",
+    ),
+    BakeVector(
+        name="enigma_accepts_rotor_and_reflector_display_names",
+        input_data="HELLO",
+        recipe=[
+            {
+                "op": "Enigma",
+                "args": {
+                    "Model": "4-rotor",
+                    "Left-most (4th) rotor": "Gamma",
+                    "Left-most rotor ring setting": "B",
+                    "Left-most rotor initial value": "D",
+                    "Left-hand rotor": "IV",
+                    "Left-hand rotor ring setting": "C",
+                    "Left-hand rotor initial value": "M",
+                    "Middle rotor": "V",
+                    "Middle rotor ring setting": "D",
+                    "Middle rotor initial value": "C",
+                    "Right-hand rotor": "III",
+                    "Right-hand rotor ring setting": "E",
+                    "Right-hand rotor initial value": "K",
+                    "Reflector": "B Thin",
+                    "Plugboard": "PO ML IU KJ NH YT GB VF RE DC",
+                    "Strict output": False,
+                },
+            },
+            {
+                "op": "Enigma",
+                "args": {
+                    "Model": "4-rotor",
+                    "Left-most (4th) rotor": "Gamma",
+                    "Left-most rotor ring setting": "B",
+                    "Left-most rotor initial value": "D",
+                    "Left-hand rotor": "IV",
+                    "Left-hand rotor ring setting": "C",
+                    "Left-hand rotor initial value": "M",
+                    "Middle rotor": "V",
+                    "Middle rotor ring setting": "D",
+                    "Middle rotor initial value": "C",
+                    "Right-hand rotor": "III",
+                    "Right-hand rotor ring setting": "E",
+                    "Right-hand rotor initial value": "K",
+                    "Reflector": "B Thin",
+                    "Plugboard": "PO ML IU KJ NH YT GB VF RE DC",
+                    "Strict output": False,
+                },
+            },
+        ],
+        expected="HELLO",
     ),
     BakeVector(
         name="enigma_non_strict_preserves_punctuation",
         input_data="HELLO, WORLD!",
         recipe=[{"op": "Enigma", "args": {"Strict output": False}}],
-        expected="GUCNI, DJZQG!",
+        expected="ILBDA, AMTAZ!",
     ),
     BakeVector(
         name="enigma_four_rotor_roundtrip_custom_configuration",
@@ -6979,6 +7074,12 @@ ENCODING_VECTORS = [
         input_data=")-9nmfa,/l7a54o/",
         recipe=[{"op": "LS47 Decrypt", "args": {"Password": "secret", "Padding": 0}}],
         expected="hello_world---pi",
+    ),
+    BakeVector(
+        name="lorenz_default_send_plaintext_to_ita2",
+        input_data="HELLO",
+        recipe=["Lorenz"],
+        expected="VIC3T",
     ),
     BakeVector(
         name="lorenz_sz40_send_plaintext_to_ita2",
@@ -7794,6 +7895,71 @@ ENCODING_VECTORS = [
         input_data="HELLO",
         recipe=["Typex"],
         expected="PDEBF",
+    ),
+    BakeVector(
+        name="typex_roundtrip_named_rotor_examples",
+        input_data="TYPEXROUNDTRIP",
+        recipe=[
+            {
+                "op": "Typex",
+                "args": {
+                    "1st (left-hand) rotor": "Example 2",
+                    "1st rotor reversed": True,
+                    "1st rotor ring setting": "B",
+                    "1st rotor initial value": "C",
+                    "2nd rotor": "Example 3",
+                    "2nd rotor reversed": False,
+                    "2nd rotor ring setting": "D",
+                    "2nd rotor initial value": "E",
+                    "3rd (middle) rotor": "Example 4",
+                    "3rd rotor reversed": True,
+                    "3rd rotor ring setting": "F",
+                    "3rd rotor initial value": "G",
+                    "4th (static) rotor": "Example 5",
+                    "4th rotor reversed": False,
+                    "4th rotor ring setting": "H",
+                    "4th rotor initial value": "I",
+                    "5th (right-hand, static) rotor": "Example 6",
+                    "5th rotor reversed": True,
+                    "5th rotor ring setting": "J",
+                    "5th rotor initial value": "K",
+                    "Reflector": "Example",
+                    "Plugboard": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                    "Typex keyboard emulation": "None",
+                    "Strict output": False,
+                },
+            },
+            {
+                "op": "Typex",
+                "args": {
+                    "1st (left-hand) rotor": "Example 2",
+                    "1st rotor reversed": True,
+                    "1st rotor ring setting": "B",
+                    "1st rotor initial value": "C",
+                    "2nd rotor": "Example 3",
+                    "2nd rotor reversed": False,
+                    "2nd rotor ring setting": "D",
+                    "2nd rotor initial value": "E",
+                    "3rd (middle) rotor": "Example 4",
+                    "3rd rotor reversed": True,
+                    "3rd rotor ring setting": "F",
+                    "3rd rotor initial value": "G",
+                    "4th (static) rotor": "Example 5",
+                    "4th rotor reversed": False,
+                    "4th rotor ring setting": "H",
+                    "4th rotor initial value": "I",
+                    "5th (right-hand, static) rotor": "Example 6",
+                    "5th rotor reversed": True,
+                    "5th rotor ring setting": "J",
+                    "5th rotor initial value": "K",
+                    "Reflector": "Example",
+                    "Plugboard": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                    "Typex keyboard emulation": "None",
+                    "Strict output": False,
+                },
+            },
+        ],
+        expected="TYPEXROUNDTRIP",
     ),
     BakeVector(
         name="typex_roundtrip_default_configuration",
@@ -8819,6 +8985,12 @@ LANGUAGE_VECTORS = [
         expected=b"",
     ),
     BakeVector(
+        name="unicode_text_format_default_passthrough",
+        input_data=b"ab",
+        recipe=["Unicode Text Format"],
+        expected=b"ab",
+    ),
+    BakeVector(
         name="unicode_text_format_plain_passthrough",
         input_data=b"ab",
         recipe=[{"op": "Unicode Text Format", "args": {"Underline": False, "Strikethrough": False}}],
@@ -9263,6 +9435,12 @@ NETWORK_VECTORS = [
         input_data="4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n",
         recipe=["Dechunk HTTP response", "MD5"],
         expected=hashlib.md5(b"Wikipedia").hexdigest(),
+    ),
+    BakeVector(
+        name="parse_ipv4_header_raw_html_output",
+        input_data=bytes.fromhex(IPV4_RAW_SAFE_HEADER_HEX.replace(" ", "")).decode("latin1"),
+        recipe=[{"op": "Parse IPv4 header", "args": {"Input format": "Raw"}}, "Strip HTML tags"],
+        expected=assert_parse_ipv4_raw_header_text,
     ),
     BakeVector(
         name="encode_netbios_name_short_ascii",
@@ -11300,6 +11478,12 @@ UTILS_VECTORS = [
         expected=3.0,
     ),
     BakeVector(
+        name="diff_default_sample_delimiter",
+        input_data="cat\n\ncut",
+        recipe=["Diff"],
+        expected="c<del>a</del><ins>u</ins>t",
+    ),
+    BakeVector(
         name="diff_character_custom_delimiter",
         input_data="cat|cut",
         recipe=[
@@ -11501,6 +11685,12 @@ UTILS_VECTORS = [
         expected="mozilla/[0-9].[0-9] .*",
     ),
     BakeVector(
+        name="to_table_default_ascii",
+        input_data="A,B\r\n1,2",
+        recipe=["To Table"],
+        expected="+---+---+\n| A | B |\n| 1 | 2 |\n+---+---+\n",
+    ),
+    BakeVector(
         name="to_table_ascii_with_header_row",
         input_data="Name,Value\r\nalpha,1",
         recipe=[
@@ -11600,6 +11790,12 @@ UTILS_VECTORS = [
         expected=build_all_casings("a1"),
     ),
     BakeVector(
+        name="hamming_distance_default_delimiter",
+        input_data="karolin\n\nkathrin",
+        recipe=["Hamming Distance"],
+        expected=build_hamming_distance("karolin", "kathrin", unit="Byte", input_type="Raw string"),
+    ),
+    BakeVector(
         name="hamming_distance_raw_string_bytes",
         input_data="karolin|kathrin",
         recipe=[
@@ -11642,6 +11838,12 @@ UTILS_VECTORS = [
         expected="a,b,c",
     ),
     BakeVector(
+        name="levenshtein_distance_default_delimiter",
+        input_data="kitten\nsitting",
+        recipe=["Levenshtein Distance"],
+        expected=build_levenshtein_distance("kitten", "sitting"),
+    ),
+    BakeVector(
         name="levenshtein_distance_explicit_newline_delimiter",
         input_data="kitten\nsitting",
         recipe=[
@@ -11678,6 +11880,12 @@ UTILS_VECTORS = [
             deletion_cost=1,
             substitution_cost=2,
         ),
+    ),
+    BakeVector(
+        name="offset_checker_default_sample_delimiter",
+        input_data="abc\n\naxc\n\naqc",
+        recipe=["Offset checker"],
+        expected=assert_offset_checker_common_positions,
     ),
     BakeVector(
         name="offset_checker_highlights_common_positions",
@@ -11914,6 +12122,12 @@ UTILS_VECTORS = [
             reverse=False,
             order="Alphabetical (case insensitive)",
         ),
+    ),
+    BakeVector(
+        name="split_default_comma_to_line_feed",
+        input_data="a,b,c",
+        recipe=["Split"],
+        expected=build_split_output("a,b,c", split_delimiter=",", join_delimiter="\n"),
     ),
     BakeVector(
         name="split_comma_to_line_feed",
@@ -12186,6 +12400,15 @@ ARITHMETIC_LOGIC_VECTORS = [
             }
         ],
         expected=build_right_shift_bytes(b"\xff\x40\x20", 2, arithmetic=True),
+    ),
+    BakeVector(
+        name="cartesian_product_default_delimiters",
+        input_data="red,blue\n\ncircle,square",
+        recipe=["Cartesian Product"],
+        expected=build_cartesian_product(
+            [["red", "blue"], ["circle", "square"]],
+            ",",
+        ),
     ),
     BakeVector(
         name="cartesian_product_two_sets_default_delimiters",

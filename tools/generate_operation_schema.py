@@ -56,6 +56,7 @@ def extract_operation_metadata(chef, ctx, op_attr_name):
         description = ctx.eval("help_result[item_index].description")
         input_type = ctx.eval("help_result[item_index].inputType")
         output_type = ctx.eval("help_result[item_index].outputType")
+        info_url = ctx.eval("help_result[item_index].infoURL")
         args_length = ctx.eval(
             "help_result[item_index].args ? help_result[item_index].args.length : 0"
         )
@@ -64,6 +65,7 @@ def extract_operation_metadata(chef, ctx, op_attr_name):
             "name": name or op_attr_name,
             "module": module or "Unknown",
             "description": description or "",
+            "infoURL": info_url or None,
             "inputType": input_type or "string",
             "outputType": output_type or "string",
             "args": [],
@@ -93,6 +95,26 @@ def extract_operation_metadata(chef, ctx, op_attr_name):
                 )
                 if toggle_values is not None:
                     arg_info["toggleValues"] = toggle_values
+
+            has_default_index = ctx.eval(
+                "help_result[item_index].args[arg_index].defaultIndex !== undefined"
+            )
+            if has_default_index:
+                default_index = extract_js_value(
+                    ctx, "help_result[item_index].args[arg_index].defaultIndex"
+                )
+                if default_index is not None:
+                    arg_info["defaultIndex"] = default_index
+
+            has_target = ctx.eval(
+                "help_result[item_index].args[arg_index].target !== undefined"
+            )
+            if has_target:
+                target = extract_js_value(
+                    ctx, "help_result[item_index].args[arg_index].target"
+                )
+                if target is not None:
+                    arg_info["target"] = target
 
             op_info["args"].append(arg_info)
 
