@@ -425,6 +425,12 @@ MULTIMEDIA_AUTOCROP_PNG = build_png_rgba_bytes(
         [(0, 0, 0, 255), (0, 0, 0, 255), (0, 0, 0, 255)],
     ]
 )
+MULTIMEDIA_NORMALISE_SOURCE_ROWS = [
+    [(10, 20, 30, 255), (110, 120, 130, 255)],
+    [(210, 220, 230, 255), (60, 70, 80, 255)],
+]
+MULTIMEDIA_NORMALISE_SOURCE_PNG = build_png_rgba_bytes(MULTIMEDIA_NORMALISE_SOURCE_ROWS)
+MINIMAL_WAV = bytes.fromhex("524946462800000057415645666d74201000000001000100401f0000401f000001000800646174610400000080817f80")
 
 
 def assert_heatmap_chart_with_headers(result: object) -> None:
@@ -447,6 +453,18 @@ def assert_heatmap_chart_with_custom_labels(result: object) -> None:
     assert ">Y value</text>" in result
     assert "Count: 2" in result
     assert "Count: 1" in result
+
+
+def assert_hex_density_chart_with_headers_and_empty_hexagons(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<svg ")
+    assert 'class="hexagon"' in result
+    assert 'class="empty-hexagon"' in result
+    assert 'stroke="black"' in result
+    assert ">x</text>" in result
+    assert ">y</text>" in result
+    assert "Count: 0" in result
+    assert "Count: 3" in result
 
 
 def get_delimiter_text(name: str) -> str:
@@ -5161,6 +5179,12 @@ MULTIMEDIA_BLOCKED_VECTORS = [
         ],
         error_message="Error adding text to image. (TypeError: xhr.open is not a function)",
     ),
+    BlockedBakeVector(
+        name="optical_character_recognition_requires_browser_worker_runtime",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=["Optical Character Recognition"],
+        error_message="Error: This operation only works in a browser",
+    ),
 ]
 
 HASH_BLOCKED_VECTORS = [
@@ -8276,6 +8300,114 @@ MULTIMEDIA_VECTORS = [
             }
         ],
         expected=assert_heatmap_chart_with_custom_labels,
+    ),
+    BakeVector(
+        name="hex_density_chart_headers_edges_and_empty_hexagons",
+        input_data="x y\n0 0\n1 1\n2 2",
+        recipe=[
+            {
+                "op": "Hex Density chart",
+                "args": {
+                    "Record delimiter": "Line feed",
+                    "Field delimiter": "Space",
+                    "Pack radius": 25,
+                    "Draw radius": 15,
+                    "Use column headers as labels": True,
+                    "X label": "",
+                    "Y label": "",
+                    "Draw hexagon edges": True,
+                    "Min colour value": "white",
+                    "Max colour value": "black",
+                    "Draw empty hexagons within data boundaries": True,
+                },
+            }
+        ],
+        expected=assert_hex_density_chart_with_headers_and_empty_hexagons,
+    ),
+    BakeVector(
+        name="image_filter_sepia_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[{"op": "Image Filter", "args": {"Filter type": "Sepia"}}, "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(100, 34, 45, 255), (196, 243, 183, 255)],
+                [(48, 59, 78, 255), (255, 255, 255, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="image_opacity_half_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[{"op": "Image Opacity", "args": {"Opacity (%)": 50}}, "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(255, 0, 0, 127), (0, 255, 0, 127)],
+                [(0, 0, 255, 127), (255, 255, 255, 127)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="invert_image_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=["Invert Image", "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(0, 255, 255, 255), (255, 0, 255, 255)],
+                [(255, 255, 0, 255), (0, 0, 0, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="normalise_image_stretches_channel_range_extract_rgba",
+        input_data=MULTIMEDIA_NORMALISE_SOURCE_PNG,
+        recipe=["Normalise Image", "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(0, 0, 0, 255), (127, 127, 127, 255)],
+                [(255, 255, 255, 255), (63, 63, 63, 255)],
+            ]
+        ),
+    ),
+    BakeVector(
+        name="play_media_base64_wav_roundtrip",
+        input_data=base64.b64encode(MINIMAL_WAV).decode(),
+        recipe=[{"op": "Play Media", "args": {"Input format": "Base64"}}],
+        expected=MINIMAL_WAV,
+    ),
+    BakeVector(
+        name="render_image_hex_png_roundtrip",
+        input_data=MULTIMEDIA_SOURCE_PNG.hex(),
+        recipe=[{"op": "Render Image", "args": {"Input format": "Hex"}}],
+        expected=MULTIMEDIA_SOURCE_PNG,
+    ),
+    BakeVector(
+        name="resize_image_percent_nearest_neighbour_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[
+            {
+                "op": "Resize Image",
+                "args": {
+                    "Width": 50,
+                    "Height": 100,
+                    "Unit type": "Percent",
+                    "Maintain aspect ratio": False,
+                    "Resizing algorithm": "Nearest Neighbour",
+                },
+            },
+            "Extract RGBA",
+        ],
+        expected=build_extract_rgba_text([[(255, 0, 0, 255)], [(0, 0, 255, 255)]]),
+    ),
+    BakeVector(
+        name="rotate_image_180_extract_rgba",
+        input_data=MULTIMEDIA_SOURCE_PNG,
+        recipe=[{"op": "Rotate Image", "args": {"Rotation amount (degrees)": 180}}, "Extract RGBA"],
+        expected=build_extract_rgba_text(
+            [
+                [(255, 255, 255, 255), (0, 0, 255, 255)],
+                [(0, 255, 0, 255), (255, 0, 0, 255)],
+            ]
+        ),
     ),
 ]
 
