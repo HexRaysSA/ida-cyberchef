@@ -944,17 +944,17 @@ def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation])
 
     """
     chef = get_chef()
+    ctx = chef._stpyv8_context
 
     if isinstance(input_data, bytes):
-        input_dish = plate(input_data, chef)
+        input_expression = "input_dish"
+        ctx.locals.input_dish = plate(input_data, chef)
     else:
-        input_dish = input_data
+        input_expression = json.dumps(input_data)
 
     normalised_recipe = normalise_js_recipe(recipe)
     recipe_json = json.dumps(normalised_recipe)
-    ctx = chef._stpyv8_context
-    ctx.locals.input_dish = input_dish
-    result = await_js_promise(ctx, f"module.exports.__piBake(input_dish, {recipe_json})")
+    result = await_js_promise(ctx, f"module.exports.__piBake({input_expression}, {recipe_json})")
     return plate(result, chef)  # type: ignore[return-value]
 
 

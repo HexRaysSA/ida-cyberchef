@@ -164,6 +164,7 @@ SIMPLE_TLV_HI = bytes.fromhex("01024869")
 SIMPLE_LV_SEQUENCE = bytes.fromhex("02486903627965")
 SIMPLE_TWO_BYTE_LENGTH_TLV = bytes.fromhex("0102004869")
 SIMPLE_BER_TLV = bytes.fromhex("01024142")
+SIMPLE_BER_LONG_FORM_TLV = bytes.fromhex("0181024142")
 MINIMAL_EXIF_JPEG = bytes.fromhex(
     "ffd8"
     "ffe10028457869660000"
@@ -4186,6 +4187,14 @@ DATA_FORMAT_VECTORS = [
         expected=[{"key": [1], "length": 2, "value": [65, 66]}],
     ),
     BakeVector(
+        name="parse_tlv_ber_long_form_length",
+        input_data=SIMPLE_BER_LONG_FORM_TLV,
+        recipe=[
+            {"op": "Parse TLV", "args": {"Type/Key size": 1, "Length size": 1, "Use BER": True}}
+        ],
+        expected=[{"key": [1], "length": 2, "value": [65, 66]}],
+    ),
+    BakeVector(
         name="rison_encode_default_nested_object",
         input_data='{"a":1,"b":[true,"x"]}',
         recipe=["Rison Encode"],
@@ -4718,7 +4727,7 @@ DATA_FORMAT_VECTORS = [
         name="to_html_entity_named_entities_with_astral_code_point",
         input_data="&<©😀",
         recipe=["To HTML Entity"],
-        expected="&amp;&lt;&copy;&#62976;",
+        expected="&amp;&lt;&copy;&#128512;",
     ),
     BakeVector(
         name="to_html_entity_numeric_entities_for_all_characters",
@@ -4730,7 +4739,7 @@ DATA_FORMAT_VECTORS = [
         name="to_html_entity_hex_entities_preserve_ascii",
         input_data="&A😀",
         recipe=[{"op": "To HTML Entity", "args": {"Convert all characters": False, "Convert to": "Hex entities"}}],
-        expected="&#x26;A&#xf600;",
+        expected="&#x26;A&#x1f600;",
     ),
     BakeVector(
         name="to_html_entity_roundtrip_named_entities",
@@ -9500,6 +9509,12 @@ NETWORK_VECTORS = [
         input_data="4\nWiki\n0\n\n",
         recipe=["Dechunk HTTP response"],
         expected="Wiki",
+    ),
+    BakeVector(
+        name="dechunk_http_response_preserves_trailer_section",
+        input_data="4\nWiki\n5\npedia\n0\nTrailer: yes\n\n",
+        recipe=["Dechunk HTTP response"],
+        expected="WikipediaTrailer: yes\n\n",
     ),
     BakeVector(
         name="dechunk_http_response_md5_composition",
