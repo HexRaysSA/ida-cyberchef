@@ -2492,11 +2492,23 @@ def build_power_set(items: list[str], item_delimiter: str) -> str:
 
 
 def build_set_difference(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
-    return item_delimiter.join(item for item in sample_a if item not in sample_b)
+    seen: set[str] = set()
+    sample_b_set = set(sample_b)
+    return item_delimiter.join(
+        item
+        for item in sample_a
+        if item not in sample_b_set and item not in seen and not seen.add(item)
+    )
 
 
 def build_set_intersection(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
-    return item_delimiter.join(item for item in sample_a if item in sample_b)
+    seen: set[str] = set()
+    sample_b_set = set(sample_b)
+    return item_delimiter.join(
+        item
+        for item in sample_a
+        if item in sample_b_set and item not in seen and not seen.add(item)
+    )
 
 
 def build_set_union(sample_a: list[str], sample_b: list[str], item_delimiter: str) -> str:
@@ -3552,6 +3564,18 @@ DATA_FORMAT_VECTORS = [
         expected="A!",
     ),
     BakeVector(
+        name="unescape_unicode_characters_uplus_prefix_six_digit_units",
+        input_data="U+000041U+000021",
+        recipe=[{"op": "Unescape Unicode Characters", "args": {"Prefix": "U+"}}],
+        expected="A!",
+    ),
+    BakeVector(
+        name="unescape_unicode_characters_uplus_prefix_code_point",
+        input_data="U+1F600",
+        recipe=[{"op": "Unescape Unicode Characters", "args": {"Prefix": "U+"}}],
+        expected="😀",
+    ),
+    BakeVector(
         name="unescape_unicode_characters_surrogate_pair_forms_astral_character",
         input_data="\\uD83D\\uDE00",
         recipe=["Unescape Unicode Characters"],
@@ -3633,6 +3657,12 @@ DATA_FORMAT_VECTORS = [
         input_data="1 0 1 0",
         recipe=[{"op": "From Base", "args": {"Radix": 2}}],
         expected=str(int("1010", 2)),
+    ),
+    BakeVector(
+        name="from_base_binary_fractional_input",
+        input_data="10.1",
+        recipe=[{"op": "From Base", "args": {"Radix": 2}}],
+        expected="2.5",
     ),
     BakeVector(
         name="from_base32_hex_extended_binary_edge_string",
@@ -4575,13 +4605,13 @@ DATA_FORMAT_VECTORS = [
         name="to_base92_empty_string",
         input_data="",
         recipe=["To Base92"],
-        expected=b"",
+        expected="",
     ),
     BakeVector(
         name="to_base92_ascii_string",
         input_data="hello",
         recipe=["To Base92"],
-        expected=build_base92(b"hello").encode(),
+        expected=build_base92(b"hello"),
     ),
     BakeVector(
         name="to_base92_roundtrip_ascii_string",
@@ -4975,6 +5005,21 @@ COMPRESSION_VECTORS = [
                     "Compression type": "Fixed Huffman Coding",
                     "Filename (optional)": "sample.txt",
                     "Comment (optional)": "phase7",
+                },
+            },
+            "Gunzip",
+        ],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="gzip_header_checksum_with_comment_roundtrip",
+        input_data=b"hello hello hello",
+        recipe=[
+            {
+                "op": "Gzip",
+                "args": {
+                    "Comment (optional)": "phase7",
+                    "Include file checksum": True,
                 },
             },
             "Gunzip",
@@ -12180,6 +12225,12 @@ UTILS_VECTORS = [
         expected=build_reverse_bytes(b"ab\ncd", by="Line"),
     ),
     BakeVector(
+        name="reverse_character_utf8_astral_input",
+        input_data="a😀b",
+        recipe=[{"op": "Reverse", "args": {"By": "Character"}}],
+        expected=build_reverse_bytes("a😀b".encode("utf-8"), by="Character"),
+    ),
+    BakeVector(
         name="show_on_map_decimal_degrees_identity",
         input_data="51.5014,-0.1419",
         recipe=["Show on map"],
@@ -12613,8 +12664,8 @@ ARITHMETIC_LOGIC_VECTORS = [
         expected="4.5",
     ),
     BakeVector(
-        name="median_sorted_odd_values",
-        input_data="1,2,10",
+        name="median_unsorted_odd_values",
+        input_data="10,1,2",
         recipe=[{"op": "Median", "args": {"Delimiter": "Comma"}}],
         expected="2",
     ),
@@ -12810,6 +12861,28 @@ ARITHMETIC_LOGIC_VECTORS = [
             }
         ],
         expected=build_set_intersection(["north", "south"], ["south", "east"], "/"),
+    ),
+    BakeVector(
+        name="set_difference_deduplicates_first_sample",
+        input_data="red,red,blue\n\nblue",
+        recipe=[
+            {
+                "op": "Set Difference",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_set_difference(["red", "red", "blue"], ["blue"], ","),
+    ),
+    BakeVector(
+        name="set_intersection_deduplicates_first_sample",
+        input_data="red,red,blue\n\nred,blue",
+        recipe=[
+            {
+                "op": "Set Intersection",
+                "args": {"Sample delimiter": "\n\n", "Item delimiter": ","},
+            }
+        ],
+        expected=build_set_intersection(["red", "red", "blue"], ["red", "blue"], ","),
     ),
     BakeVector(
         name="set_union_default_delimiters",
