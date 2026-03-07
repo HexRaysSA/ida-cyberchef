@@ -2166,6 +2166,91 @@ def build_drop_bytes(
     return drop_slice(data)
 
 
+def build_drop_nth_bytes(
+    data: bytes,
+    *,
+    drop_every: int,
+    starting_at: int,
+    apply_to_each_line: bool = False,
+) -> bytes:
+    output = bytearray()
+    offset = 0
+
+    for index, value in enumerate(data):
+        if apply_to_each_line and value == 0x0A:
+            output.append(value)
+            offset = index + 1
+            continue
+
+        if index - offset < starting_at or (index - (starting_at + offset)) % drop_every != 0:
+            output.append(value)
+
+    return bytes(output)
+
+
+def build_file_tree(value: str, *, file_path_delimiter: str, delimiter: str) -> str:
+    completed_paths: list[str] = []
+    rendered_paths: list[str] = []
+
+    for file_path in sorted(set(value.split(delimiter))):
+        path_parts = file_path.split(file_path_delimiter)
+        if path_parts and path_parts[0] == "":
+            path_parts = path_parts[1:]
+
+        for index, part in enumerate(path_parts):
+            if index == 0:
+                rendered_line = part
+                key = part
+            else:
+                rendered_line = f"{'|   ' * (index - 1)}|---{part}"
+                key = "/".join(path_parts[: index + 1])
+
+            if key not in completed_paths:
+                completed_paths.append(key)
+                rendered_paths.append(rendered_line)
+
+    return "\n".join(rendered_paths)
+
+
+def build_from_case_insensitive_regex(value: str) -> str:
+    return re.sub(
+        r"\[[a-z]{2}\]",
+        lambda match: match.group(0)[1]
+        if match.group(0)[1].upper() == match.group(0)[2].upper()
+        else match.group(0),
+        value,
+        flags=re.IGNORECASE,
+    )
+
+
+def build_all_casings(value: str) -> str:
+    result = []
+    lowercase_value = value.lower()
+
+    for mask in range(1 << len(lowercase_value)):
+        characters = list(lowercase_value)
+        for index in range(len(lowercase_value)):
+            if (mask >> index) & 1:
+                characters[index] = characters[index].upper()
+        result.append("".join(characters))
+
+    return "\n".join(result)
+
+
+def build_hamming_distance(sample_a: str, sample_b: str, *, unit: str, input_type: str) -> str:
+    if input_type == "Hex":
+        left = bytes.fromhex(sample_a)
+        right = bytes.fromhex(sample_b)
+    else:
+        left = sample_a.encode()
+        right = sample_b.encode()
+
+    if unit == "Byte":
+        return str(sum(left_byte != right_byte for left_byte, right_byte in zip(left, right, strict=True)))
+
+    return str(sum((left_byte ^ right_byte).bit_count() for left_byte, right_byte in zip(left, right, strict=True)))
+
+
 def build_cartesian_product(samples: list[list[str]], item_delimiter: str) -> str:
     return item_delimiter.join(f"({','.join(items)})" for items in product(*samples))
 
@@ -11081,6 +11166,177 @@ UTILS_VECTORS = [
         input_data=b"abc\ndef\n",
         recipe=[{"op": "Drop bytes", "args": {"Start": 1, "Length": 1, "Apply to each line": True}}],
         expected=build_drop_bytes(b"abc\ndef\n", start=1, length=1, apply_to_each_line=True),
+    ),
+    BakeVector(
+        name="drop_nth_bytes_default_every_fourth_byte",
+        input_data=b"abcdefghi",
+        recipe=["Drop nth bytes"],
+        expected=build_drop_nth_bytes(b"abcdefghi", drop_every=4, starting_at=0),
+    ),
+    BakeVector(
+        name="drop_nth_bytes_apply_to_each_line_with_offset",
+        input_data=b"abcdef\nuvwxyz\n",
+        recipe=[
+            {
+                "op": "Drop nth bytes",
+                "args": {
+                    "Drop every": 2,
+                    "Starting at": 1,
+                    "Apply to each line": True,
+                },
+            }
+        ],
+        expected=build_drop_nth_bytes(
+            b"abcdef\nuvwxyz\n",
+            drop_every=2,
+            starting_at=1,
+            apply_to_each_line=True,
+        ),
+    ),
+    BakeVector(
+        name="escape_string_default_quotes_newline_and_apostrophe",
+        input_data="Don't\nstop",
+        recipe=["Escape string"],
+        expected="Don\\'t\\nstop",
+    ),
+    BakeVector(
+        name="escape_string_everything_json_and_uppercase_hex",
+        input_data='é"',
+        recipe=[
+            {
+                "op": "Escape string",
+                "args": {
+                    "Escape level": "Everything",
+                    "Escape quote": "Double",
+                    "JSON compatible": True,
+                    "ES6 compatible": True,
+                    "Uppercase hex": True,
+                },
+            }
+        ],
+        expected='"\\u00E9\\""',
+    ),
+    BakeVector(
+        name="expand_alphabet_range_multiple_ranges",
+        input_data="a-cx-z",
+        recipe=["Expand alphabet range"],
+        expected=build_expanded_alphabet("a-cx-z"),
+    ),
+    BakeVector(
+        name="expand_alphabet_range_custom_delimiter",
+        input_data="a-c",
+        recipe=[{"op": "Expand alphabet range", "args": {"Delimiter": ","}}],
+        expected="a,b,c",
+    ),
+    BakeVector(
+        name="file_tree_default_line_feed_paths",
+        input_data="src/main.py\nsrc/lib/util.py\nREADME.md",
+        recipe=["File Tree"],
+        expected=build_file_tree(
+            "src/main.py\nsrc/lib/util.py\nREADME.md",
+            file_path_delimiter="/",
+            delimiter="\n",
+        ),
+    ),
+    BakeVector(
+        name="file_tree_custom_path_and_entry_delimiters",
+        input_data="root>sub>file.txt,root>other.txt",
+        recipe=[{"op": "File Tree", "args": {"File Path Delimiter": ">", "Delimiter": "Comma"}}],
+        expected=build_file_tree(
+            "root>sub>file.txt,root>other.txt",
+            file_path_delimiter=">",
+            delimiter=",",
+        ),
+    ),
+    BakeVector(
+        name="filter_line_feed_regex_match",
+        input_data="apple\npear\napricot",
+        recipe=[{"op": "Filter", "args": {"Regex": "^ap"}}],
+        expected="apple\napricot",
+    ),
+    BakeVector(
+        name="filter_comma_delimited_invert_condition",
+        input_data="apple,pear,apricot",
+        recipe=[{"op": "Filter", "args": {"Delimiter": "Comma", "Regex": "^ap", "Invert condition": True}}],
+        expected="pear",
+    ),
+    BakeVector(
+        name="from_case_insensitive_regex_collapses_letter_pairs",
+        input_data="[mM][oO][zZ]illa",
+        recipe=["From Case Insensitive Regex"],
+        expected=build_from_case_insensitive_regex("[mM][oO][zZ]illa"),
+    ),
+    BakeVector(
+        name="from_case_insensitive_regex_preserves_non_case_pairs",
+        input_data="[ab][cC][dE]",
+        recipe=["From Case Insensitive Regex"],
+        expected=build_from_case_insensitive_regex("[ab][cC][dE]"),
+    ),
+    BakeVector(
+        name="fuzzy_match_docs_example_highlights_disjoint_ranges",
+        input_data="Don't Panic",
+        recipe=[{"op": "Fuzzy Match", "args": {"Search": "dpan"}}],
+        expected='<span class="hl1"><b>D</b>on&#x27;t <b>Pan</b></span>ic',
+    ),
+    BakeVector(
+        name="fuzzy_match_no_match_returns_escaped_input",
+        input_data="<alpha>",
+        recipe=[{"op": "Fuzzy Match", "args": {"Search": "zzz"}}],
+        expected="&lt;alpha&gt;",
+    ),
+    BakeVector(
+        name="get_all_casings_two_letters",
+        input_data="ab",
+        recipe=["Get All Casings"],
+        expected=build_all_casings("ab"),
+    ),
+    BakeVector(
+        name="get_all_casings_non_letters_produce_duplicate_rows",
+        input_data="a1",
+        recipe=["Get All Casings"],
+        expected=build_all_casings("a1"),
+    ),
+    BakeVector(
+        name="hamming_distance_raw_string_bytes",
+        input_data="karolin|kathrin",
+        recipe=[
+            {
+                "op": "Hamming Distance",
+                "args": {
+                    "Delimiter": "|",
+                    "Unit": "Byte",
+                    "Input type": "Raw string",
+                },
+            }
+        ],
+        expected=build_hamming_distance("karolin", "kathrin", unit="Byte", input_type="Raw string"),
+    ),
+    BakeVector(
+        name="hamming_distance_hex_bits",
+        input_data="ff00|0f0f",
+        recipe=[
+            {
+                "op": "Hamming Distance",
+                "args": {
+                    "Delimiter": "|",
+                    "Unit": "Bit",
+                    "Input type": "Hex",
+                },
+            }
+        ],
+        expected=build_hamming_distance("ff00", "0f0f", unit="Bit", input_type="Hex"),
+    ),
+    BakeVector(
+        name="head_default_keeps_all_short_input",
+        input_data="a\nb\nc",
+        recipe=["Head"],
+        expected="a\nb\nc",
+    ),
+    BakeVector(
+        name="head_negative_number_drops_last_field",
+        input_data="a,b,c,d",
+        recipe=[{"op": "Head", "args": {"Delimiter": "Comma", "Number": -1}}],
+        expected="a,b,c",
     ),
 ]
 
