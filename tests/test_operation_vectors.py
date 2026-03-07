@@ -10,6 +10,7 @@ import struct
 import tarfile
 import time
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from itertools import product
@@ -32,7 +33,7 @@ class BakeVector:
     name: str
     input_data: bytes | str
     recipe: list[str | dict[str, object]]
-    expected: object
+    expected: object | Callable[[object], None]
 
 
 @dataclass(frozen=True)
@@ -336,6 +337,245 @@ def build_affine_decode_string(value: str, *, a: int, b: int) -> str:
 
 def build_atbash_string(value: str) -> str:
     return build_affine_encode_string(value, a=25, b=25)
+
+
+def build_bacon_encode_string(
+    value: str,
+    *,
+    alphabet: str,
+    translation: str,
+    keep_extra_characters: bool,
+    invert_translation: bool,
+) -> str:
+    output = []
+
+    for character in value:
+        uppercase_character = character.upper()
+        if "A" <= uppercase_character <= "Z":
+            letter = uppercase_character
+            if alphabet == "Standard (I=J and U=V)":
+                letter = {"J": "I", "V": "U"}.get(letter, letter)
+                code = "ABCDEFGHIKLMNOPQRSTUWXYZ".index(letter)
+            else:
+                code = ord(letter) - ord("A")
+            output.append(format(code, "05b"))
+            continue
+
+        output.append(character)
+
+    result = "".join(output)
+
+    if invert_translation:
+        result = result.translate(str.maketrans({"0": "1", "1": "0"}))
+
+    if not keep_extra_characters:
+        digits = re.sub(r"[^01]", "", result)
+        result = " ".join(
+            digits[index : index + 5]
+            for index in range(0, len(digits), 5)
+            if len(digits[index : index + 5]) == 5
+        )
+
+    if translation == "A/B":
+        result = result.translate(str.maketrans({"0": "A", "1": "B"}))
+
+    return result
+
+
+def build_bacon_decode_string(
+    value: str,
+    *,
+    alphabet: str,
+    translation: str,
+    invert_translation: bool,
+) -> str:
+    if translation == "0/1":
+        digits = re.sub(r"[^01]", "", value)
+    elif translation == "A/B":
+        digits = re.sub(r"[^ABab]", "", value).translate(
+            str.maketrans({"A": "0", "B": "1", "a": "0", "b": "1"})
+        )
+    elif translation == "Case":
+        letters = re.sub(r"[^A-Za-z]", "", value)
+        digits = "".join("1" if character.isupper() else "0" for character in letters)
+    elif translation == "A-M/N-Z first letter":
+        digits = "".join(
+            "1" if word[0].upper() >= "N" else "0"
+            for word in value.split()
+            if word
+        )
+    else:
+        raise ValueError(f"Unsupported Bacon translation: {translation}")
+
+    if invert_translation:
+        digits = digits.translate(str.maketrans({"0": "1", "1": "0"}))
+
+    if alphabet == "Standard (I=J and U=V)":
+        output_alphabet = "ABCDEFGHIKLMNOPQRSTUWXYZ"
+    else:
+        output_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    result = []
+    for index in range(0, len(digits), 5):
+        group = digits[index : index + 5]
+        if len(group) < 5:
+            continue
+        decoded_index = int(group, 2)
+        if decoded_index < len(output_alphabet):
+            result.append(output_alphabet[decoded_index])
+        else:
+            result.append("?")
+
+    return "".join(result)
+
+
+def build_polybius_square(keyword: str) -> list[list[str]]:
+    alpha = "ABCDEFGHIKLMNOPQRSTUVWXYZ"
+    combined = f"{keyword.upper().replace('J', 'I')}{alpha}"
+    unique_characters = []
+
+    for character in combined:
+        if character not in unique_characters:
+            unique_characters.append(character)
+
+    return [unique_characters[index : index + 5] for index in range(0, 25, 5)]
+
+
+def build_bifid_encode_string(value: str, *, keyword: str) -> str:
+    polybius = build_polybius_square(keyword)
+    alpha = "ABCDEFGHIKLMNOPQRSTUVWXYZ"
+    x_coordinates = []
+    y_coordinates = []
+    structure: list[bool | str] = []
+
+    for character in value.replace("J", "I"):
+        uppercase_character = character.upper()
+        if uppercase_character in alpha:
+            for row_index, row in enumerate(polybius):
+                if uppercase_character in row:
+                    x_coordinates.append(row.index(uppercase_character))
+                    y_coordinates.append(row_index)
+                    break
+            structure.append(character in alpha)
+            continue
+
+        structure.append(character)
+
+    transposed = f"{''.join(str(value) for value in y_coordinates)}{''.join(str(value) for value in x_coordinates)}"
+    output = []
+    count = 0
+
+    for position in structure:
+        if isinstance(position, bool):
+            row_index = int(transposed[2 * count])
+            column_index = int(transposed[(2 * count) + 1])
+            character = polybius[row_index][column_index]
+            output.append(character if position else character.lower())
+            count += 1
+            continue
+
+        output.append(position)
+
+    return "".join(output)
+
+
+def build_bifid_decode_string(value: str, *, keyword: str) -> str:
+    polybius = build_polybius_square(keyword)
+    alpha = "ABCDEFGHIKLMNOPQRSTUVWXYZ"
+    structure: list[bool | str] = []
+    transposed = ""
+
+    for character in value.replace("J", "I"):
+        uppercase_character = character.upper()
+        if uppercase_character in alpha:
+            for row_index, row in enumerate(polybius):
+                if uppercase_character in row:
+                    transposed += f"{row_index}{row.index(uppercase_character)}"
+                    break
+            structure.append(character in alpha)
+            continue
+
+        structure.append(character)
+
+    output = []
+    count = 0
+    half_length = len(transposed) // 2
+
+    for position in structure:
+        if isinstance(position, bool):
+            row_index = int(transposed[count])
+            column_index = int(transposed[count + half_length])
+            character = polybius[row_index][column_index]
+            output.append(character if position else character.lower())
+            count += 1
+            continue
+
+        output.append(position)
+
+    return "".join(output)
+
+
+def build_caesar_box_string(value: str, box_height: int) -> str:
+    if not value:
+        return ""
+
+    table_width = -(-len(value) // box_height)
+    normalized = value.replace(" ", "")
+    normalized += "\x00" * ((box_height * table_width) - len(normalized))
+    result = []
+
+    for row_index in range(box_height):
+        for column_index in range(row_index, len(normalized), box_height):
+            if normalized[column_index] != "\x00":
+                result.append(normalized[column_index])
+
+    return "".join(result)
+
+
+def build_cetacean_encode_string(value: str) -> str:
+    return "".join(
+        " " if character == " " else format(ord(character), "016b").translate(str.maketrans({"0": "E", "1": "e"}))
+        for character in value
+    )
+
+
+def build_cetacean_decode_string(value: str) -> str:
+    bits = []
+
+    for character in value:
+        if character == " ":
+            bits.extend("0000000000100000")
+            continue
+        bits.append("1" if character == "e" else "0")
+
+    return "".join(
+        chr(int("".join(bits[index : index + 16]), 2))
+        for index in range(0, len(bits), 16)
+    )
+
+
+def verify_bcrypt_rounds_four_hash(result: object) -> None:
+    assert isinstance(result, str)
+    assert re.fullmatch(r"\$2a\$04\$[./A-Za-z0-9]{53}", result)
+
+
+def verify_bombe_default_crib_bbbb(result: object) -> None:
+    assert isinstance(result, dict)
+    assert result["nLoops"] == 3
+    assert isinstance(result["result"], list)
+    assert len(result["result"]) == 267
+    assert result["result"][:5] == [
+        ["AFVM", "??", "VOHX"],
+        ["AKSV", "??", "YYKX"],
+        ["AOUM", "??", "QNXS"],
+        ["AQEA", "??", "SMIW"],
+        ["AYCG", "??", "IGWB"],
+    ]
+    assert result["result"][50] == ["GIGF", "AA BJ", "BBBB"]
+    assert result["result"][100] == ["LEJP", "??", "TPOG"]
+    assert result["result"][150] == ["PSWK", "??", "SGVG"]
+    assert result["result"][200] == ["UJAX", "??", "EHCN"]
+    assert result["result"][-1] == ["ZUNM", "AS BB", "BBBB"]
 
 
 def build_binary_string(value: bytes, delimiter: str, byte_length: int) -> str:
@@ -3461,6 +3701,229 @@ ENCODING_VECTORS = [
         expected="Attack at dawn.",
     ),
     BakeVector(
+        name="bacon_encode_standard_numeric_translation",
+        input_data="HELLO",
+        recipe=[
+            {
+                "op": "Bacon Cipher Encode",
+                "args": {
+                    "Alphabet": "Standard (I=J and U=V)",
+                    "Translation": "0/1",
+                    "Keep extra characters": False,
+                    "Invert Translation": False,
+                },
+            }
+        ],
+        expected=build_bacon_encode_string(
+            "HELLO",
+            alphabet="Standard (I=J and U=V)",
+            translation="0/1",
+            keep_extra_characters=False,
+            invert_translation=False,
+        ),
+    ),
+    BakeVector(
+        name="bacon_encode_complete_ab_inverted_with_extra_characters",
+        input_data="abc xyz!",
+        recipe=[
+            {
+                "op": "Bacon Cipher Encode",
+                "args": {
+                    "Alphabet": "Complete",
+                    "Translation": "A/B",
+                    "Keep extra characters": True,
+                    "Invert Translation": True,
+                },
+            }
+        ],
+        expected=build_bacon_encode_string(
+            "abc xyz!",
+            alphabet="Complete",
+            translation="A/B",
+            keep_extra_characters=True,
+            invert_translation=True,
+        ),
+    ),
+    BakeVector(
+        name="bacon_decode_complete_ab_translation",
+        input_data="AABAA AABAB",
+        recipe=[
+            {
+                "op": "Bacon Cipher Decode",
+                "args": {
+                    "Alphabet": "Complete",
+                    "Translation": "A/B",
+                    "Invert Translation": False,
+                },
+            }
+        ],
+        expected=build_bacon_decode_string(
+            "AABAA AABAB",
+            alphabet="Complete",
+            translation="A/B",
+            invert_translation=False,
+        ),
+    ),
+    BakeVector(
+        name="bacon_decode_case_translation",
+        input_data="aaaaabbbbb",
+        recipe=[
+            {
+                "op": "Bacon Cipher Decode",
+                "args": {
+                    "Alphabet": "Complete",
+                    "Translation": "Case",
+                    "Invert Translation": False,
+                },
+            }
+        ],
+        expected=build_bacon_decode_string(
+            "aaaaabbbbb",
+            alphabet="Complete",
+            translation="Case",
+            invert_translation=False,
+        ),
+    ),
+    BakeVector(
+        name="bcrypt_rounds_four_hash_format",
+        input_data="password",
+        recipe=[{"op": "Bcrypt", "args": {"Rounds": 4}}],
+        expected=verify_bcrypt_rounds_four_hash,
+    ),
+    BakeVector(
+        name="bifid_encode_keyword_roundtrip_reference",
+        input_data="defend the east wall",
+        recipe=[
+            {
+                "op": "Bifid Cipher Encode",
+                "args": {"Keyword": "FORTIFICATION"},
+            }
+        ],
+        expected=build_bifid_encode_string("defend the east wall", keyword="FORTIFICATION"),
+    ),
+    BakeVector(
+        name="bifid_decode_keyword_roundtrip_reference",
+        input_data="nrarhb inl frye osaz",
+        recipe=[
+            {
+                "op": "Bifid Cipher Decode",
+                "args": {"Keyword": "FORTIFICATION"},
+            }
+        ],
+        expected=build_bifid_decode_string("nrarhb inl frye osaz", keyword="FORTIFICATION"),
+    ),
+    BakeVector(
+        name="bifid_roundtrip_without_keyword",
+        input_data="defend the east wall",
+        recipe=[
+            {"op": "Bifid Cipher Encode", "args": {"Keyword": ""}},
+            {"op": "Bifid Cipher Decode", "args": {"Keyword": ""}},
+        ],
+        expected="defend the east wall",
+    ),
+    BakeVector(
+        name="blowfish_encrypt_ecb_zero_key_and_plaintext",
+        input_data="0000000000000000",
+        recipe=[
+            {
+                "op": "Blowfish Encrypt",
+                "args": {
+                    "Key": {"string": "0000000000000000", "option": "Hex"},
+                    "IV": {"string": "", "option": "Hex"},
+                    "Mode": "ECB",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="4ef997456198dd78b0d4acb28aa5ebe3",
+    ),
+    BakeVector(
+        name="blowfish_decrypt_ecb_zero_key_and_ciphertext",
+        input_data="4ef997456198dd78b0d4acb28aa5ebe3",
+        recipe=[
+            {
+                "op": "Blowfish Decrypt",
+                "args": {
+                    "Key": {"string": "0000000000000000", "option": "Hex"},
+                    "IV": {"string": "", "option": "Hex"},
+                    "Mode": "ECB",
+                    "Input": "Hex",
+                    "Output": "Hex",
+                },
+            }
+        ],
+        expected="0000000000000000",
+    ),
+    BakeVector(
+        name="blowfish_roundtrip_cfb_utf8_key",
+        input_data="phase19!",
+        recipe=[
+            {
+                "op": "Blowfish Encrypt",
+                "args": {
+                    "Key": {"string": "YELLOW", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Mode": "CFB",
+                    "Input": "Raw",
+                    "Output": "Hex",
+                },
+            },
+            {
+                "op": "Blowfish Decrypt",
+                "args": {
+                    "Key": {"string": "YELLOW", "option": "UTF8"},
+                    "IV": {"string": "12345678", "option": "UTF8"},
+                    "Mode": "CFB",
+                    "Input": "Hex",
+                    "Output": "Raw",
+                },
+            },
+        ],
+        expected="phase19!",
+    ),
+    BakeVector(
+        name="bombe_default_configuration_with_bbbb_crib",
+        input_data="AAAA",
+        recipe=[
+            {
+                "op": "Bombe",
+                "args": {"Crib": "BBBB", "Use checking machine": True},
+            }
+        ],
+        expected=verify_bombe_default_crib_bbbb,
+    ),
+    BakeVector(
+        name="caesar_box_height_three_ignores_spaces",
+        input_data="WE ARE DISCOVERED",
+        recipe=[{"op": "Caesar Box Cipher", "args": {"Box Height": 3}}],
+        expected=build_caesar_box_string("WE ARE DISCOVERED", 3),
+    ),
+    BakeVector(
+        name="caesar_box_empty_string",
+        input_data="",
+        recipe=[{"op": "Caesar Box Cipher", "args": {"Box Height": 2}}],
+        expected="",
+    ),
+    BakeVector(
+        name="cetacean_encode_docs_example",
+        input_data="hi",
+        recipe=[{"op": "Cetacean Cipher Encode"}],
+        expected=build_cetacean_encode_string("hi"),
+    ),
+    BakeVector(
+        name="cetacean_decode_docs_example",
+        input_data="EEEEEEEEEeeEeEEEEEEEEEEEEeeEeEEe",
+        recipe=[{"op": "Cetacean Cipher Decode"}],
+        expected=build_cetacean_decode_string("EEEEEEEEEeeEeEEEEEEEEEEEEeeEeEEe"),
+    ),
+    BakeVector(
+        name="cetacean_roundtrip_preserves_spaces",
+        input_data="hi ho",
+        recipe=["Cetacean Cipher Encode", "Cetacean Cipher Decode"],
+        expected="hi ho",
+    ),
+    BakeVector(
         name="to_base64_empty_bytes",
         input_data=b"",
         recipe=["To Base64"],
@@ -4259,7 +4722,13 @@ def test_get_time_returns_current_epoch(granularity: str, divisor: int, slack: i
     ids=[vector.name for vector in BITE_SIZED_BAKE_VECTORS],
 )
 def test_bake_vectors(vector: BakeVector):
-    assert bake(vector.input_data, vector.recipe) == vector.expected
+    result = bake(vector.input_data, vector.recipe)
+
+    if callable(vector.expected):
+        vector.expected(result)
+        return
+
+    assert result == vector.expected
 
 
 @pytest.mark.parametrize(
