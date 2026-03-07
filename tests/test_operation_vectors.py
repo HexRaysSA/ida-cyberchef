@@ -1421,6 +1421,91 @@ def build_hash_analysis_output(input_value: str) -> str:
     )
 
 
+def parse_named_output(text: str) -> dict[str, str]:
+    return {
+        name: value.strip()
+        for name, value in (line.split(":", 1) for line in text.strip().splitlines())
+    }
+
+
+def build_luhn_checksum(value: str, radix: int) -> int:
+    total = 0
+    should_double = False
+
+    for character in reversed(value):
+        digit = int(character, radix)
+        if should_double:
+            digit *= 2
+            digit = (digit // radix) + (digit % radix)
+        total += digit
+        should_double = not should_double
+
+    return total % radix
+
+
+def build_luhn_checksum_output(value: str, radix: int) -> str:
+    if not value:
+        return ""
+
+    checksum = build_base_string(build_luhn_checksum(value, radix), radix)
+    check_digit = build_luhn_checksum(f"{value}0", radix)
+    check_digit = 0 if check_digit == 0 else radix - check_digit
+    check_digit_text = build_base_string(check_digit, radix)
+    return f"Checksum: {checksum}\nCheckdigit: {check_digit_text}\nLuhn Validated String: {value}{check_digit_text}"
+
+
+def verify_generate_all_checksums_16_named_output(result: object) -> None:
+    assert isinstance(result, str)
+    parsed = parse_named_output(result)
+    assert len(parsed) == 60
+    assert parsed["CRC-16"] == "bb3d"
+    assert parsed["CRC-16/IBM-SDLC"] == "906e"
+    assert parsed["CRC-16/MODBUS"] == "4b37"
+    assert parsed["CRC-16/XMODEM"] == "31c3"
+    assert parsed["Fletcher-16"] == "1ede"
+
+
+def verify_generate_all_checksums_32_named_output(result: object) -> None:
+    assert isinstance(result, str)
+    parsed = parse_named_output(result)
+    assert len(parsed) == 30
+    assert parsed["Adler-32"] == "091e01de"
+    assert parsed["CRC-32"] == "cbf43926"
+    assert parsed["CRC-32/CASTAGNOLI"] == "e3069283"
+    assert parsed["CRC-32/MPEG-2"] == "0376e6e7"
+    assert parsed["Fletcher-32"] == "df09d509"
+
+
+def verify_generate_all_hashes_128_named_output(result: object) -> None:
+    assert isinstance(result, str)
+    assert parse_named_output(result) == {
+        "MD2": "dd34716876364a02d0195e2fb9ae2d1b",
+        "MD4": "db346d691d7acc4dc2625db19f9e3f52",
+        "MD5": "098f6bcd4621d373cade4e832627b4f6",
+        "RIPEMD-128": "f1abb5083c9ff8a9dbbca9cd2b11fead",
+        "BLAKE2b-128": "44a8995dd50b6657a037a7839304535b",
+        "BLAKE2s-128": "e9ddd9926b9dcb382e09be39ba403d2c",
+        "LM Hash": "01FC5A6BE7BC6929AAD3B435B51404EE",
+        "NT Hash": "0CB6948805F797BF2A82807973B89537",
+    }
+
+
+def verify_generate_all_hashes_256_unnamed_output(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.splitlines() == [
+        "93c8a7d0ff132f325138a82b2baa98c12a7c9ac982feb6c5b310a1ca713615bd",
+        "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "36f028580bb02cc8272a9a020f4200e346e276ae664e45ee80745574e2f5ab80",
+        "9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+        "d3b0aa9cd8b7255622cebc631e867d4093d6f6010191a53973c45fec9b07c774",
+        "fe0289110d07daeee9d9500e14c57787d9083f6ba10e6bcb256f86bb4fe7b981",
+        "928b20366943e2afd11ebc0eae2e53a93bf177a4fcf35bcc64d503704e65e202",
+        "f308fc02ce9172ad02a7d75800ecfc027109bc67987ea32aba9b8dcc7b10150e",
+        "12a50838191b5504f1e5f2fd078714cf6b592b9d29af99d0b10d8d02881c3857",
+        "ee67303696d205ddd2b2363e8e01b4b7199a80957d94d7678eaad3fc834c5a27",
+    ]
+
+
 def verify_bcrypt_rounds_four_hash(result: object) -> None:
     assert isinstance(result, str)
     assert re.fullmatch(r"\$2a\$04\$[./A-Za-z0-9]{53}", result)
@@ -7371,6 +7456,158 @@ HASH_VECTORS = [
         input_data=b"test input",
         recipe=[{"op": "CRC Checksum", "args": {"Algorithm": "CRC-32"}}],
         expected="29822bc8",
+    ),
+    BakeVector(
+        name="ctph_empty_string",
+        input_data="",
+        recipe=["CTPH"],
+        expected="A::",
+    ),
+    BakeVector(
+        name="ctph_phrase_upstream_vector",
+        input_data="If You Can't Stand the Heat, Get Out of the Kitchen",
+        recipe=["CTPH"],
+        expected="A:+EgFgBKAA0V0UFfClEs6:+Qk0gUFse",
+    ),
+    BakeVector(
+        name="compare_ctph_identical_hashes_default_delimiter",
+        input_data="A:E:E\nA:E:E",
+        recipe=["Compare CTPH hashes"],
+        expected=100.0,
+    ),
+    BakeVector(
+        name="compare_ctph_identical_hashes_comma_delimiter",
+        input_data="A:+EgFgBKAA0V0UFfClEs6:+Qk0gUFse,A:+EgFgBKAA0V0UFfClEs6:+Qk0gUFse",
+        recipe=[{"op": "Compare CTPH hashes", "args": {"Delimiter": "Comma"}}],
+        expected=100.0,
+    ),
+    BakeVector(
+        name="compare_ssdeep_identical_hashes_default_delimiter",
+        input_data="3:DLIXzMQCJc:XERKc\n3:DLIXzMQCJc:XERKc",
+        recipe=["Compare SSDEEP hashes"],
+        expected=100.0,
+    ),
+    BakeVector(
+        name="compare_ssdeep_distinct_hashes_comma_delimiter",
+        input_data="3:DLIXzMQCJc:XERKc,3:Hn:Hn",
+        recipe=[{"op": "Compare SSDEEP hashes", "args": {"Delimiter": "Comma"}}],
+        expected=0.0,
+    ),
+    BakeVector(
+        name="gost_hash_1994_empty_bytes",
+        input_data=b"",
+        recipe=[
+            {
+                "op": "GOST Hash",
+                "args": {"Algorithm": "GOST 28147 (1994)", "Digest length": "256", "sBox": "D-A"},
+            }
+        ],
+        expected="981e5f3ca30c841487830f84fb433e13ac1101569b9c13584ac483234cd656c0",
+    ),
+    BakeVector(
+        name="gost_hash_streebog_512_test_bytes",
+        input_data=b"test",
+        recipe=[
+            {
+                "op": "GOST Hash",
+                "args": {"Algorithm": "GOST R 34.11 (Streebog, 2012)", "Digest length": "512"},
+            }
+        ],
+        expected="7200bf5dea560f0d7960d07fdc8874ad9f3b86ece2e45f5502ae2e176f2c928e0e581152281f5aee818318bed7cbe6aa69999589234723ceb33175598365b5c8",
+    ),
+    BakeVector(
+        name="generate_all_checksums_16_named_check_string",
+        input_data=b"123456789",
+        recipe=[{"op": "Generate all checksums", "args": {"Length (bits)": "16", "Include names": True}}],
+        expected=verify_generate_all_checksums_16_named_output,
+    ),
+    BakeVector(
+        name="generate_all_checksums_32_named_check_string",
+        input_data=b"123456789",
+        recipe=[{"op": "Generate all checksums", "args": {"Length (bits)": "32", "Include names": True}}],
+        expected=verify_generate_all_checksums_32_named_output,
+    ),
+    BakeVector(
+        name="generate_all_hashes_128_named_test_bytes",
+        input_data=b"test",
+        recipe=[{"op": "Generate all hashes", "args": {"Length (bits)": "128", "Include names": True}}],
+        expected=verify_generate_all_hashes_128_named_output,
+    ),
+    BakeVector(
+        name="generate_all_hashes_256_unnamed_test_bytes",
+        input_data=b"test",
+        recipe=[{"op": "Generate all hashes", "args": {"Length (bits)": "256", "Include names": False}}],
+        expected=verify_generate_all_hashes_256_unnamed_output,
+    ),
+    BakeVector(
+        name="hmac_sha256_latin1_key_ascii_bytes",
+        input_data=b"Hello, World!",
+        recipe=[
+            {
+                "op": "HMAC",
+                "args": {"Key": {"string": "test", "option": "Latin1"}, "Hashing function": "SHA256"},
+            }
+        ],
+        expected=hmac.new(b"test", b"Hello, World!", hashlib.sha256).hexdigest(),
+    ),
+    BakeVector(
+        name="hmac_sha512_rfc4231_long_hex_key",
+        input_data=b"Test Using Larger Than Block-Size Key - Hash Key First",
+        recipe=[
+            {
+                "op": "HMAC",
+                "args": {
+                    "Key": {
+                        "string": "aa" * 131,
+                        "option": "Hex",
+                    },
+                    "Hashing function": "SHA512",
+                },
+            }
+        ],
+        expected=hmac.new(bytes.fromhex("aa" * 131), b"Test Using Larger Than Block-Size Key - Hash Key First", hashlib.sha512).hexdigest(),
+    ),
+    BakeVector(
+        name="keccak_256_hello_world_bytes",
+        input_data=b"Hello, World!",
+        recipe=[{"op": "Keccak", "args": {"Size": "256"}}],
+        expected="acaf3289d7b601cbd114fb36c4d29c85bbfd5e133f14cb355c3fd8d99367964f",
+    ),
+    BakeVector(
+        name="keccak_512_test_bytes",
+        input_data=b"test",
+        recipe=[{"op": "Keccak", "args": {"Size": "512"}}],
+        expected="1e2e9fc2002b002d75198b7503210c05a1baac4560916a3c6d93bcce3a50d7f00fd395bf1647b9abb8d1afcc9c76c289b0c9383ba386a956da4b38934417789e",
+    ),
+    BakeVector(
+        name="lm_hash_empty_string",
+        input_data="",
+        recipe=["LM Hash"],
+        expected="AAD3B435B51404EEAAD3B435B51404EE",
+    ),
+    BakeVector(
+        name="lm_hash_long_ascii_string",
+        input_data="QWERTYUIOPASDFGHJKLZXCVBNM1234567890!@#$%^&*()_+.,?/",
+        recipe=["LM Hash"],
+        expected="6D9DF16655336CA75A3C13DD18BA8156",
+    ),
+    BakeVector(
+        name="luhn_checksum_empty_string",
+        input_data="",
+        recipe=["Luhn Checksum"],
+        expected="",
+    ),
+    BakeVector(
+        name="luhn_checksum_standard_mod10",
+        input_data="35641709012469",
+        recipe=["Luhn Checksum"],
+        expected=build_luhn_checksum_output("35641709012469", 10),
+    ),
+    BakeVector(
+        name="luhn_checksum_mod16_alpha_numeric",
+        input_data="ABCD",
+        recipe=[{"op": "Luhn Checksum", "args": {"Radix": 16}}],
+        expected=build_luhn_checksum_output("ABCD", 16),
     ),
     BakeVector(
         name="md5_empty_bytes",
