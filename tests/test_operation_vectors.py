@@ -199,6 +199,52 @@ JA4S_TLS12_SAMPLE_HEX = "16030300640200006003035f0236c07f47bfb12dc2da706ecb3fe7f
 JA4S_TLS12_SAMPLE_BASE64 = base64.b64encode(bytes.fromhex(JA4S_TLS12_SAMPLE_HEX)).decode()
 JA4S_TLS13_SAMPLE_HEX = "160303007a020000760303236d214556452c55a0754487e64b1a8b0262c50ba23004c9d504166a6de3439920d0b0099243c9296a0c84153ea4ada7d87ad017f4211c2ea1350b0b3cc5514d5f130100002e00330024001d002099e3cc43a2c9941ae75af1b2c7a629bee3ee7031973cad85c82f2f23677fb244002b00020304"
 IPV4_HEADER_SAMPLE_HEX = "45 c0 00 c4 02 89 00 00 ff 11 1e 8c c0 a8 0c 01 c0 a8 0c 02"
+PARSE_TCP_NO_OPTIONS_HEX = "c2eb0050a138132e70dc9fb9501804025ea70000"
+PARSE_TCP_OPTIONS_HEX = "c2eb0050a1380c1f000000008002faf080950000020405b40103030801010402"
+PARSE_UDP_NO_DATA_HEX = "04 89 00 35 00 2c 01 01"
+PARSE_UDP_WITH_DATA_HEX = "04 89 00 35 00 2c 01 01 02 02"
+PARSE_TLS_ALERT_HEX = "150303001411770b5b5d11078535823266ec79671ed402bced"
+PARSE_TLS_CHANGE_CIPHER_SPEC_HEX = "140303000101"
+PARSE_TLS_CLIENT_HELLO_HEX = (
+    "16030300320100002e030345cd3a31beaebd2934dd4ec2a151d7a054eab8bc0e4e5b9d4b9abdaacd051076000004123443210200010000"
+)
+PROTOBUF_SAMPLE_BYTES = bytes.fromhex("0d1c0000001203596f751a024d65202b2a0a0a066162633132331200")
+PROTOBUF_TYPED_SCHEMA = """message Test {
+    optional string Banana = 2;
+    repeated string Carrot = 3;
+    optional int32 Date = 4;
+    optional Options Imbe = 7;
+}
+
+enum Options {
+    Option0 = 0;
+    Option1 = 1;
+    Option2 = 2;
+}
+"""
+PROTOBUF_FULL_SCHEMA = """message Test {
+    repeated fixed32 Apple = 1;
+    optional string Banana = 2;
+    repeated string Carrot = 3;
+    optional int32 Date = 4;
+    optional subTest Elderberry = 5;
+    repeated fixed64 Huckleberry = 6;
+    optional Options Imbe = 7;
+}
+
+message subTest {
+    optional string Fig = 1;
+    optional subSubTest Grape = 2;
+}
+
+message subSubTest {}
+
+enum Options {
+    Option0 = 0;
+    Option1 = 1;
+    Option2 = 2;
+}
+"""
 TYPEX_PHASE25_CUSTOM_ARGS = {
     "1st (left-hand) rotor": "KHWENRCBISXJQGOFMAPVYZDLTU<BFHNQUW",
     "1st rotor reversed": True,
@@ -9236,6 +9282,319 @@ NETWORK_VECTORS = [
             }
         ],
         expected="JA4S:   t1204h2_cca9_1428ce7b4018\nJA4S_r: t1204h2_cca9_0000,ff01,000b,0010",
+    ),
+    BakeVector(
+        name="parse_tcp_hex_default_header_fields",
+        input_data=PARSE_TCP_NO_OPTIONS_HEX,
+        recipe=["Parse TCP"],
+        expected={
+            "Source port": 49899,
+            "Destination port": 80,
+            "Sequence number": "2704806702",
+            "Acknowledgement number": 1893507001,
+            "Data offset": "5 (20 bytes)",
+            "Flags": {
+                "Reserved": "000",
+                "NS": 0,
+                "CWR": 0,
+                "ECE": 0,
+                "URG": 0,
+                "ACK": 1,
+                "PSH": 1,
+                "RST": 0,
+                "SYN": 0,
+                "FIN": 0,
+            },
+            "Window size": "1026 (Scaled: 1026)",
+            "Checksum": "0x5ea7",
+            "Urgent pointer": "0x0000",
+        },
+    ),
+    BakeVector(
+        name="parse_tcp_raw_bytes_with_options",
+        input_data=bytes.fromhex(PARSE_TCP_OPTIONS_HEX),
+        recipe=[{"op": "Parse TCP", "args": {"Input format": "Raw"}}],
+        expected={
+            "Source port": 49899,
+            "Destination port": 80,
+            "Sequence number": "2704804895",
+            "Acknowledgement number": 0,
+            "Data offset": "8 (32 bytes)",
+            "Flags": {
+                "Reserved": "000",
+                "NS": 0,
+                "CWR": 0,
+                "ECE": 0,
+                "URG": 0,
+                "ACK": 0,
+                "PSH": 0,
+                "RST": 0,
+                "SYN": 1,
+                "FIN": 0,
+            },
+            "Window size": "64240 (Scaled: 16445440)",
+            "Checksum": "0x8095",
+            "Urgent pointer": "0x0000",
+            "Options": {
+                "Maximum Segment Size": {"Kind": 2, "Length": 4, "Value": 1460},
+                "No-Operation": {"Kind": 1},
+                "Window Scale": {
+                    "Kind": 3,
+                    "Length": 3,
+                    "Value": {"Shift count": 8, "Multiplier": 256},
+                },
+                "SACK Permitted": {"Kind": 4, "Length": 2},
+            },
+        },
+    ),
+    BakeVector(
+        name="parse_tls_record_truncated_header_returns_empty_list",
+        input_data=bytes.fromhex("16030300"),
+        recipe=["Parse TLS record"],
+        expected=[],
+    ),
+    BakeVector(
+        name="parse_tls_record_multiple_records",
+        input_data=bytes.fromhex(PARSE_TLS_CHANGE_CIPHER_SPEC_HEX + PARSE_TLS_ALERT_HEX),
+        recipe=["Parse TLS record"],
+        expected=[
+            {"type": "change_cipher_spec", "version": "0x0303", "length": 1, "value": "0x01"},
+            {
+                "type": "alert",
+                "version": "0x0303",
+                "length": 20,
+                "value": "0x11770b5b5d11078535823266ec79671ed402bced",
+            },
+        ],
+    ),
+    BakeVector(
+        name="parse_tls_record_client_hello",
+        input_data=bytes.fromhex(PARSE_TLS_CLIENT_HELLO_HEX),
+        recipe=["Parse TLS record"],
+        expected=[
+            {
+                "type": "handshake",
+                "version": "0x0303",
+                "length": 50,
+                "handshakeType": "client_hello",
+                "clientVersion": "0x0303",
+                "random": "0x45cd3a31beaebd2934dd4ec2a151d7a054eab8bc0e4e5b9d4b9abdaacd051076",
+                "cipherSuites": {"length": 4, "values": ["0x1234", "0x4321"]},
+                "compressionMethods": {"length": 2, "values": ["0x00", "0x01"]},
+                "extensions": {},
+            }
+        ],
+    ),
+    BakeVector(
+        name="parse_udp_hex_no_data",
+        input_data=PARSE_UDP_NO_DATA_HEX,
+        recipe=["Parse UDP"],
+        expected={"Source port": 1161, "Destination port": 53, "Length": 44, "Checksum": "0x0101"},
+    ),
+    BakeVector(
+        name="parse_udp_raw_bytes_with_payload",
+        input_data=bytes.fromhex(PARSE_UDP_WITH_DATA_HEX.replace(" ", "")),
+        recipe=[{"op": "Parse UDP", "args": {"Input format": "Raw"}}],
+        expected={
+            "Source port": 1161,
+            "Destination port": 53,
+            "Length": 44,
+            "Checksum": "0x0101",
+            "Data": "0x0202",
+        },
+    ),
+    BakeVector(
+        name="parse_uri_basic_query_string",
+        input_data="https://www.google.co.uk/search?q=almonds",
+        recipe=["Parse URI"],
+        expected="Protocol:\thttps:\nHostname:\twww.google.co.uk\nPath name:\t/search\nArguments:\n\tq = almonds\n",
+    ),
+    BakeVector(
+        name="parse_uri_auth_port_hash_and_blank_argument",
+        input_data="ftp://user:pass@example.com:21/files/report.txt?download=&x=1#frag",
+        recipe=["Parse URI"],
+        expected=(
+            "Protocol:\tftp:\n"
+            "Auth:\t\tuser:pass\n"
+            "Hostname:\texample.com\n"
+            "Port:\t\t21\n"
+            "Path name:\t/files/report.txt\n"
+            "Arguments:\n"
+            "\tdownload\n"
+            "\tx        = 1\n"
+            "Hash:\t\t#frag\n"
+        ),
+    ),
+    BakeVector(
+        name="url_decode_then_parse_uri_composition",
+        input_data="https%3A%2F%2Fexample.com%2Fsearch%3Fq%3Done%2520two%26x%3D1",
+        recipe=["URL Decode", "Parse URI"],
+        expected=(
+            "Protocol:\thttps:\n"
+            "Hostname:\texample.com\n"
+            "Path name:\t/search\n"
+            "Arguments:\n"
+            "\tq = one two\n"
+            "\tx = 1\n"
+        ),
+    ),
+    BakeVector(
+        name="parse_user_agent_firefox_windows",
+        input_data="Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0 ",
+        recipe=["Parse User Agent"],
+        expected=(
+            "Browser\n"
+            "    Name: Firefox\n"
+            "    Version: 47.0\n"
+            "Device\n"
+            "    Model: unknown\n"
+            "    Type: unknown\n"
+            "    Vendor: unknown\n"
+            "Engine\n"
+            "    Name: Gecko\n"
+            "    Version: 47.0\n"
+            "OS\n"
+            "    Name: Windows\n"
+            "    Version: 7\n"
+            "CPU\n"
+            "    Architecture: amd64"
+        ),
+    ),
+    BakeVector(
+        name="parse_user_agent_mobile_safari",
+        input_data=(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 "
+            "(KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+        ),
+        recipe=["Parse User Agent"],
+        expected=(
+            "Browser\n"
+            "    Name: Mobile Safari\n"
+            "    Version: 16.0\n"
+            "Device\n"
+            "    Model: iPhone\n"
+            "    Type: mobile\n"
+            "    Vendor: Apple\n"
+            "Engine\n"
+            "    Name: WebKit\n"
+            "    Version: 605.1.15\n"
+            "OS\n"
+            "    Name: iOS\n"
+            "    Version: 16.3\n"
+            "CPU\n"
+            "    Architecture: unknown"
+        ),
+    ),
+    BakeVector(
+        name="protobuf_decode_without_schema",
+        input_data=PROTOBUF_SAMPLE_BYTES,
+        recipe=["Protobuf Decode"],
+        expected={"1": 28, "2": "You", "3": "Me", "4": 43, "5": {"1": "abc123", "2": {}}},
+    ),
+    BakeVector(
+        name="protobuf_decode_with_schema_show_types",
+        input_data=bytes.fromhex("1203596f751a024d65202b3801"),
+        recipe=[
+            {
+                "op": "Protobuf Decode",
+                "args": {
+                    "Schema (.proto text)": PROTOBUF_TYPED_SCHEMA,
+                    "Show Unknown Fields": False,
+                    "Show Types": True,
+                },
+            }
+        ],
+        expected={
+            "Carrot (string)": ["Me"],
+            "Banana (string)": "You",
+            "Date (int32)": 43,
+            "Imbe (Options)": "Option1",
+        },
+    ),
+    BakeVector(
+        name="protobuf_encode_full_schema_to_bytes",
+        input_data=(
+            '{"Apple":[28],"Banana":"You","Carrot":["Me"],"Date":43,'
+            '"Elderberry":{"Fig":"abc123","Grape":{}},"Huckleberry":[3029774971578],"Imbe":1}'
+        ),
+        recipe=[{"op": "Protobuf Encode", "args": {"Schema (.proto text)": PROTOBUF_FULL_SCHEMA}}],
+        expected=bytes.fromhex("0d1c0000001203596f751a024d65202b2a0a0a06616263313233120031ba32a96cc10200003801"),
+    ),
+    BakeVector(
+        name="protobuf_encode_then_decode_roundtrip",
+        input_data='{"Banana":"You","Date":43}',
+        recipe=[
+            {"op": "Protobuf Encode", "args": {"Schema (.proto text)": PROTOBUF_TYPED_SCHEMA}},
+            {
+                "op": "Protobuf Decode",
+                "args": {
+                    "Schema (.proto text)": PROTOBUF_TYPED_SCHEMA,
+                    "Show Unknown Fields": False,
+                    "Show Types": False,
+                },
+            },
+        ],
+        expected={"Banana": "You", "Date": 43, "Carrot": [], "Imbe": "Option0"},
+    ),
+    BakeVector(
+        name="strip_http_headers_crlf_response",
+        input_data="HTTP/1.1 200 OK\r\nHeader: value\r\n\r\nbody",
+        recipe=["Strip HTTP headers"],
+        expected="body",
+    ),
+    BakeVector(
+        name="strip_http_headers_lf_request",
+        input_data="GET / HTTP/1.1\nHost: example.com\n\npayload",
+        recipe=["Strip HTTP headers"],
+        expected="payload",
+    ),
+    BakeVector(
+        name="strip_http_headers_passthrough_without_separator",
+        input_data="header: value only",
+        recipe=["Strip HTTP headers"],
+        expected="header: value only",
+    ),
+    BakeVector(
+        name="strip_ipv4_header_without_payload",
+        input_data=bytes.fromhex("450000140005400080060000c0a80001c0a80002"),
+        recipe=["Strip IPv4 header"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="strip_ipv4_header_options_with_payload",
+        input_data=bytes.fromhex("460000140005400080060000c0a80001c0a8000207000000ffffffffffffffff"),
+        recipe=["Strip IPv4 header"],
+        expected=bytes.fromhex("ffffffffffffffff"),
+    ),
+    BakeVector(
+        name="strip_ipv4_header_then_parse_udp_raw",
+        input_data=bytes.fromhex("450000140005400080060000c0a80001c0a800028111003500100000ffffffffffffffff"),
+        recipe=["Strip IPv4 header", {"op": "Parse UDP", "args": {"Input format": "Raw"}}],
+        expected={
+            "Source port": 33041,
+            "Destination port": 53,
+            "Length": 16,
+            "Checksum": "0x0000",
+            "Data": "0xffffffffffffffff",
+        },
+    ),
+    BakeVector(
+        name="strip_tcp_header_without_payload",
+        input_data=bytes.fromhex("7f900050000fa4b2000cb2a45010bff100000000"),
+        recipe=["Strip TCP header"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="strip_tcp_header_options_with_payload",
+        input_data=bytes.fromhex("7f900050000fa4b2000cb2a47010bff100000000020405b404020000ffffffffffffffff"),
+        recipe=["Strip TCP header"],
+        expected=bytes.fromhex("ffffffffffffffff"),
+    ),
+    BakeVector(
+        name="strip_tcp_header_then_decode_text",
+        input_data=bytes.fromhex("7f900050000fa4b2000cb2a45010bff10000000048656c6c6f"),
+        recipe=["Strip TCP header", {"op": "Decode text", "args": {"Encoding": "UTF-8 (65001)"}}],
+        expected="Hello",
     ),
 ]
 
