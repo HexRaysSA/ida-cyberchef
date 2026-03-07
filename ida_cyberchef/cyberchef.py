@@ -275,6 +275,13 @@ def load_cyberchef(path: str | None = None):
     if (typeof TextDecoder === 'undefined') {
         globalThis.TextDecoder = class TextDecoder {
             decode(bytes) {
+                if (bytes instanceof ArrayBuffer) {
+                    bytes = new Uint8Array(bytes);
+                } else if (ArrayBuffer.isView(bytes)) {
+                    bytes = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+                } else if (!bytes) {
+                    bytes = [];
+                }
                 const utf8 = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
                 return decodeURIComponent(escape(utf8));
             }

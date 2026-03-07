@@ -7,6 +7,7 @@ import hmac
 import io
 import json
 import ipaddress
+import math
 import re
 import struct
 import tarfile
@@ -9690,6 +9691,283 @@ NETWORK_VECTORS = [
     ),
 ]
 
+def build_chi_square_score(value: bytes) -> float:
+    if not value:
+        return 0.0
+
+    distribution = [0] * 256
+    for byte in value:
+        distribution[byte] += 1
+
+    expected = len(value) / 256
+    return sum(((count - expected) ** 2) / expected for count in distribution if count > 0)
+
+
+def build_entropy_value(value: bytes) -> float:
+    if not value:
+        return 0.0
+
+    distribution = [0] * 256
+    for byte in value:
+        distribution[byte] += 1
+
+    entropy = 0.0
+    for count in distribution:
+        if count == 0:
+            continue
+        probability = count / len(value)
+        entropy -= probability * (math.log(probability, 2))
+
+    return entropy
+
+
+def build_entropy_curve(value: bytes) -> list[float]:
+    if not value:
+        return []
+
+    bin_width = 8 if len(value) < 256 else 256
+    return [build_entropy_value(value[index : index + bin_width]) for index in range(0, len(value), bin_width)]
+
+
+def build_frequency_distribution_output(value: bytes) -> dict[str, object]:
+    distribution = [0] * 256
+    for byte in value:
+        distribution[byte] += 1
+
+    percentages = [(count / len(value)) * 100 for count in distribution]
+    return {
+        "dataLength": len(value),
+        "percentages": percentages,
+        "distribution": distribution,
+        "bytesRepresented": sum(1 for count in distribution if count > 0),
+    }
+
+
+def build_de_bruijn_sequence(k: int, n: int) -> str:
+    alphabet = [0] * (k * n)
+    sequence: list[int] = []
+
+    def visit(t: int = 1, p: int = 1) -> None:
+        if t > n:
+            if n % p != 0:
+                return
+            for index in range(1, p + 1):
+                sequence.append(alphabet[index])
+            return
+
+        alphabet[t] = alphabet[t - p]
+        visit(t + 1, p)
+        for index in range(alphabet[t - p] + 1, k):
+            alphabet[t] = index
+            visit(t + 1, t)
+
+    visit()
+    return "".join(str(value) for value in sequence)
+
+
+def build_base32_bytes(value: str) -> bytes:
+    padding = (-len(value)) % 8
+    return base64.b32decode(value + ("=" * padding), casefold=True)
+
+
+def build_hotp_code(secret: str, *, counter: int, digits: int) -> str:
+    digest = hmac.new(
+        build_base32_bytes(secret),
+        counter.to_bytes(8, byteorder="big"),
+        hashlib.sha1,
+    ).digest()
+    offset = digest[-1] & 0x0F
+    truncated = int.from_bytes(digest[offset : offset + 4], byteorder="big") & 0x7FFFFFFF
+    return f"{truncated % (10**digits):0{digits}d}"
+
+
+def build_hotp_output(secret: str, *, digits: int, counter: int, name: str = "") -> str:
+    label = f"/{name}" if name else "/"
+    return (
+        f"URI: otpauth://hotp{label}?secret={secret}&algorithm=SHA1&digits={digits}&counter={counter}"
+        f"\n\nPassword: {build_hotp_code(secret, counter=counter, digits=digits)}"
+    )
+
+
+def build_totp_output(
+    secret: str,
+    *,
+    digits: int,
+    epoch_offset: int,
+    interval: int,
+    at_time: int,
+    name: str = "",
+) -> str:
+    counter = (at_time - epoch_offset) // interval
+    label = f"/{name}" if name else "/"
+    return (
+        f"URI: otpauth://totp{label}?secret={secret}&algorithm=SHA1&digits={digits}&period={interval}"
+        f"\n\nPassword: {build_hotp_code(secret, counter=counter, digits=digits)}"
+    )
+
+
+def assert_qr_code_png_hello(result: object) -> None:
+    assert isinstance(result, bytes)
+    assert result.startswith(b"\x89PNG\r\n\x1a\n")
+    assert result[12:16] == b"IHDR"
+    assert struct.unpack(">II", result[16:24]) == (145, 145)
+
+
+def assert_qr_code_svg_hello(result: object) -> None:
+    assert isinstance(result, bytes)
+    assert result.startswith(b"<svg ")
+    assert b'width="21"' in result
+    assert b'height="21"' in result
+    assert b'viewBox="0 0 21 21"' in result
+    assert b"<path d=\"" in result
+
+
+OTHER_VECTORS = [
+    BakeVector(
+        name="analyse_uuid_version_1_namespace_dns",
+        input_data="6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        recipe=["Analyse UUID"],
+        expected="UUID version: 1",
+    ),
+    BakeVector(
+        name="analyse_uuid_version_4_random",
+        input_data="550e8400-e29b-41d4-a716-446655440000",
+        recipe=["Analyse UUID"],
+        expected="UUID version: 4",
+    ),
+    BakeVector(
+        name="chi_square_empty_bytes",
+        input_data=b"",
+        recipe=["Chi Square"],
+        expected=build_chi_square_score(b""),
+    ),
+    BakeVector(
+        name="chi_square_uniform_byte_range",
+        input_data=bytes(range(256)),
+        recipe=["Chi Square"],
+        expected=build_chi_square_score(bytes(range(256))),
+    ),
+    BakeVector(
+        name="disassemble_x86_64_nop_ret",
+        input_data="90 c3",
+        recipe=["Disassemble x86"],
+        expected=(
+            "0000000000000000 90                              NOP\r\n"
+            "0000000000000001 C3                              RET\r\n"
+        ),
+    ),
+    BakeVector(
+        name="disassemble_x86_32_without_hex_or_position",
+        input_data="B800000000C3",
+        recipe=[
+            {
+                "op": "Disassemble x86",
+                "args": {
+                    "Bit mode": "32",
+                    "Compatibility": "Full x86 architecture",
+                    "Code Segment (CS)": 16,
+                    "Offset (IP)": 4096,
+                    "Show instruction hex": False,
+                    "Show instruction position": False,
+                },
+            }
+        ],
+        expected="MOV EAX,00000000\r\nRET\r\n",
+    ),
+    BakeVector(
+        name="entropy_single_bit_of_information",
+        input_data=b"\x00\x01",
+        recipe=["Entropy"],
+        expected=build_entropy_value(b"\x00\x01"),
+    ),
+    BakeVector(
+        name="entropy_curve_two_equal_blocks",
+        input_data=bytes(range(16)),
+        recipe=[{"op": "Entropy", "args": {"Visualisation": "Curve"}}],
+        expected=build_entropy_curve(bytes(range(16))),
+    ),
+    BakeVector(
+        name="frequency_distribution_repeated_ascii_bytes",
+        input_data=b"ABCA",
+        recipe=["Frequency distribution"],
+        expected=build_frequency_distribution_output(b"ABCA"),
+    ),
+    BakeVector(
+        name="generate_de_bruijn_sequence_default_parameters",
+        input_data="",
+        recipe=["Generate De Bruijn Sequence"],
+        expected=build_de_bruijn_sequence(2, 3),
+    ),
+    BakeVector(
+        name="generate_de_bruijn_sequence_ternary_pairs",
+        input_data="",
+        recipe=[{"op": "Generate De Bruijn Sequence", "args": {"Alphabet size (k)": 3, "Key length (n)": 2}}],
+        expected=build_de_bruijn_sequence(3, 2),
+    ),
+    BakeVector(
+        name="generate_hotp_rfc_base32_secret",
+        input_data=b"JBSWY3DPEHPK3PXP",
+        recipe=[{"op": "Generate HOTP", "args": {"Code length": 6, "Counter": 0}}],
+        expected=build_hotp_output("JBSWY3DPEHPK3PXP", digits=6, counter=0),
+    ),
+    BakeVector(
+        name="generate_lorem_ipsum_five_words",
+        input_data="",
+        recipe=[{"op": "Generate Lorem Ipsum", "args": {"Length": 5, "Length in": "Words"}}],
+        expected="Lorem ipsum dolor sit amet.",
+    ),
+    BakeVector(
+        name="generate_lorem_ipsum_eleven_bytes",
+        input_data="",
+        recipe=[{"op": "Generate Lorem Ipsum", "args": {"Length": 11, "Length in": "Bytes"}}],
+        expected="Lorem ipsum",
+    ),
+    BakeVector(
+        name="generate_qr_code_default_png_hello",
+        input_data="hello",
+        recipe=["Generate QR Code"],
+        expected=assert_qr_code_png_hello,
+    ),
+    BakeVector(
+        name="generate_qr_code_svg_without_margin",
+        input_data="hello",
+        recipe=[
+            {
+                "op": "Generate QR Code",
+                "args": {
+                    "Image Format": "SVG",
+                    "Module size (px)": 1,
+                    "Margin (num modules)": 0,
+                    "Error correction": "Low",
+                },
+            }
+        ],
+        expected=assert_qr_code_svg_hello,
+    ),
+    BakeVector(
+        name="generate_totp_large_period_exact_code",
+        input_data=b"JBSWY3DPEHPK3PXP",
+        recipe=[
+            {
+                "op": "Generate TOTP",
+                "args": {
+                    "Code length": 8,
+                    "Epoch offset (T0)": 0,
+                    "Interval (T1)": 1_000_000_000,
+                },
+            }
+        ],
+        expected=build_totp_output(
+            "JBSWY3DPEHPK3PXP",
+            digits=8,
+            epoch_offset=0,
+            interval=1_000_000_000,
+            at_time=int(time.time()),
+        ),
+    ),
+]
+
+
 TEXT_VECTORS = [
     BakeVector(
         name="url_encode_empty_string",
@@ -10272,6 +10550,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *LANGUAGE_VECTORS,
     *MULTIMEDIA_VECTORS,
     *NETWORK_VECTORS,
+    *OTHER_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
     *ARITHMETIC_LOGIC_VECTORS,
