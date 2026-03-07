@@ -19,6 +19,8 @@ BASE45_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"
 BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 BASE58_RIPPLE_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"
 BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+BRAILLE_ASCII = " A1B'K2L@CIF/MSP\"E3H9O6R^DJG>NTQ,*5<-U8V.%[$+X!&;:4\\0Z7(_?W]#Y)="
+BRAILLE_DOT6 = "⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿"
 
 
 @dataclass(frozen=True)
@@ -248,6 +250,77 @@ def build_base92(value: bytes) -> str:
             encoded.append(build_base92_character(number % 91))
 
     return "".join(encoded)
+
+
+def build_base64_with_alphabet(value: bytes, alphabet: str) -> str:
+    expanded_alphabet = build_expanded_alphabet(alphabet)
+    encoded = base64.b64encode(value).decode()
+    translated = encoded.translate(
+        str.maketrans(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+            expanded_alphabet[:64],
+        )
+    )
+
+    if len(expanded_alphabet) == 64:
+        return translated.rstrip("=")
+
+    return translated.replace("=", expanded_alphabet[64])
+
+
+def get_delimiter_text(name: str) -> str:
+    return {
+        "Space": " ",
+        "Comma": ",",
+        "Semi-colon": ";",
+        "Colon": ":",
+        "Line feed": "\n",
+        "CRLF": "\r\n",
+        "None": "",
+    }[name]
+
+
+def build_binary_string(value: bytes, delimiter: str, byte_length: int) -> str:
+    separator = get_delimiter_text(delimiter)
+    return separator.join(format(byte, "b").zfill(byte_length) for byte in value)
+
+
+def build_braille(value: str) -> str:
+    lookup = dict(zip(BRAILLE_ASCII, BRAILLE_DOT6, strict=True))
+    return "".join(lookup.get(character.upper(), character) for character in value)
+
+
+def build_charcode_string(value: str, delimiter: str, base: int) -> str:
+    separator = get_delimiter_text(delimiter)
+    encoded = []
+
+    for ordinal in map(ord, value):
+        if base == 16:
+            if ordinal < 256:
+                padding = 2
+            elif ordinal < 65536:
+                padding = 4
+            elif ordinal < 16777216:
+                padding = 6
+            elif ordinal < 4294967296:
+                padding = 8
+            else:
+                padding = 2
+            encoded.append(format(ordinal, f"0{padding}x"))
+            continue
+
+        encoded.append(build_base_string(ordinal, base))
+
+    return separator.join(encoded)
+
+
+def build_decimal_string(value: bytes, delimiter: str, *, signed: bool) -> str:
+    separator = get_delimiter_text(delimiter)
+    if signed:
+        numbers = [byte if byte < 128 else byte - 256 for byte in value]
+    else:
+        numbers = list(value)
+    return separator.join(str(number) for number in numbers)
 
 
 def build_swap_endianness_bytes(
@@ -2036,6 +2109,268 @@ DATA_FORMAT_VECTORS = [
             },
         ],
         expected=b"\x00\x00hello",
+    ),
+    BakeVector(
+        name="to_base62_ascii_bytes",
+        input_data=b"hello",
+        recipe=["To Base62"],
+        expected=build_base62(b"hello"),
+    ),
+    BakeVector(
+        name="to_base62_custom_alphabet_ascii_bytes",
+        input_data=b"hello",
+        recipe=[{"op": "To Base62", "args": {"Alphabet": "0-9a-zA-Z"}}],
+        expected=build_base62(b"hello", build_expanded_alphabet("0-9a-zA-Z")),
+    ),
+    BakeVector(
+        name="to_base62_roundtrip_custom_alphabet_ascii_bytes",
+        input_data=b"hello",
+        recipe=[
+            {"op": "To Base62", "args": {"Alphabet": "0-9a-zA-Z"}},
+            {"op": "From Base62", "args": {"Alphabet": "0-9a-zA-Z"}},
+        ],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="to_base64_urlsafe_binary_edge_bytes",
+        input_data=b"\xfb\xef\xff",
+        recipe=[{"op": "To Base64", "args": {"Alphabet": "A-Za-z0-9-_"}}],
+        expected=build_base64_with_alphabet(b"\xfb\xef\xff", "A-Za-z0-9-_"),
+    ),
+    BakeVector(
+        name="to_base64_rot13_alphabet_ascii_bytes",
+        input_data=b"hello",
+        recipe=[{"op": "To Base64", "args": {"Alphabet": "N-ZA-Mn-za-m0-9+/="}}],
+        expected=build_base64_with_alphabet(b"hello", "N-ZA-Mn-za-m0-9+/="),
+    ),
+    BakeVector(
+        name="to_base64_roundtrip_urlsafe_binary_edge_bytes",
+        input_data=b"\xfb\xef\xff",
+        recipe=[
+            {"op": "To Base64", "args": {"Alphabet": "A-Za-z0-9-_"}},
+            {
+                "op": "From Base64",
+                "args": {
+                    "Alphabet": "A-Za-z0-9-_",
+                    "Remove non-alphabet chars": True,
+                    "Strict mode": False,
+                },
+            },
+        ],
+        expected=b"\xfb\xef\xff",
+    ),
+    BakeVector(
+        name="to_base85_zero_group_standard_ascii85",
+        input_data=b"\x00\x00\x00\x00",
+        recipe=["To Base85"],
+        expected="z",
+    ),
+    BakeVector(
+        name="to_base85_include_delimiter_ascii_bytes",
+        input_data=b"hello",
+        recipe=[{"op": "To Base85", "args": {"Alphabet": "!-u", "Include delimeter": True}}],
+        expected=base64.a85encode(b"hello", adobe=True).decode(),
+    ),
+    BakeVector(
+        name="to_base85_roundtrip_with_delimiter_ascii_bytes",
+        input_data=b"hello",
+        recipe=[
+            {"op": "To Base85", "args": {"Alphabet": "!-u", "Include delimeter": True}},
+            {
+                "op": "From Base85",
+                "args": {
+                    "Alphabet": "!-u",
+                    "Remove non-alphabet chars": True,
+                    "All-zero group char": "z",
+                },
+            },
+        ],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="to_base92_empty_string",
+        input_data="",
+        recipe=["To Base92"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="to_base92_ascii_string",
+        input_data="hello",
+        recipe=["To Base92"],
+        expected=build_base92(b"hello").encode(),
+    ),
+    BakeVector(
+        name="to_base92_roundtrip_ascii_string",
+        input_data="hello",
+        recipe=["To Base92", "From Base92"],
+        expected=b"hello",
+    ),
+    BakeVector(
+        name="to_binary_default_ascii_bytes",
+        input_data=b"Hi",
+        recipe=["To Binary"],
+        expected=build_binary_string(b"Hi", "Space", 8),
+    ),
+    BakeVector(
+        name="to_binary_nibble_groups_without_delimiter",
+        input_data=b"\x01\x02\x03\x04",
+        recipe=[{"op": "To Binary", "args": {"Delimiter": "None", "Byte Length": 4}}],
+        expected=build_binary_string(b"\x01\x02\x03\x04", "None", 4),
+    ),
+    BakeVector(
+        name="to_binary_roundtrip_colon_delimited_ascii_bytes",
+        input_data=b"Hi",
+        recipe=[
+            {"op": "To Binary", "args": {"Delimiter": "Colon", "Byte Length": 8}},
+            {"op": "From Binary", "args": {"Delimiter": "Colon", "Byte Length": 8}},
+        ],
+        expected=b"Hi",
+    ),
+    BakeVector(
+        name="to_braille_hello_text",
+        input_data="Hello",
+        recipe=["To Braille"],
+        expected=build_braille("Hello"),
+    ),
+    BakeVector(
+        name="to_braille_punctuation_text",
+        input_data="Hi!",
+        recipe=["To Braille"],
+        expected=build_braille("Hi!"),
+    ),
+    BakeVector(
+        name="to_braille_roundtrip_ascii_text_uppercases_output",
+        input_data="Hello?",
+        recipe=["To Braille", "From Braille"],
+        expected="HELLO?",
+    ),
+    BakeVector(
+        name="to_charcode_base10_comma_ascii",
+        input_data="Hello",
+        recipe=[{"op": "To Charcode", "args": {"Delimiter": "Comma", "Base": 10}}],
+        expected=build_charcode_string("Hello", "Comma", 10),
+    ),
+    BakeVector(
+        name="to_charcode_hex_greek_text",
+        input_data="Γειά σου",
+        recipe=["To Charcode"],
+        expected=build_charcode_string("Γειά σου", "Space", 16),
+    ),
+    BakeVector(
+        name="to_charcode_roundtrip_colon_hex_ascii",
+        input_data="Hello",
+        recipe=[
+            {"op": "To Charcode", "args": {"Delimiter": "Colon", "Base": 16}},
+            {"op": "From Charcode", "args": {"Delimiter": "Colon", "Base": 16}},
+        ],
+        expected=b"Hello",
+    ),
+    BakeVector(
+        name="to_decimal_default_space_ascii_bytes",
+        input_data=b"Hi",
+        recipe=["To Decimal"],
+        expected=build_decimal_string(b"Hi", "Space", signed=False),
+    ),
+    BakeVector(
+        name="to_decimal_signed_comma_values",
+        input_data=b"\xff\x80\x7f",
+        recipe=[{"op": "To Decimal", "args": {"Delimiter": "Comma", "Support signed values": True}}],
+        expected=build_decimal_string(b"\xff\x80\x7f", "Comma", signed=True),
+    ),
+    BakeVector(
+        name="to_decimal_roundtrip_signed_values",
+        input_data=b"\xff\x80\x7f",
+        recipe=[
+            {"op": "To Decimal", "args": {"Delimiter": "Comma", "Support signed values": True}},
+            {"op": "From Decimal", "args": {"Delimiter": "Comma", "Support signed values": True}},
+        ],
+        expected=b"\xff\x80\x7f",
+    ),
+    BakeVector(
+        name="to_float_big_endian_float_one",
+        input_data=struct.pack(">f", 1.0),
+        recipe=[
+            {
+                "op": "To Float",
+                "args": {
+                    "Endianness": "Big Endian",
+                    "Size": "Float (4 bytes)",
+                    "Delimiter": "Space",
+                },
+            }
+        ],
+        expected="1",
+    ),
+    BakeVector(
+        name="to_float_little_endian_double_pair",
+        input_data=struct.pack("<d", 3.141592653589793) + struct.pack("<d", 2.5),
+        recipe=[
+            {
+                "op": "To Float",
+                "args": {
+                    "Endianness": "Little Endian",
+                    "Size": "Double (8 bytes)",
+                    "Delimiter": "Comma",
+                },
+            }
+        ],
+        expected="3.141592653589793,2.5",
+    ),
+    BakeVector(
+        name="to_float_roundtrip_little_endian_float_values",
+        input_data=bytes.fromhex("0000803f000020c0"),
+        recipe=[
+            {
+                "op": "To Float",
+                "args": {
+                    "Endianness": "Little Endian",
+                    "Size": "Float (4 bytes)",
+                    "Delimiter": "Comma",
+                },
+            },
+            {
+                "op": "From Float",
+                "args": {
+                    "Endianness": "Little Endian",
+                    "Size": "Float (4 bytes)",
+                    "Delimiter": "Comma",
+                },
+            },
+        ],
+        expected=bytes.fromhex("0000803f000020c0"),
+    ),
+    BakeVector(
+        name="to_html_entity_named_entities_with_astral_code_point",
+        input_data="&<©😀",
+        recipe=["To HTML Entity"],
+        expected="&amp;&lt;&copy;&#62976;",
+    ),
+    BakeVector(
+        name="to_html_entity_numeric_entities_for_all_characters",
+        input_data="Aβ",
+        recipe=[{"op": "To HTML Entity", "args": {"Convert all characters": True, "Convert to": "Numeric entities"}}],
+        expected="&#65;&#946;",
+    ),
+    BakeVector(
+        name="to_html_entity_hex_entities_preserve_ascii",
+        input_data="&A😀",
+        recipe=[{"op": "To HTML Entity", "args": {"Convert all characters": False, "Convert to": "Hex entities"}}],
+        expected="&#x26;A&#xf600;",
+    ),
+    BakeVector(
+        name="to_html_entity_roundtrip_named_entities",
+        input_data="5 < 7 & π",
+        recipe=[
+            {
+                "op": "To HTML Entity",
+                "args": {
+                    "Convert all characters": False,
+                    "Convert to": "Named entities",
+                },
+            },
+            "From HTML Entity",
+        ],
+        expected="5 < 7 & π",
     ),
 ]
 
