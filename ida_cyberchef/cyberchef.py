@@ -206,12 +206,8 @@ def load_cyberchef(path: str | None = None):
     globalThis.self = globalThis;
     globalThis.document = {};
     globalThis.app = {
-        alert: function() {},
-        options: {
-            attemptHighlight: false
-        }
+        alert: function() {}
     };
-    globalThis.window.app = globalThis.app;
 
     // Minimal process polyfill
     globalThis.process = {
