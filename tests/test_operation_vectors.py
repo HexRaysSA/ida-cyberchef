@@ -151,6 +151,54 @@ HASSH_CLIENT_ALGORITHMS = (
     "hmac-md5,hmac-sha1,umac-64@openssh.com,hmac-ripemd160,hmac-ripemd160@openssh.com,"
     "hmac-sha1-96,hmac-md5-96;none,zlib@openssh.com,zlib"
 )
+HASSH_SERVER_SAMPLE_HEX = (
+    "0000027c0b142c7bb93a1da21c9e54f5862e60a5597c000000596469666669652d68656c6c6d616e2d67726f75702d65786368616e67652d736861312c"
+    "6469666669652d68656c6c6d616e2d67726f757031342d736861312c6469666669652d68656c6c6d616e2d67726f7570312d736861310000000f7373682d"
+    "7273612c7373682d647373000000876165733132382d6362632c336465732d6362632c626c6f77666973682d6362632c636173743132382d6362632c6172"
+    "63666f75722c6165733139322d6362632c6165733235362d6362632c72696a6e6461656c2d636263406c797361746f722e6c69752e73652c616573313238"
+    "2d6374722c6165733139322d6374722c6165733235362d637472000000876165733132382d6362632c336465732d6362632c626c6f77666973682d636263"
+    "2c636173743132382d6362632c617263666f75722c6165733139322d6362632c6165733235362d6362632c72696a6e6461656c2d636263406c797361746f"
+    "722e6c69752e73652c6165733132382d6374722c6165733139322d6374722c6165733235362d63747200000055686d61632d6d64352c686d61632d736861"
+    "312c686d61632d726970656d643136302c686d61632d726970656d64313630406f70656e7373682e636f6d2c686d61632d736861312d39362c686d61632d"
+    "6d64352d393600000055686d61632d6d64352c686d61632d736861312c686d61632d726970656d643136302c686d61632d726970656d64313630406f7065"
+    "6e7373682e636f6d2c686d61632d736861312d39362c686d61632d6d64352d3936000000096e6f6e652c7a6c6962000000096e6f6e652c7a6c6962000000"
+    "000000000000000000000000000000000000000000"
+)
+HASSH_SERVER_SAMPLE_BASE64 = base64.b64encode(bytes.fromhex(HASSH_SERVER_SAMPLE_HEX)).decode()
+HASSH_SERVER_ALGORITHMS = (
+    "diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1;"
+    "aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour,aes192-cbc,aes256-cbc,"
+    "rijndael-cbc@lysator.liu.se,aes128-ctr,aes192-ctr,aes256-ctr;"
+    "hmac-md5,hmac-sha1,hmac-ripemd160,hmac-ripemd160@openssh.com,hmac-sha1-96,hmac-md5-96;"
+    "none,zlib"
+)
+JA3_TLS12_SAMPLE_HEX = (
+    "1603010102010000fe0303543dd3283283692d85f9416b5ccc65d2aafca45c6530b3c6eafbf6d371b6a015000094c030c02cc028c024c014c00a00a3009f"
+    "006b006a0039003800880087c032c02ec02ac026c00fc005009d003d00350084c012c00800160013c00dc003000ac02fc02bc027c023c013c00900a2009e"
+    "0067004000330032009a009900450044c031c02dc029c025c00ec004009c003c002f009600410007c011c007c00cc0020005000400150012000900140011"
+    "00080006000300ff01000041000b000403000102000a000600040018001700230000000d0022002006010602060305010502050304010402040303010302"
+    "03030201020202030101000f000101"
+)
+JA3_TLS12_SAMPLE_BASE64 = base64.b64encode(bytes.fromhex(JA3_TLS12_SAMPLE_HEX)).decode()
+JA3_TLS12_STRING = (
+    "771,49200-49196-49192-49188-49172-49162-163-159-107-106-57-56-136-135-49202-49198-49194-49190-49167-49157-157-61-53-132-49170-49160"
+    "-22-19-49165-49155-10-49199-49195-49191-49187-49171-49161-162-158-103-64-51-50-154-153-69-68-49201-49197-49193-49189-49166-49156"
+    "-156-60-47-150-65-7-49169-49159-49164-49154-5-4-21-18-9-20-17-8-6-3-255,11-10-35-13-15,24-23,0-1-2"
+)
+JA3S_TLS12_SAMPLE_HEX = "160303003d020000390303543dd328b38b445686739d58fab733fa23838f575e0e5ad9a1b9baace6cc3b4100c02f000011ff01000100000b00040300010200230000"
+JA3S_TLS12_STRING = "771,49199,65281-11-35"
+JA4_TLS13_SAMPLE_HEX = "1603010200010001fc0303b2c03e7ba990ef540c316a665d4d925f8e9079ac4b15687e587dc99016e75a6c20d0b0099243c9296a0c84153ea4ada7d87ad017f4211c2ea1350b0b3cc5514d5f00205a5a130113021303c02bc02fc02cc030cca9cca8c013c014009c009d002f003501000193fafa000000000024002200001f636f6e74656e742d6175746f66696c6c2e676f6f676c65617069732e636f6d0033002b00293a3a000100001d0020fb2cd8ef3d605b96ab03119ec4f30a6e2088cb1af86c41a81feace8706068c50000d001200100403080404010503080505010806060100230000000b00020100ff01000100000a000a00083a3a001d00170018001b000302000244690005000302683200120000002d000201010010000e000c02683208687474702f312e31000500050100000000002b0007060a0a03040303001700001a1a000100001500b800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+JA4_TLS13_ALL_OUTPUT = (
+    "JA4:    t13d1516h2_8daaf6152771_e5627efa2ab1\n"
+    "JA4_o:  t13d1516h2_acb858a92679_5276cb03a33b\n"
+    "JA4_r:  t13d1516h2_002f,0035,009c,009d,1301,1302,1303,c013,c014,c02b,c02c,c02f,c030,cca8,cca9_0005,000a,000b,000d,0012,0015,0017,001b,0023,002b,002d,0033,4469,ff01_0403,0804,0401,0503,0805,0501,0806,0601\n"
+    "JA4_ro: t13d1516h2_1301,1302,1303,c02b,c02f,c02c,c030,cca9,cca8,c013,c014,009c,009d,002f,0035_0000,0033,000d,0023,000b,ff01,000a,001b,4469,0012,002d,0010,0005,002b,0017,0015_0403,0804,0401,0503,0805,0501,0806,0601"
+)
+JA4_TLS12_SAMPLE_HEX = "1603010200010001fc0303ecb2691addb2bf6c599c7aaae23de5f42561cc04eb41029acc6fc050a16ac1d22046f8617b580ac9358e2aa44e306d52466bcc989c87c8ca64309f5faf50ba7b4d0022130113031302c02bc02fcca9cca8c02cc030c00ac009c013c014009c009d002f00350100019100000021001f00001c636f6e74696c652e73657276696365732e6d6f7a696c6c612e636f6d00170000ff01000100000a000e000c001d00170018001901000101000b00020100002300000010000e000c02683208687474702f312e310005000501000000000022000a000804030503060302030033006b0069001d00208909858fbeb6ed2f1248ba5b9e2978bead0e840110192c61daed0096798b184400170041044d183d91f5eed35791fa982464e3b0214aaa5f5d1b78616d9b9fbebc22d11f535b2f94c686143136aa795e6e5a875d6c08064ad5b76d44caad766e2483012748002b00050403040303000d0018001604030503060308040805080604010501060102030201002d00020101001c000240010015007a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+JA4S_TLS12_SAMPLE_HEX = "16030300640200006003035f0236c07f47bfb12dc2da706ecb3fe7f9eeac9968cc2ddf444f574e4752440120b89ff1ab695278c69b8a73f76242ef755e0b13dc6d459aaaa784fec9c2dfce34cca900001800000000ff01000100000b00020100001000050003026832"
+JA4S_TLS12_SAMPLE_BASE64 = base64.b64encode(bytes.fromhex(JA4S_TLS12_SAMPLE_HEX)).decode()
+JA4S_TLS13_SAMPLE_HEX = "160303007a020000760303236d214556452c55a0754487e64b1a8b0262c50ba23004c9d504166a6de3439920d0b0099243c9296a0c84153ea4ada7d87ad017f4211c2ea1350b0b3cc5514d5f130100002e00330024001d002099e3cc43a2c9941ae75af1b2c7a629bee3ee7031973cad85c82f2f23677fb244002b00020304"
+IPV4_HEADER_SAMPLE_HEX = "45 c0 00 c4 02 89 00 00 ff 11 1e 8c c0 a8 0c 01 c0 a8 0c 02"
 TYPEX_PHASE25_CUSTOM_ARGS = {
     "1st (left-hand) rotor": "KHWENRCBISXJQGOFMAPVYZDLTU<BFHNQUW",
     "1st rotor reversed": True,
@@ -2248,17 +2296,55 @@ def build_group_ip_addresses_output(values: list[str], cidr: int, *, only_subnet
     return "".join(output)
 
 
-def build_hassh_full_details(algorithms: str) -> str:
+def build_hassh_full_details(algorithms: str, *, direction: str = "Client to Server") -> str:
     digest = hashlib.md5(algorithms.encode()).hexdigest()
     kex_algorithms, encryption_algorithms, mac_algorithms, compression_algorithms = algorithms.split(";")
     return (
         f"Hash digest:\n{digest}\n\n"
         f"Full HASSH algorithms string:\n{algorithms}\n\n"
         f"Key Exchange Algorithms:\n{kex_algorithms}\n"
-        f"Encryption Algorithms Client to Server:\n{encryption_algorithms}\n"
-        f"MAC Algorithms Client to Server:\n{mac_algorithms}\n"
-        f"Compression Algorithms Client to Server:\n{compression_algorithms}"
+        f"Encryption Algorithms {direction}:\n{encryption_algorithms}\n"
+        f"MAC Algorithms {direction}:\n{mac_algorithms}\n"
+        f"Compression Algorithms {direction}:\n{compression_algorithms}"
     )
+
+
+def build_ja3_full_details(ja3: str) -> str:
+    digest = hashlib.md5(ja3.encode()).hexdigest()
+    tls_version, cipher_suites, extensions, elliptic_curves, point_formats = ja3.split(",")
+    return (
+        f"Hash digest:\n{digest}\n\n"
+        f"Full JA3 string:\n{ja3}\n\n"
+        f"TLS Version:\n{tls_version}\n"
+        f"Cipher Suites:\n{cipher_suites}\n"
+        f"Extensions:\n{extensions}\n"
+        f"Elliptic Curves:\n{elliptic_curves}\n"
+        f"Elliptic Curve Point Formats:\n{point_formats}"
+    )
+
+
+def build_ja3s_full_details(ja3s: str) -> str:
+    digest = hashlib.md5(ja3s.encode()).hexdigest()
+    tls_version, cipher_suite, extensions = ja3s.split(",")
+    return (
+        f"Hash digest:\n{digest}\n\n"
+        f"Full JA3S string:\n{ja3s}\n\n"
+        f"TLS Version:\n{tls_version}\n"
+        f"Cipher Suite:\n{cipher_suite}\n"
+        f"Extensions:\n{extensions}"
+    )
+
+
+def assert_parse_ipv4_header_html(result: object) -> None:
+    assert isinstance(result, str)
+    assert result.startswith("<table ")
+    assert "<td>Version</td><td>4</td>" in result
+    assert "<td>Internet Header Length (IHL)</td><td>5 (20 bytes)</td>" in result
+    assert "<td>Total length</td><td>196 bytes" in result
+    assert "<td>Protocol</td><td>17, User Datagram (UDP)</td>" in result
+    assert "<td>Header checksum</td><td>1e8c (correct)</td>" in result
+    assert "<td>Source IP address</td><td>192.168.12.1</td>" in result
+    assert "<td>Destination IP address</td><td>192.168.12.2</td>" in result
 
 
 CODE_TIDY_VECTORS = [
@@ -5381,6 +5467,23 @@ NETWORK_BLOCKED_VECTORS = [
         input_data="example.com",
         recipe=["DNS over HTTPS"],
         error_message="ReferenceError: URL is not defined",
+    ),
+    BlockedBakeVector(
+        name="http_request_requires_xmlhttprequest_under_stpyv8",
+        input_data="body",
+        recipe=[
+            {
+                "op": "HTTP request",
+                "args": {
+                    "Method": "GET",
+                    "URL": "https://example.com",
+                    "Headers": "",
+                    "Mode": "Cross-Origin Resource Sharing",
+                    "Show response metadata": False,
+                },
+            }
+        ],
+        error_message="ReferenceError: XMLHttpRequest is not defined",
     ),
 ]
 
@@ -8860,6 +8963,279 @@ NETWORK_VECTORS = [
         input_data=HASSH_CLIENT_SAMPLE_HEX,
         recipe=[{"op": "HASSH Client Fingerprint", "args": {"Output format": "Full details"}}],
         expected=build_hassh_full_details(HASSH_CLIENT_ALGORITHMS),
+    ),
+    BakeVector(
+        name="hassh_server_fingerprint_default_hash_digest",
+        input_data=HASSH_SERVER_SAMPLE_HEX,
+        recipe=["HASSH Server Fingerprint"],
+        expected=hashlib.md5(HASSH_SERVER_ALGORITHMS.encode()).hexdigest(),
+    ),
+    BakeVector(
+        name="hassh_server_fingerprint_algorithms_string",
+        input_data=HASSH_SERVER_SAMPLE_HEX,
+        recipe=[{"op": "HASSH Server Fingerprint", "args": {"Output format": "HASSH algorithms string"}}],
+        expected=HASSH_SERVER_ALGORITHMS,
+    ),
+    BakeVector(
+        name="hassh_server_fingerprint_full_details_base64_input",
+        input_data=HASSH_SERVER_SAMPLE_BASE64,
+        recipe=[
+            {
+                "op": "HASSH Server Fingerprint",
+                "args": {"Input format": "Base64", "Output format": "Full details"},
+            }
+        ],
+        expected=build_hassh_full_details(HASSH_SERVER_ALGORITHMS, direction="Server to Client"),
+    ),
+    BakeVector(
+        name="ipv6_transition_addresses_ipv4_default_output",
+        input_data="198.51.100.7",
+        recipe=["IPv6 Transition Addresses"],
+        expected=(
+            "6to4: 2002:c633:6407::/48\n"
+            "IPv4 Mapped: ::ffff:c633:6407\n"
+            "IPv4 Translated: ::ffff:0:c633:6407\n"
+            "Nat 64: 64:ff9b::c633:6407\n"
+        ),
+    ),
+    BakeVector(
+        name="ipv6_transition_addresses_ipv4_range",
+        input_data="198.51.100.0/24",
+        recipe=[{"op": "IPv6 Transition Addresses", "args": {"Ignore ranges": False}}],
+        expected=(
+            "6to4: 2002:c633:6400::/40\n"
+            "IPv4 Mapped: ::ffff:c633:6400/120\n"
+            "IPv4 Translated: ::ffff:0:c633:6400/120\n"
+            "Nat 64: 64:ff9b::c633:6400/120\n"
+        ),
+    ),
+    BakeVector(
+        name="ipv6_transition_addresses_remove_headers",
+        input_data="198.51.100.7",
+        recipe=[{"op": "IPv6 Transition Addresses", "args": {"Remove headers": True}}],
+        expected="2002:c633:6407::/48\n::ffff:c633:6407\n::ffff:0:c633:6407\n64:ff9b::c633:6407\n",
+    ),
+    BakeVector(
+        name="ipv6_transition_addresses_nat64_to_ipv4",
+        input_data="64:ff9b::c633:6407",
+        recipe=["IPv6 Transition Addresses"],
+        expected="IPv4: 198.51.100.7\n",
+    ),
+    BakeVector(
+        name="ipv6_transition_addresses_mac_to_eui64",
+        input_data="a1:b2:c3:d4:e5:f6",
+        recipe=["IPv6 Transition Addresses"],
+        expected="EUI-64 Interface ID: a3b2:c3ff:fed4:e5f6",
+    ),
+    BakeVector(
+        name="parse_ip_range_ipv4_cidr_default",
+        input_data="10.0.0.0/30",
+        recipe=["Parse IP range"],
+        expected=(
+            "Network: 10.0.0.0\n"
+            "CIDR: 30\n"
+            "Mask: 255.255.255.252\n"
+            "Range: 10.0.0.0 - 10.0.0.3\n"
+            "Total addresses in range: 4\n\n"
+            "10.0.0.0\n10.0.0.1\n10.0.0.2\n10.0.0.3"
+        ),
+    ),
+    BakeVector(
+        name="parse_ip_range_ipv4_hyphenated_without_network_info",
+        input_data="10.0.0.0 - 10.0.0.3",
+        recipe=[{"op": "Parse IP range", "args": {"Include network info": False}}],
+        expected="10.0.0.0\n10.0.0.1\n10.0.0.2\n10.0.0.3",
+    ),
+    BakeVector(
+        name="parse_ip_range_ipv4_list_default",
+        input_data="10.0.0.8\n10.0.0.5/30\n10.0.0.1\n10.0.0.3",
+        recipe=["Parse IP range"],
+        expected=(
+            "Minimum subnet required to hold this range:\n"
+            "\tNetwork: 10.0.0.0\n"
+            "\tCIDR: 28\n"
+            "\tMask: 255.255.255.240\n"
+            "\tSubnet range: 10.0.0.0 - 10.0.0.15\n"
+            "\tTotal addresses in subnet: 16\n\n"
+            "Range: 10.0.0.1 - 10.0.0.8\n"
+            "Total addresses in range: 8\n\n"
+            "10.0.0.1\n10.0.0.2\n10.0.0.3\n10.0.0.4\n10.0.0.5\n10.0.0.6\n10.0.0.7\n10.0.0.8"
+        ),
+    ),
+    BakeVector(
+        name="parse_ip_range_ipv6_cidr_default",
+        input_data="2404:6800:4001::/48",
+        recipe=["Parse IP range"],
+        expected=(
+            "Network: 2404:6800:4001:0000:0000:0000:0000:0000\n"
+            "Shorthand: 2404:6800:4001::\n"
+            "CIDR: 48\n"
+            "Mask: ffff:ffff:ffff:0000:0000:0000:0000:0000\n"
+            "Range: 2404:6800:4001:0000:0000:0000:0000:0000 - 2404:6800:4001:ffff:ffff:ffff:ffff:ffff\n"
+            "Total addresses in range: 1.2089258196146292e+24\n\n"
+        ),
+    ),
+    BakeVector(
+        name="parse_ipv4_header_hex_html_output",
+        input_data=IPV4_HEADER_SAMPLE_HEX,
+        recipe=["Parse IPv4 header"],
+        expected=assert_parse_ipv4_header_html,
+    ),
+    BakeVector(
+        name="parse_ipv4_header_strip_html_composition",
+        input_data=IPV4_HEADER_SAMPLE_HEX,
+        recipe=["Parse IPv4 header", "Strip HTML tags"],
+        expected=(
+            "FieldValue\n"
+            "Version4\n"
+            "Internet Header Length (IHL)5 (20 bytes)\n"
+            "Differentiated Services Code Point (DSCP)48\n"
+            "Explicit Congestion Notification (ECN)0\n"
+            "Total length196 bytes\n"
+            "IP header: 20 bytes\n"
+            "Data: 176 bytes\n"
+            "Identification0x289 (649)\n"
+            "Flags0x00\n"
+            "Reserved bit:0 (must be 0)\n"
+            "Don't fragment:0\n"
+            "More fragments:0\n"
+            "Fragment offset0\n"
+            "Time-To-Live255\n"
+            "Protocol17, User Datagram (UDP)\n"
+            "Header checksum1e8c (correct)\n"
+            "Source IP address192.168.12.1\n"
+            "Destination IP address192.168.12.2"
+        ),
+    ),
+    BakeVector(
+        name="parse_ipv6_address_nat64_translation",
+        input_data="64:ff9b::c633:6407",
+        recipe=["Parse IPv6 address"],
+        expected=(
+            "Longhand:  0064:ff9b:0000:0000:0000:0000:c633:6407\n"
+            "Shorthand: 64:ff9b::c633:6407\n\n"
+            "'Well-Known' prefix for IPv4/IPv6 translation detected. See RFC 6052 for more details.\n"
+            "Translated IPv4 address: 198.51.100.7\n"
+            "'Well-Known' prefix range: 64:ff9b::/96"
+        ),
+    ),
+    BakeVector(
+        name="parse_ipv6_address_teredo_sample",
+        input_data="2001:0000:4136:e378:8000:63bf:3fff:fdd2",
+        recipe=["Parse IPv6 address"],
+        expected=(
+            "Longhand:  2001:0000:4136:e378:8000:63bf:3fff:fdd2\n"
+            "Shorthand: 2001:0:4136:e378:8000:63bf:3fff:fdd2\n\n"
+            "Teredo tunneling IPv6 address detected\n\n"
+            "Server IPv4 address: 65.54.227.120\n"
+            "Client IPv4 address: 192.0.2.45\n"
+            "Client UDP port:     40000\n"
+            "Flags:\n"
+            "\tCone:    1 (Client is behind a cone NAT)\n"
+            "\tR:       0\n"
+            "\tRandom1: 0000\n"
+            "\tUG:      00\n"
+            "\tRandom2: 00000000\n\n"
+            "This is a valid Teredo address which complies with RFC 4380, however it does not comply with RFC 5991 (Teredo Security Updates) as there are no randomised bits in the flag field.\n\n"
+            "Teredo prefix range: 2001::/32"
+        ),
+    ),
+    BakeVector(
+        name="parse_ipv6_address_6to4_sample",
+        input_data="2002:c633:6407::1",
+        recipe=["Parse IPv6 address"],
+        expected=(
+            "Longhand:  2002:c633:6407:0000:0000:0000:0000:0001\n"
+            "Shorthand: 2002:c633:6407::1\n\n"
+            "6to4 transition IPv6 address detected. See RFC 3056 for more details.\n"
+            "6to4 prefix range: 2002::/16\n\n"
+            "Encapsulated IPv4 address: 198.51.100.7\n"
+            "SLA ID: 0\n"
+            "Interface ID (base 16): 0001\n"
+            "Interface ID (base 10): 1"
+        ),
+    ),
+    BakeVector(
+        name="ja3_fingerprint_default_hash_digest",
+        input_data=JA3_TLS12_SAMPLE_HEX,
+        recipe=["JA3 Fingerprint"],
+        expected=hashlib.md5(JA3_TLS12_STRING.encode()).hexdigest(),
+    ),
+    BakeVector(
+        name="ja3_fingerprint_string_output",
+        input_data=JA3_TLS12_SAMPLE_HEX,
+        recipe=[{"op": "JA3 Fingerprint", "args": {"Output format": "JA3 string"}}],
+        expected=JA3_TLS12_STRING,
+    ),
+    BakeVector(
+        name="ja3_fingerprint_full_details_base64_input",
+        input_data=JA3_TLS12_SAMPLE_BASE64,
+        recipe=[
+            {
+                "op": "JA3 Fingerprint",
+                "args": {"Input format": "Base64", "Output format": "Full details"},
+            }
+        ],
+        expected=build_ja3_full_details(JA3_TLS12_STRING),
+    ),
+    BakeVector(
+        name="ja3s_fingerprint_default_hash_digest",
+        input_data=JA3S_TLS12_SAMPLE_HEX,
+        recipe=["JA3S Fingerprint"],
+        expected=hashlib.md5(JA3S_TLS12_STRING.encode()).hexdigest(),
+    ),
+    BakeVector(
+        name="ja3s_fingerprint_string_output",
+        input_data=JA3S_TLS12_SAMPLE_HEX,
+        recipe=[{"op": "JA3S Fingerprint", "args": {"Output format": "JA3S string"}}],
+        expected=JA3S_TLS12_STRING,
+    ),
+    BakeVector(
+        name="ja3s_fingerprint_full_details",
+        input_data=JA3S_TLS12_SAMPLE_HEX,
+        recipe=[{"op": "JA3S Fingerprint", "args": {"Output format": "Full details"}}],
+        expected=build_ja3s_full_details(JA3S_TLS12_STRING),
+    ),
+    BakeVector(
+        name="ja4_fingerprint_default_output",
+        input_data=JA4_TLS13_SAMPLE_HEX,
+        recipe=[{"op": "JA4 Fingerprint", "args": {"Output format": "JA4"}}],
+        expected="t13d1516h2_8daaf6152771_e5627efa2ab1",
+    ),
+    BakeVector(
+        name="ja4_fingerprint_original_rendering_output",
+        input_data=JA4_TLS12_SAMPLE_HEX,
+        recipe=[{"op": "JA4 Fingerprint", "args": {"Output format": "JA4 Original Rendering"}}],
+        expected="t13d1715h2_5b234860e130_014157ec0da2",
+    ),
+    BakeVector(
+        name="ja4_fingerprint_all_output",
+        input_data=JA4_TLS13_SAMPLE_HEX,
+        recipe=[{"op": "JA4 Fingerprint", "args": {"Output format": "All"}}],
+        expected=JA4_TLS13_ALL_OUTPUT,
+    ),
+    BakeVector(
+        name="ja4server_fingerprint_default_output",
+        input_data=JA4S_TLS12_SAMPLE_HEX,
+        recipe=["JA4Server Fingerprint"],
+        expected="t1204h2_cca9_1428ce7b4018",
+    ),
+    BakeVector(
+        name="ja4server_fingerprint_raw_output",
+        input_data=JA4S_TLS13_SAMPLE_HEX,
+        recipe=[{"op": "JA4Server Fingerprint", "args": {"Output format": "JA4S Raw"}}],
+        expected="t130200_1301_0033,002b",
+    ),
+    BakeVector(
+        name="ja4server_fingerprint_both_output_base64_input",
+        input_data=JA4S_TLS12_SAMPLE_BASE64,
+        recipe=[
+            {
+                "op": "JA4Server Fingerprint",
+                "args": {"Input format": "Base64", "Output format": "Both"},
+            }
+        ],
+        expected="JA4S:   t1204h2_cca9_1428ce7b4018\nJA4S_r: t1204h2_cca9_0000,ff01,000b,0010",
     ),
 ]
 
