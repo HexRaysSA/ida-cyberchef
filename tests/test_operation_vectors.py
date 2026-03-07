@@ -1235,6 +1235,47 @@ DATA_FORMAT_VECTORS = [
         expected="U+000041U+000021",
     ),
     BakeVector(
+        name="unescape_unicode_characters_default_greek_text",
+        input_data="\\u03C3\\u03BF\\u03C5",
+        recipe=["Unescape Unicode Characters"],
+        expected="σου",
+    ),
+    BakeVector(
+        name="unescape_unicode_characters_percent_prefix_preserves_ascii",
+        input_data="A%u03B2",
+        recipe=[{"op": "Unescape Unicode Characters", "args": {"Prefix": "%u"}}],
+        expected="Aβ",
+    ),
+    BakeVector(
+        name="unescape_unicode_characters_uplus_prefix_four_digit_units",
+        input_data="U+0041U+0021",
+        recipe=[{"op": "Unescape Unicode Characters", "args": {"Prefix": "U+"}}],
+        expected="A!",
+    ),
+    BakeVector(
+        name="unescape_unicode_characters_surrogate_pair_forms_astral_character",
+        input_data="\\uD83D\\uDE00",
+        recipe=["Unescape Unicode Characters"],
+        expected="😀",
+    ),
+    BakeVector(
+        name="escape_then_unescape_unicode_characters_roundtrip",
+        input_data="σου",
+        recipe=[
+            {
+                "op": "Escape Unicode Characters",
+                "args": {
+                    "Prefix": "\\u",
+                    "Encode all chars": False,
+                    "Padding": 4,
+                    "Uppercase hex": True,
+                },
+            },
+            "Unescape Unicode Characters",
+        ],
+        expected="σου",
+    ),
+    BakeVector(
         name="from_bcd_packed_nibbles_1234",
         input_data="0001 0010 0011 0100",
         recipe=[
@@ -1725,6 +1766,36 @@ DATA_FORMAT_VECTORS = [
         input_data='{"a":1,"b":[2,3]}',
         recipe=["JSON to YAML", "YAML to JSON"],
         expected={"a": 1, "b": [2, 3]},
+    ),
+    BakeVector(
+        name="yaml_to_json_nested_object",
+        input_data="a: 1\nb:\n  - 2\n  - 3\n",
+        recipe=["YAML to JSON"],
+        expected={"a": 1, "b": [2, 3]},
+    ),
+    BakeVector(
+        name="yaml_to_json_sequence_of_mappings",
+        input_data="- name: alice\n  score: 10\n- name: bob\n  score: 20\n",
+        recipe=["YAML to JSON"],
+        expected=[{"name": "alice", "score": 10}, {"name": "bob", "score": 20}],
+    ),
+    BakeVector(
+        name="yaml_to_json_scalar_boolean",
+        input_data="true\n",
+        recipe=["YAML to JSON"],
+        expected=True,
+    ),
+    BakeVector(
+        name="yaml_to_json_then_json_beautify",
+        input_data="a: 1\nb:\n  - 2\n  - 3\n",
+        recipe=["YAML to JSON", "JSON Beautify"],
+        expected='''{
+    "a": 1,
+    "b": [
+        2,
+        3
+    ]
+}''',
     ),
     BakeVector(
         name="mime_decoding_q_encoded_utf8_header",
