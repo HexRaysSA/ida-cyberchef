@@ -11,7 +11,7 @@ class StepResult:
     """Result of executing a single recipe step."""
 
     success: bool
-    data: Optional[bytes | str]
+    data: Optional[Any]
     error: Optional[str]
 
 

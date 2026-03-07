@@ -60,6 +60,14 @@ class Dish(TypedDict):
     type: DishType
 
 
+class CyberChefFile(TypedDict):
+    """CyberChef file output represented as native Python data."""
+
+    name: str
+    type: str
+    data: bytes
+
+
 class RecipeOperation(TypedDict, total=False):
     """CyberChef recipe operation structure.
 
@@ -271,6 +279,57 @@ def load_cyberchef(path: str | None = None):
     return chef
 
 
+def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberChefFile] | Any:
+    """Convert CyberChef File values into native Python structures.
+
+    Args:
+        value: JS File or File[] value returned by CyberChef.
+        chef: Loaded CyberChef module with an attached STPyV8 context.
+
+    Returns:
+        A Python file dict or list of file dicts when a JS context is available.
+    """
+    if not chef or not hasattr(chef, "_stpyv8_context"):
+        return value
+
+    ctx = chef._stpyv8_context
+    ctx.locals.file_value = value
+    file_json = ctx.eval("""
+    (function() {
+        const convertFile = function(file) {
+            return {
+                name: file && file.name ? String(file.name) : "",
+                type: file && file.type ? String(file.type) : "",
+                data: file && file.data ? Array.from(file.data) : []
+            };
+        };
+
+        if (Array.isArray(file_value)) {
+            return JSON.stringify(file_value.map(convertFile));
+        }
+
+        return JSON.stringify(convertFile(file_value));
+    })
+    """)()
+    parsed = json.loads(file_json)
+
+    if isinstance(parsed, list):
+        return [
+            {
+                "name": str(item.get("name", "")),
+                "type": str(item.get("type", "")),
+                "data": bytes(item.get("data", [])),
+            }
+            for item in parsed
+        ]
+
+    return {
+        "name": str(parsed.get("name", "")),
+        "type": str(parsed.get("type", "")),
+        "data": bytes(parsed.get("data", [])),
+    }
+
+
 def plate(v: Dish | Any, chef=None) -> Dish | Any:
     """Convert between Python types and CyberChef Dish objects.
 
@@ -326,8 +385,10 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
             return str(value)
         elif dish_type == DishType.JSON:
             return value
-        elif dish_type in (DishType.FILE, DishType.LIST_FILE):
-            return value
+        elif dish_type == DishType.FILE:
+            return convert_js_file_value(value, chef)
+        elif dish_type == DishType.LIST_FILE:
+            return convert_js_file_value(value, chef)
         else:
             return value
     else:
@@ -356,7 +417,7 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
             return {"value": str(v), "type": DishType.STRING}
 
 
-def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> bytes | str:
+def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
     """Execute CyberChef operations using the loaded JS runtime.
 
     Args:
@@ -365,7 +426,8 @@ def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> bytes 
             - A string operation name: "To Base64"
             - A dict with op and args: {"op": "SHA2", "args": {"size": 256}}
 
-    Returns: Result as bytes or string depending on the final operation output
+    Returns:
+        Native Python data matching the final CyberChef output type.
     """
     if not recipe:
         return input_data

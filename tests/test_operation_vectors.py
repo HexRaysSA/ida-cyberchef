@@ -2,7 +2,10 @@ import base64
 import bz2
 import gzip
 import hashlib
+import io
 import re
+import tarfile
+import zipfile
 from dataclasses import dataclass
 from itertools import product
 
@@ -18,7 +21,7 @@ class BakeVector:
     name: str
     input_data: bytes | str
     recipe: list[str | dict[str, object]]
-    expected: bytes | str
+    expected: object
 
 
 @dataclass(frozen=True)
@@ -41,6 +44,18 @@ HELLO_HELLO_HELLO_LZMA_STREAM = bytes.fromhex(
     "5d00008000110000000000000000341949ee8de94f7f35c5a3ffff78a40000"
 )
 LZNT1_COMPRESSED_SAMPLE = b"\x1a\xb0\x00compress\x00edtestda\x04ta\x07\x88alot"
+HELLO_HELLO_HELLO_RAW_DEFLATE_STREAM = bytes.fromhex("4dc4a109000010c3c0557eb94245a0fbbbd837d7c0ee29")
+HELLO_HELLO_HELLO_RAW_DEFLATE_FIXED_STREAM = bytes.fromhex("cb48cdc9c957402201")
+HELLO_HELLO_HELLO_RAW_DEFLATE_STORE_STREAM = bytes.fromhex(
+    "011100eeff68656c6c6f2068656c6c6f2068656c6c6f"
+)
+HELLO_HELLO_HELLO_ZLIB_STREAM = bytes.fromhex(
+    "789c4dc4a109000010c3c0557eb94245a0fbbbd837d7c0ee293a2e067d"
+)
+HELLO_HELLO_HELLO_ZLIB_FIXED_STREAM = bytes.fromhex("785ecb48cdc9c9574022013a2e067d")
+HELLO_HELLO_HELLO_ZLIB_STORE_STREAM = bytes.fromhex(
+    "7801011100eeff68656c6c6f2068656c6c6f2068656c6c6f3a2e067d"
+)
 
 
 def build_base58_bitcoin(value: bytes) -> str:
@@ -225,6 +240,40 @@ def build_symmetric_difference(sample_a: list[str], sample_b: list[str], item_de
         *[item for item in sample_a if item not in sample_b],
         *[item for item in sample_b if item not in sample_a],
     ])
+
+
+def build_tar_archive(filename: str, data: bytes) -> bytes:
+    buffer = io.BytesIO()
+
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        info = tarfile.TarInfo(filename)
+        info.mode = 0o644
+        info.mtime = 0
+        info.size = len(data)
+        archive.addfile(info, io.BytesIO(data))
+
+    return buffer.getvalue()
+
+
+def build_zip_archive(
+    filename: str,
+    data: bytes,
+    *,
+    compression: int = zipfile.ZIP_DEFLATED,
+) -> bytes:
+    buffer = io.BytesIO()
+
+    with zipfile.ZipFile(buffer, mode="w") as archive:
+        info = zipfile.ZipInfo(filename)
+        info.date_time = (1980, 1, 1, 0, 0, 0)
+        info.compress_type = compression
+        archive.writestr(info, data)
+
+    return buffer.getvalue()
+
+
+def build_file_listing(filename: str, data: bytes) -> list[dict[str, object]]:
+    return [{"name": filename, "type": "application/unknown", "data": data}]
 
 
 CODE_TIDY_VECTORS = [
@@ -830,6 +879,147 @@ COMPRESSION_VECTORS = [
         input_data="hello hello hello",
         recipe=[{"op": "LZString Compress", "args": {"Compression Format": "Base64"}}],
         expected="BYUwNmD2AEoTcpA=",
+    ),
+    BakeVector(
+        name="lzstring_decompress_empty_payload",
+        input_data="䀀",
+        recipe=["LZString Decompress"],
+        expected="",
+    ),
+    BakeVector(
+        name="lzstring_decompress_default_format",
+        input_data="օ〶惶J፲退",
+        recipe=["LZString Decompress"],
+        expected="hello hello hello",
+    ),
+    BakeVector(
+        name="lzstring_decompress_base64_format",
+        input_data="BYUwNmD2AEoTcpA=",
+        recipe=[{"op": "LZString Decompress", "args": {"Compression Format": "Base64"}}],
+        expected="hello hello hello",
+    ),
+    BakeVector(
+        name="lzstring_roundtrip_utf16_format",
+        input_data="phase 8 ✓ café",
+        recipe=[
+            {"op": "LZString Compress", "args": {"Compression Format": "UTF16"}},
+            {"op": "LZString Decompress", "args": {"Compression Format": "UTF16"}},
+        ],
+        expected="phase 8 ✓ café",
+    ),
+    BakeVector(
+        name="raw_deflate_fixed_huffman_ascii",
+        input_data=b"hello hello hello",
+        recipe=[{"op": "Raw Deflate", "args": {"Compression type": "Fixed Huffman Coding"}}],
+        expected=HELLO_HELLO_HELLO_RAW_DEFLATE_FIXED_STREAM,
+    ),
+    BakeVector(
+        name="raw_deflate_none_store_ascii",
+        input_data=b"hello hello hello",
+        recipe=[{"op": "Raw Deflate", "args": {"Compression type": "None (Store)"}}],
+        expected=HELLO_HELLO_HELLO_RAW_DEFLATE_STORE_STREAM,
+    ),
+    BakeVector(
+        name="raw_inflate_none_store_ascii",
+        input_data=HELLO_HELLO_HELLO_RAW_DEFLATE_STORE_STREAM,
+        recipe=["Raw Inflate"],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="raw_inflate_start_index_with_block_buffer",
+        input_data=b"HEAD" + HELLO_HELLO_HELLO_RAW_DEFLATE_STREAM,
+        recipe=[
+            {
+                "op": "Raw Inflate",
+                "args": {
+                    "Start index": 4,
+                    "Buffer expansion type": "Block",
+                    "Resize buffer after decompression": True,
+                    "Verify result": True,
+                },
+            }
+        ],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="raw_roundtrip_binary_edge_bytes",
+        input_data=bytes(range(64)),
+        recipe=["Raw Deflate", "Raw Inflate"],
+        expected=bytes(range(64)),
+    ),
+    BakeVector(
+        name="tar_untar_python_reference_archive",
+        input_data=build_tar_archive("sample.bin", b"hello hello hello"),
+        recipe=["Untar"],
+        expected=build_file_listing("sample.bin", b"hello hello hello"),
+    ),
+    BakeVector(
+        name="tar_untar_roundtrip_binary_edge_bytes",
+        input_data=bytes(range(32)),
+        recipe=[{"op": "Tar", "args": {"Filename": "edge.bin"}}, "Untar"],
+        expected=build_file_listing("edge.bin", bytes(range(32))),
+    ),
+    BakeVector(
+        name="unzip_python_reference_stored_archive",
+        input_data=build_zip_archive("sample.bin", b"hello hello hello", compression=zipfile.ZIP_STORED),
+        recipe=[{"op": "Unzip", "args": {"Verify result": True}}],
+        expected=build_file_listing("sample.bin", b"hello hello hello"),
+    ),
+    BakeVector(
+        name="zip_unzip_roundtrip_stored_bytes",
+        input_data=bytes(range(32)),
+        recipe=[
+            {
+                "op": "Zip",
+                "args": {
+                    "Filename": "edge.bin",
+                    "Compression method": "None (Store)",
+                    "Operating system": "Unix",
+                },
+            },
+            {"op": "Unzip", "args": {"Verify result": True}},
+        ],
+        expected=build_file_listing("edge.bin", bytes(range(32))),
+    ),
+    BakeVector(
+        name="zlib_deflate_fixed_huffman_ascii",
+        input_data=b"hello hello hello",
+        recipe=[{"op": "Zlib Deflate", "args": {"Compression type": "Fixed Huffman Coding"}}],
+        expected=HELLO_HELLO_HELLO_ZLIB_FIXED_STREAM,
+    ),
+    BakeVector(
+        name="zlib_deflate_none_store_ascii",
+        input_data=b"hello hello hello",
+        recipe=[{"op": "Zlib Deflate", "args": {"Compression type": "None (Store)"}}],
+        expected=HELLO_HELLO_HELLO_ZLIB_STORE_STREAM,
+    ),
+    BakeVector(
+        name="zlib_inflate_none_store_ascii",
+        input_data=HELLO_HELLO_HELLO_ZLIB_STORE_STREAM,
+        recipe=["Zlib Inflate"],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="zlib_inflate_start_index_with_block_buffer",
+        input_data=b"HEAD" + HELLO_HELLO_HELLO_ZLIB_STREAM,
+        recipe=[
+            {
+                "op": "Zlib Inflate",
+                "args": {
+                    "Start index": 4,
+                    "Buffer expansion type": "Block",
+                    "Resize buffer after decompression": True,
+                    "Verify result": True,
+                },
+            }
+        ],
+        expected=b"hello hello hello",
+    ),
+    BakeVector(
+        name="zlib_roundtrip_binary_edge_bytes",
+        input_data=bytes(range(64)),
+        recipe=["Zlib Deflate", "Zlib Inflate"],
+        expected=bytes(range(64)),
     ),
 ]
 
