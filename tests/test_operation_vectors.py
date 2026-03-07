@@ -12,6 +12,7 @@ import re
 import struct
 import tarfile
 import time
+import uuid
 import zipfile
 import zlib
 from collections.abc import Callable
@@ -9822,6 +9823,68 @@ def assert_qr_code_svg_hello(result: object) -> None:
     assert b"<path d=\"" in result
 
 
+def build_uuid_version_assertion(expected_version: int) -> Callable[[object], None]:
+    def assert_uuid_version(result: object) -> None:
+        assert isinstance(result, str)
+        parsed = uuid.UUID(result)
+        assert str(parsed) == result
+        assert parsed.version == expected_version
+
+    return assert_uuid_version
+
+
+def build_haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    to_radians = math.pi / 180
+    delta_latitude = (lat2 - lat1) * to_radians
+    delta_longitude = (lng2 - lng1) * to_radians
+    a_value = (
+        math.sin(delta_latitude / 2) ** 2
+        + math.cos(lat1 * to_radians) * math.cos(lat2 * to_radians) * math.sin(delta_longitude / 2) ** 2
+    )
+    return 6371000 * 2 * math.atan2(math.sqrt(a_value), math.sqrt(1 - a_value))
+
+
+def build_index_of_coincidence(text: str) -> float:
+    frequencies = [0] * 26
+
+    for character in text.lower():
+        if "a" <= character <= "z":
+            frequencies[ord(character) - ord("a")] += 1
+
+    coincidence = sum(frequency * (frequency - 1) for frequency in frequencies)
+    density = max(sum(frequencies), 2)
+    return coincidence / (density * (density - 1))
+
+
+def build_numberwang_assertion(expected_prefix: str) -> Callable[[object], None]:
+    def assert_numberwang(result: object) -> None:
+        assert isinstance(result, str)
+        assert result.startswith(expected_prefix)
+        assert "\n\nDid you know: " in result
+        fact = result.split("\n\nDid you know: ", maxsplit=1)[1]
+        assert fact
+
+    return assert_numberwang
+
+
+def build_float_approx_assertion(expected: float, *, rel: float = 1e-12, abs: float = 0.0) -> Callable[[object], None]:
+    def assert_float(result: object) -> None:
+        assert isinstance(result, float)
+        assert result == pytest.approx(expected, rel=rel, abs=abs)
+
+    return assert_float
+
+
+def assert_html_to_text_preserves_raw_parse_ipv4_markup(result: object) -> None:
+    assert isinstance(result, str)
+    decoded = base64.b64decode(result).decode()
+    assert decoded.startswith("<table ")
+    assert "<td>Version</td><td>4</td>" in decoded
+    assert "<td>Total length</td><td>196 bytes" in decoded
+    assert "<td>Protocol</td><td>17, User Datagram (UDP)</td>" in decoded
+    assert decoded.endswith("</table>")
+
+
 OTHER_VECTORS = [
     BakeVector(
         name="analyse_uuid_version_1_namespace_dns",
@@ -9943,6 +10006,114 @@ OTHER_VECTORS = [
             }
         ],
         expected=assert_qr_code_svg_hello,
+    ),
+    BakeVector(
+        name="generate_uuid_default_v4_shape",
+        input_data="",
+        recipe=["Generate UUID"],
+        expected=build_uuid_version_assertion(4),
+    ),
+    BakeVector(
+        name="generate_uuid_v1_shape",
+        input_data="",
+        recipe=[{"op": "Generate UUID", "args": {"Version": "v1"}}],
+        expected=build_uuid_version_assertion(1),
+    ),
+    BakeVector(
+        name="generate_uuid_v3_dns_hello",
+        input_data="hello",
+        recipe=[{"op": "Generate UUID", "args": {"Version": "v3", "Namespace": str(uuid.NAMESPACE_DNS)}}],
+        expected=str(uuid.uuid3(uuid.NAMESPACE_DNS, "hello")),
+    ),
+    BakeVector(
+        name="generate_uuid_v5_dns_hello",
+        input_data="hello",
+        recipe=[{"op": "Generate UUID", "args": {"Version": "v5", "Namespace": str(uuid.NAMESPACE_DNS)}}],
+        expected=str(uuid.uuid5(uuid.NAMESPACE_DNS, "hello")),
+    ),
+    BakeVector(
+        name="generate_uuid_v6_shape",
+        input_data="",
+        recipe=[{"op": "Generate UUID", "args": {"Version": "v6"}}],
+        expected=build_uuid_version_assertion(6),
+    ),
+    BakeVector(
+        name="generate_uuid_v7_shape",
+        input_data="",
+        recipe=[{"op": "Generate UUID", "args": {"Version": "v7"}}],
+        expected=build_uuid_version_assertion(7),
+    ),
+    BakeVector(
+        name="html_to_text_preserves_parse_ipv4_markup_for_base64",
+        input_data=IPV4_HEADER_SAMPLE_HEX,
+        recipe=["Parse IPv4 header", "HTML To Text", "To Base64"],
+        expected=assert_html_to_text_preserves_raw_parse_ipv4_markup,
+    ),
+    BakeVector(
+        name="haversine_distance_same_coordinates_zero_metres",
+        input_data="51.487263,-0.124323, 51.487263,-0.124323",
+        recipe=["Haversine distance"],
+        expected=0.0,
+    ),
+    BakeVector(
+        name="haversine_distance_docs_example",
+        input_data="51.487263,-0.124323, 38.9517,-77.1467",
+        recipe=["Haversine distance"],
+        expected=build_float_approx_assertion(build_haversine_distance(51.487263, -0.124323, 38.9517, -77.1467)),
+    ),
+    BakeVector(
+        name="index_of_coincidence_empty_string",
+        input_data="",
+        recipe=["Index of Coincidence"],
+        expected=build_index_of_coincidence(""),
+    ),
+    BakeVector(
+        name="index_of_coincidence_ignores_non_letters",
+        input_data="Attack at dawn! 123",
+        recipe=["Index of Coincidence"],
+        expected=build_index_of_coincidence("Attack at dawn! 123"),
+    ),
+    BakeVector(
+        name="numberwang_empty_input_prompt",
+        input_data="",
+        recipe=["Numberwang"],
+        expected=build_numberwang_assertion("Let's play Wangernumb!"),
+    ),
+    BakeVector(
+        name="numberwang_numeric_hit",
+        input_data="46",
+        recipe=["Numberwang"],
+        expected=build_numberwang_assertion("46! That's Numberwang!"),
+    ),
+    BakeVector(
+        name="numberwang_alphanumeric_hit",
+        input_data="46x",
+        recipe=["Numberwang"],
+        expected=build_numberwang_assertion("46x! That's AlphaNumericWang!"),
+    ),
+    BakeVector(
+        name="numberwang_miss_rotates_board",
+        input_data="hello world",
+        recipe=["Numberwang"],
+        expected=build_numberwang_assertion("Sorry, that's not Numberwang. Let's rotate the board!"),
+    ),
+    BakeVector(
+        name="parse_qr_code_roundtrip_generated_png",
+        input_data="hello",
+        recipe=["Generate QR Code", "Parse QR Code"],
+        expected="hello",
+    ),
+    BakeVector(
+        name="parse_qr_code_roundtrip_generated_png_with_normalise",
+        input_data="hello",
+        recipe=["Generate QR Code", {"op": "Parse QR Code", "args": {"Normalise image": True}}],
+        expected="hello",
+    ),
+    BakeVector(
+        name="xkcd_random_number_is_four",
+        input_data="",
+        recipe=["XKCD Random Number"],
+        expected=4.0,
     ),
     BakeVector(
         name="generate_totp_large_period_exact_code",
