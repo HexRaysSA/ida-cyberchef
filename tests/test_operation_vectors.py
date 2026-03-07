@@ -430,6 +430,31 @@ def build_expanded_alphabet(pattern: str) -> str:
     return "".join(expanded)
 
 
+def build_line_numbered_text(value: str, *, offset: int = 0) -> str:
+    lines = value.split("\n")
+    width = len(str(len(lines)))
+    return "\n".join(
+        f"{str(index + 1 + offset).rjust(width)} {line}" for index, line in enumerate(lines)
+    )
+
+
+def build_alternating_caps(value: str) -> str:
+    output = []
+    previous_caps = True
+
+    for character in value:
+        if not character.isalpha():
+            output.append(character)
+        elif previous_caps:
+            output.append(character.lower())
+            previous_caps = False
+        else:
+            output.append(character.upper())
+            previous_caps = True
+
+    return "".join(output)
+
+
 def build_base58(value: bytes, alphabet: str = BASE58_ALPHABET) -> str:
     if not value:
         return ""
@@ -2109,6 +2134,36 @@ def build_rotate_right_carry_bytes(data: bytes, amount: int) -> bytes:
 
     result[0] |= carry_bits
     return bytes(result)
+
+
+def build_drop_bytes(
+    data: bytes,
+    *,
+    start: int,
+    length: int,
+    apply_to_each_line: bool = False,
+) -> bytes:
+    def drop_slice(chunk: bytes) -> bytes:
+        slice_start = start
+        slice_length = length
+
+        if slice_start < 0:
+            slice_start = len(chunk) + slice_start
+
+        if slice_length < 0:
+            slice_start += slice_length
+            if slice_start < 0:
+                slice_start = len(chunk) + slice_start
+                slice_length = slice_start - slice_length
+            else:
+                slice_length = -slice_length
+
+        return chunk[:slice_start] + chunk[slice_start + slice_length :]
+
+    if apply_to_each_line:
+        return b"\n".join(drop_slice(line) for line in data.split(b"\n"))
+
+    return drop_slice(data)
 
 
 def build_cartesian_product(samples: list[list[str]], item_delimiter: str) -> str:
@@ -10780,6 +10835,256 @@ OTHER_VECTORS = [
 ]
 
 
+UTILS_VECTORS = [
+    BakeVector(
+        name="add_line_numbers_empty_string",
+        input_data="",
+        recipe=["Add line numbers"],
+        expected=build_line_numbered_text(""),
+    ),
+    BakeVector(
+        name="add_line_numbers_with_offset",
+        input_data="alpha\nbeta",
+        recipe=[{"op": "Add line numbers", "args": {"Offset": 8}}],
+        expected=build_line_numbered_text("alpha\nbeta", offset=8),
+    ),
+    BakeVector(
+        name="alternating_caps_empty_string",
+        input_data="",
+        recipe=["Alternating Caps"],
+        expected="",
+    ),
+    BakeVector(
+        name="alternating_caps_unicode_and_punctuation",
+        input_data="Ångström, hello! 123",
+        recipe=["Alternating Caps"],
+        expected=build_alternating_caps("Ångström, hello! 123"),
+    ),
+    BakeVector(
+        name="convert_area_default_identity",
+        input_data="1",
+        recipe=["Convert area"],
+        expected="1",
+    ),
+    BakeVector(
+        name="convert_area_square_kilometres_to_hectares",
+        input_data="1",
+        recipe=[
+            {
+                "op": "Convert area",
+                "args": {
+                    "Input units": "Square kilometre (sq km)",
+                    "Output units": "Hectare (ha)",
+                },
+            }
+        ],
+        expected="100",
+    ),
+    BakeVector(
+        name="convert_data_units_default_identity",
+        input_data="1",
+        recipe=["Convert data units"],
+        expected="1",
+    ),
+    BakeVector(
+        name="convert_data_units_kibibytes_to_bytes",
+        input_data="1",
+        recipe=[
+            {
+                "op": "Convert data units",
+                "args": {
+                    "Input units": "Kibibytes (KiB)",
+                    "Output units": "Bytes (B)",
+                },
+            }
+        ],
+        expected="1024",
+    ),
+    BakeVector(
+        name="convert_distance_default_identity",
+        input_data="1",
+        recipe=["Convert distance"],
+        expected="1",
+    ),
+    BakeVector(
+        name="convert_distance_feet_to_inches",
+        input_data="3",
+        recipe=[
+            {
+                "op": "Convert distance",
+                "args": {
+                    "Input units": "Feet (ft)",
+                    "Output units": "Inches (in)",
+                },
+            }
+        ],
+        expected="36",
+    ),
+    BakeVector(
+        name="convert_mass_default_identity",
+        input_data="1",
+        recipe=["Convert mass"],
+        expected="1",
+    ),
+    BakeVector(
+        name="convert_mass_tonnes_to_kilograms",
+        input_data="2",
+        recipe=[
+            {
+                "op": "Convert mass",
+                "args": {
+                    "Input units": "Tonne (t)",
+                    "Output units": "Kilogram (kg)",
+                },
+            }
+        ],
+        expected="2000",
+    ),
+    BakeVector(
+        name="convert_speed_default_identity",
+        input_data="1",
+        recipe=["Convert speed"],
+        expected="1",
+    ),
+    BakeVector(
+        name="convert_speed_kilometres_per_hour_to_metres_per_second",
+        input_data="1",
+        recipe=[
+            {
+                "op": "Convert speed",
+                "args": {
+                    "Input units": "Kilometres per hour (km/h)",
+                    "Output units": "Metres per second (m/s)",
+                },
+            }
+        ],
+        expected="0.2778",
+    ),
+    BakeVector(
+        name="count_occurrences_default_empty_search",
+        input_data="banana",
+        recipe=["Count occurrences"],
+        expected=0.0,
+    ),
+    BakeVector(
+        name="count_occurrences_simple_substring",
+        input_data="banana",
+        recipe=[
+            {
+                "op": "Count occurrences",
+                "args": {"Search string": {"string": "an", "option": "Simple string"}},
+            }
+        ],
+        expected=2.0,
+    ),
+    BakeVector(
+        name="count_occurrences_regex_case_insensitive",
+        input_data="Alpha alpha ALPHA",
+        recipe=[
+            {
+                "op": "Count occurrences",
+                "args": {"Search string": {"string": "alpha", "option": "Regex"}},
+            }
+        ],
+        expected=3.0,
+    ),
+    BakeVector(
+        name="count_occurrences_extended_newline_escape",
+        input_data="a\nb\na\n",
+        recipe=[
+            {
+                "op": "Count occurrences",
+                "args": {
+                    "Search string": {
+                        "string": "\\n",
+                        "option": "Extended (\\n, \\t, \\x...)",
+                    }
+                },
+            }
+        ],
+        expected=3.0,
+    ),
+    BakeVector(
+        name="diff_character_custom_delimiter",
+        input_data="cat|cut",
+        recipe=[
+            {
+                "op": "Diff",
+                "args": {
+                    "Sample delimiter": "|",
+                    "Diff by": "Character",
+                    "Show added": True,
+                    "Show removed": True,
+                    "Show subtraction": False,
+                    "Ignore whitespace": False,
+                },
+            }
+        ],
+        expected="c<del>a</del><ins>u</ins>t",
+    ),
+    BakeVector(
+        name="diff_word_ignore_whitespace",
+        input_data="hello world|hello  world",
+        recipe=[
+            {
+                "op": "Diff",
+                "args": {
+                    "Sample delimiter": "|",
+                    "Diff by": "Word",
+                    "Show added": True,
+                    "Show removed": True,
+                    "Show subtraction": False,
+                    "Ignore whitespace": True,
+                },
+            }
+        ],
+        expected="hello  world",
+    ),
+    BakeVector(
+        name="diff_json_escapes_html",
+        input_data='{"a":1}|{"a":2}',
+        recipe=[
+            {
+                "op": "Diff",
+                "args": {
+                    "Sample delimiter": "|",
+                    "Diff by": "JSON",
+                    "Show added": True,
+                    "Show removed": True,
+                    "Show subtraction": False,
+                    "Ignore whitespace": False,
+                },
+            }
+        ],
+        expected="<del>{&quot;a&quot;:1}</del><ins>{&quot;a&quot;:2}</ins>",
+    ),
+    BakeVector(
+        name="drop_bytes_empty_input",
+        input_data=b"",
+        recipe=["Drop bytes"],
+        expected=b"",
+    ),
+    BakeVector(
+        name="drop_bytes_middle_slice",
+        input_data=b"abcdef",
+        recipe=[{"op": "Drop bytes", "args": {"Start": 1, "Length": 2, "Apply to each line": False}}],
+        expected=build_drop_bytes(b"abcdef", start=1, length=2),
+    ),
+    BakeVector(
+        name="drop_bytes_negative_length",
+        input_data=b"abcdef",
+        recipe=[{"op": "Drop bytes", "args": {"Start": 4, "Length": -2, "Apply to each line": False}}],
+        expected=build_drop_bytes(b"abcdef", start=4, length=-2),
+    ),
+    BakeVector(
+        name="drop_bytes_apply_to_each_line",
+        input_data=b"abc\ndef\n",
+        recipe=[{"op": "Drop bytes", "args": {"Start": 1, "Length": 1, "Apply to each line": True}}],
+        expected=build_drop_bytes(b"abc\ndef\n", start=1, length=1, apply_to_each_line=True),
+    ),
+]
+
+
 TEXT_VECTORS = [
     BakeVector(
         name="url_encode_empty_string",
@@ -11364,6 +11669,7 @@ BITE_SIZED_BAKE_VECTORS = [
     *NETWORK_VECTORS,
     *PUBLIC_KEY_VECTORS,
     *OTHER_VECTORS,
+    *UTILS_VECTORS,
     *TEXT_VECTORS,
     *BINARY_VECTORS,
     *ARITHMETIC_LOGIC_VECTORS,
