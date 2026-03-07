@@ -38,6 +38,30 @@ The project went through a few iterations:
 
 There's also a standalone (non-IDA Pro) Qt application for running CyberChef on the desktop; but really, I'm not sure why you'd use this versus the standalone HTML file from upstream.
 
+## Runtime support
+
+The supported path is the offline STPyV8-backed runtime used by the plugin and standalone Qt app.
+
+Supported:
+- most deterministic local CyberChef operations
+- local compatibility fixes for defaults, option mapping, and related bridge/runtime issues
+
+Unsupported in the current runtime:
+- JavaScript Beautify
+- JavaScript Minify
+- JavaScript Parser
+- Syntax highlighter
+- DNS over HTTPS
+- HTTP request
+- Optical Character Recognition
+- Add Text To Image
+
+These either come from the Node-targeted bundle exclusion list or require browser-style networking, workers, or asset loading that this project does not provide.
+
+Some operations are still shipped but not yet reliable enough to claim support, notably Magic, YARA Rules, Argon2, and Argon2 compare.
+
+See `docs/runtime-support.md` for the current support policy and known degraded behaviors.
+
 ## Building
 
 First, initialize the submodule if you haven't already:
