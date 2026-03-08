@@ -1,4 +1,4 @@
 [submodule "deps/CyberChef"]
 	path = deps/CyberChef
-	url = git@github.com:williballenthin/CyberChef.git
+	url = https://github.com/williballenthin/CyberChef.git
 	branch = commonjs-minimal-interpeter

@@ -25,5 +25,4 @@ cyberchef-qt = "ida_cyberchef.main:main"
 
 [tool.pytest.ini_options]
 pythonpath = "."
-addopts = "-p no:pytest-qt"
 testpaths = ["tests"]
