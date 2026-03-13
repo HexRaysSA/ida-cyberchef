@@ -44,7 +44,7 @@ The runtime supports local, deterministic operation execution. It has no browser
 
 Excluded operations: JavaScript Beautify/Minify/Parser, Syntax highlighter, DNS over HTTPS, HTTP request, Optical Character Recognition, and Add Text To Image. The JavaScript formatting operations are excluded by the Node-targeted CyberChef bundle. The network operations require browser-style request APIs. The OCR and image-text operations require browser-style workers or asset loading that this project does not provide.
 
-Magic, YARA Rules, Argon2, and Argon2 compare are also excluded. Generated operation docs in `docs/ops.md` annotate these directly.
+Magic, YARA Rules, Argon2, and Argon2 compare are also excluded. Some operations (Caret/M-decode, Convert co-ordinate format, Fletcher-16/32/64 Checksum, HAS-160, Parse X.509 CRL, Public Key from Certificate, Public Key from Private Key) are missing from the CyberChef build entirely. Generated operation docs in `docs/ops.md` annotate these directly.
 
 ## Building
 
