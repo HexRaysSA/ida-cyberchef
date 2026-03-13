@@ -505,7 +505,7 @@ class cyberchef_plugin_t(ida_idaapi.plugin_t):
     comment = ""
     # TODO: don't show in plugins menu
     wanted_name = "CyberChef"
-    wanted_hotkey = "Shift-e"
+    wanted_hotkey = "Shift-c"
 
     def init(self):
         return cyberchef_plugmod_t()
