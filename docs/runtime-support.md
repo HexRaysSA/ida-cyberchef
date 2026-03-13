@@ -38,6 +38,21 @@ These operations remain unsupported in the current runtime and should be documen
 
 They may stay discoverable in internal metadata, but user-facing docs should describe them as unsupported.
 
+## Missing from the CyberChef build
+
+These operations exist in upstream CyberChef but are absent from the Node-targeted bundle shipped with this project. They are not in the operation schema and cannot be called at runtime:
+- Caret/M-decode
+- Convert co-ordinate format
+- Fletcher-16 Checksum
+- Fletcher-32 Checksum
+- Fletcher-64 Checksum
+- HAS-160
+- Parse X.509 CRL
+- Public Key from Certificate
+- Public Key from Private Key
+
+These were discovered by importing upstream test vectors (see `tests/test_cyberchef_vectors.py`). Adding them requires rebuilding the CyberChef bundle with the corresponding operation modules included.
+
 ## Known degraded behaviors still shipped
 
 No additional degraded behaviors are currently tracked in `remaining.md` for the supported runtime.

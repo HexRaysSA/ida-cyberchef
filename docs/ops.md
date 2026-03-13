@@ -3,6 +3,7 @@
 This document lists all 443 available CyberChef operations.
 
 Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.
+Operations missing from the build entirely (not in schema) are listed in `docs/runtime-support.md` and do not appear below.
 See `docs/runtime-support.md` for the broader support policy.
 
 ## Operations

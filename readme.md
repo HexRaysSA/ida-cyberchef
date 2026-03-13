@@ -59,9 +59,13 @@ Unsupported in the current runtime:
 These either come from the Node-targeted bundle exclusion list or require browser-style networking, workers, or asset loading that this project does not provide.
 
 Some operations are also explicitly unsupported in the current runtime, notably Magic, YARA Rules, Argon2, and Argon2 compare.
+
+Missing from the CyberChef build entirely (not in schema or runtime):
+- Caret/M-decode, Convert co-ordinate format, Fletcher-16/32/64 Checksum, HAS-160, Parse X.509 CRL, Public Key from Certificate, Public Key from Private Key
+
 Generated operation docs in `docs/ops.md` annotate these unsupported operations directly.
 
-See `docs/runtime-support.md` for the current support policy.
+See `docs/runtime-support.md` for the full support policy.
 
 ## Building
 
