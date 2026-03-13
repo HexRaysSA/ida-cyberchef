@@ -1,6 +1,6 @@
 # IDA CyberChef
 
-A Qt-based CyberChef interface designed for malware analysis workflows, particularly in IDA Pro. This brings the power of [CyberChef](https://gchq.github.io/CyberChef/)'s data transformation operations directly into your reverse engineering toolkit.
+A Qt-based CyberChef interface designed for malware analysis workflows in IDA Pro. This brings the power of [CyberChef](https://gchq.github.io/CyberChef/)'s data transformation operations directly into your reverse engineering toolkit.
 
 **Install it** via Hex-Rays' IDA Pro plugin manager:
 
@@ -17,7 +17,7 @@ hcli plugin install ida-cyberchef
 
 If you've ever been knee-deep in a malware sample and needed to quickly decode some base64, XOR a blob with a key, or chain together a series of transformations on binary data - you know the pain of context switching. Copy data from IDA, paste into CyberChef web UI, get result, copy back. Repeat 47 times.
 
-This project eliminates that workflow. It embeds CyberChef's JavaScript engine directly into IDA Pro's Qt user interface, integrating with common IDA features, like reading the current cursor/selection, settings comments, and patching bytes.
+This project eliminates that workflow. It embeds CyberChef's data transforms directly into IDA Pro's Qt user interface, integrating with common IDA features, like reading the current cursor/selection, settings comments, and patching bytes.
 
 ## How it works
 
@@ -40,28 +40,11 @@ There's also a standalone (non-IDA Pro) Qt application for running CyberChef on 
 
 ## Runtime support
 
-The supported path is the offline STPyV8-backed runtime used by the plugin and standalone Qt app.
+The runtime supports local, deterministic operation execution. It has no browser tab, DOM, worker, or network dependency, and does not fetch external assets at runtime. The bridge applies compatibility fixes for CyberChef's Node-targeted bundle, including argument normalization and runtime polyfills. Most offline CyberChef operations work out of the box.
 
-Supported:
-- most deterministic local CyberChef operations
-- local compatibility fixes for defaults, option mapping, and related bridge/runtime issues
+Excluded operations: JavaScript Beautify/Minify/Parser, Syntax highlighter, DNS over HTTPS, HTTP request, Optical Character Recognition, and Add Text To Image. The JavaScript formatting operations are excluded by the Node-targeted CyberChef bundle. The network operations require browser-style request APIs. The OCR and image-text operations require browser-style workers or asset loading that this project does not provide.
 
-Unsupported in the current runtime:
-- JavaScript Beautify
-- JavaScript Minify
-- JavaScript Parser
-- Syntax highlighter
-- DNS over HTTPS
-- HTTP request
-- Optical Character Recognition
-- Add Text To Image
-
-These either come from the Node-targeted bundle exclusion list or require browser-style networking, workers, or asset loading that this project does not provide.
-
-Some operations are also explicitly unsupported in the current runtime, notably Magic, YARA Rules, Argon2, and Argon2 compare.
-Generated operation docs in `docs/ops.md` annotate these unsupported operations directly.
-
-See `docs/runtime-support.md` for the current support policy.
+Magic, YARA Rules, Argon2, and Argon2 compare are also excluded. Generated operation docs in `docs/ops.md` annotate these directly.
 
 ## Building
 

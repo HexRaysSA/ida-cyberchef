@@ -161,7 +161,7 @@ def generate_docs_markdown(schema: dict[str, Any]) -> str:
         f"This document lists all {len(operations)} available CyberChef operations.",
         "",
         "Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.",
-        "See `docs/runtime-support.md` for the broader support policy.",
+        "See the Runtime support section in `readme.md` for the broader support policy.",
         "",
         "## Operations",
         "",
