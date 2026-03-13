@@ -288,6 +288,12 @@ def normalise_recipe_argument_value(op_name: str, arg: dict[str, Any], value: An
     if arg_type == "boolean":
         return coerce_schema_boolean(value)
 
+    if arg_type == "number" and isinstance(value, str):
+        try:
+            return int(value) if "." not in value else float(value)
+        except ValueError:
+            return value
+
     if arg_type in {"option", "editableOption", "editableOptionShort", "argSelector", "populateMultiOption"}:
         return canonicalise_option_value(arg, value)
 
@@ -1096,8 +1102,8 @@ def execute_python_flow_recipe(input_data: bytes | str, recipe: list[str | Recip
             continue
 
         if name == "Fork":
-            split_delimiter = str(args.get("Split delimiter", "\n"))
-            merge_delimiter = str(args.get("Merge delimiter", "\n"))
+            split_delimiter = decode_escaped_string(str(args.get("Split delimiter", "\\n")))
+            merge_delimiter = decode_escaped_string(str(args.get("Merge delimiter", "\\n")))
             ignore_errors = bool(args.get("Ignore errors", False))
             subrecipe, next_index = collect_flow_subrecipe(recipe, index)
             inputs = coerce_string_value(current).split(split_delimiter) if current else []
