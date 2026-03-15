@@ -11,3 +11,6 @@ build: install-npm
 
 clean:
     rm -rf deps/CyberChef/build ida_cyberchef/data/CyberChef.js
+
+test:
+    pytest tests/
