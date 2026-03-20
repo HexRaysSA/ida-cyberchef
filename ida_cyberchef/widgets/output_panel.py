@@ -321,17 +321,21 @@ class OutputPanel(QWidget):
         Emits copy_to_db_requested signal with address and data.
         Only works when input source is FROM_SELECTION or FROM_LOCATION.
         """
+        logger.debug(
+            "copy to IDB clicked: output type=%s, len=%s, source=%s",
+            type(self._current_output).__name__,
+            len(self._current_output) if self._current_output else 0,
+            self._input_model.get_input_source().name,
+        )
+
         if not self._current_output:
             logger.warning("No output available to copy to IDB")
             return
 
         if isinstance(self._current_output, str):
-            QMessageBox.warning(
-                self,
-                "Invalid Output Type",
-                "Cannot copy string output to IDB. Only binary data can be patched.",
-            )
-            return
+            data = self._current_output.encode("utf-8")
+        else:
+            data = self._current_output
 
         address = self._input_model.get_external_address()
         if address is None:
@@ -340,7 +344,8 @@ class OutputPanel(QWidget):
             )
             return
 
-        self.copy_to_db_requested.emit(address, self._current_output)
+        logger.debug("Emitting copy_to_db_requested: address=%s, len=%d", hex(address), len(data))
+        self.copy_to_db_requested.emit(address, data)
 
     def _on_set_comment_clicked(self):
         """Handle set comment at cursor action.
