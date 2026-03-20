@@ -1,9 +1,12 @@
 """Qt model for input data management."""
 
+import logging
 from enum import IntEnum
 from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
+
+logger = logging.getLogger(__name__)
 
 from ida_cyberchef.core.input_parser import InputFormat, InputParser
 
@@ -125,8 +128,19 @@ class InputModel(QObject):
         if IDA_AVAILABLE:
             try:
                 data = ida_bytes.get_bytes(address, length)
-                self._location_data = data if data else b""
+                if data:
+                    self._location_data = data
+                else:
+                    logger.warning(
+                        "ida_bytes.get_bytes(0x%x, %d) returned empty data",
+                        address, length,
+                    )
+                    self._location_data = b""
             except Exception:
+                logger.error(
+                    "failed to read %d bytes at 0x%x",
+                    length, address, exc_info=True,
+                )
                 self._location_data = b""
         else:
             self._location_data = b""
