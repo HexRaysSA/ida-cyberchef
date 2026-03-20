@@ -59,9 +59,7 @@ class OperationBrowserWidget(QWidget):
         # Search bar
         self._search_input = QLineEdit()
         self._search_input.setPlaceholderText("Search operations...")
-        self._search_input.setStyleSheet(
-            "border: 2px solid #2196F3; border-radius: 4px; padding: 4px 8px;"
-        )
+        self._search_input.setStyleSheet("padding: 4px 8px;")
         self._search_input.textChanged.connect(self._on_search_changed)
         layout.addWidget(self._search_input)
 
