@@ -172,15 +172,21 @@ class CyberChefForm(ida_kernwin.PluginForm):
             address: Address to patch
             data: Bytes to write
         """
-        try:
-            ida_bytes.patch_bytes(address, data)
-            logger.info(
-                "Patched %d bytes at address %s",
-                len(data),
+        assert isinstance(address, int) and address != ida_idaapi.BADADDR, f"invalid address: {address!r}"
+        assert isinstance(data, bytes) and len(data) > 0, f"invalid data: {type(data).__name__}, len={len(data) if isinstance(data, bytes) else 'N/A'}"
+
+        ida_bytes.patch_bytes(address, data)
+
+        actual = ida_bytes.get_bytes(address, len(data))
+        if actual != data:
+            logger.warning(
+                "Patch verification failed at %s: wrote %d bytes but read back different data",
                 hex(address),
+                len(data),
             )
-        except Exception as e:
-            logger.error("Failed to patch bytes: %s", e)
+            return
+
+        logger.info("Patched %d bytes at %s", len(data), hex(address))
 
     def _on_set_comment(self, text: str):
         """Handle set comment request from output panel.
