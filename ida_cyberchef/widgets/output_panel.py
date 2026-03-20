@@ -260,12 +260,7 @@ class OutputPanel(QWidget):
         if self._current_output:
             clipboard = QApplication.clipboard()
             clipboard.setText(self._output_display.toPlainText())
-
-            QMessageBox.information(
-                self,
-                "Copied",
-                "Copied formatted output to clipboard",
-            )
+            logger.info("Copied formatted output to clipboard")
 
     def _on_save_clicked(self):
         """Handle save to file."""
