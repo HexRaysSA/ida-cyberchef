@@ -20,7 +20,7 @@ class LocationInputWidget(QWidget):
     └─────────────────────────────────────────────────┘
     """
 
-    location_changed = Signal(int, int)
+    location_changed = Signal('quint64', 'quint64')
 
     def __init__(self, parent=None):
         super().__init__(parent)

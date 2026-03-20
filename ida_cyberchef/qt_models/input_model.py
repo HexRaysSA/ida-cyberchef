@@ -33,7 +33,7 @@ class InputModel(QObject):
 
     input_changed = Signal()
     source_changed = Signal(InputSource)
-    location_params_changed = Signal(int, int)
+    location_params_changed = Signal('quint64', 'quint64')
 
     def __init__(self, parent=None):
         super().__init__(parent)
