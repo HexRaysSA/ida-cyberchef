@@ -49,7 +49,7 @@ class OutputPanel(QWidget):
             Args: (text: str)
     """
 
-    copy_to_db_requested = Signal(int, bytes)
+    copy_to_db_requested = Signal(object, object)
     set_comment_requested = Signal(str)
 
     def __init__(
