@@ -174,7 +174,7 @@ class OutputPanel(QWidget):
         """Connect signals and slots."""
         self._execution_model.execution_completed.connect(self._update_output)
         self._input_model.source_changed.connect(self._on_input_source_changed)
-        self._on_input_source_changed(self._input_model.get_input_source())
+        self._update_copy_db_button_state()
 
     def _update_output(self):
         """Update output display with execution results."""
@@ -196,6 +196,8 @@ class OutputPanel(QWidget):
             self._output_display.clear()
             if self._set_comment_button is not None:
                 self._set_comment_button.setEnabled(False)
+
+        self._update_copy_db_button_state()
 
     def _render_output(self, data: bytes | str):
         """Render output data using selected format.
@@ -298,21 +300,36 @@ class OutputPanel(QWidget):
                 QMessageBox.critical(self, "Error", f"Failed to save file: {e}")
 
     def _on_input_source_changed(self, source: InputSource):
-        """Handle input source change to enable/disable Copy to IDB button.
+        """Handle input source change."""
+        self._update_copy_db_button_state()
 
-        Args:
-            source: The new input source
+    def _update_copy_db_button_state(self):
+        """Update Copy to IDB button enabled state and tooltip.
+
+        The button requires both:
+        - Input source is FROM_SELECTION or FROM_LOCATION (so we have an address)
+        - Recipe output is bytes (strings can't be patched into the IDB)
         """
         if self._copy_db_button is None:
             return
 
-        if source in (InputSource.FROM_SELECTION, InputSource.FROM_LOCATION):
+        source = self._input_model.get_input_source()
+        has_address = source in (InputSource.FROM_SELECTION, InputSource.FROM_LOCATION)
+        has_bytes_output = isinstance(self._current_output, bytes) and len(self._current_output) > 0
+
+        if has_address and has_bytes_output:
             self._copy_db_button.setEnabled(True)
-            self._copy_db_button.setToolTip("Copy to IDB")
+            self._copy_db_button.setToolTip("Patch output bytes into IDB")
+        elif not has_address:
+            self._copy_db_button.setEnabled(False)
+            self._copy_db_button.setToolTip(
+                "Copy to IDB requires input source 'From Selection' or 'From Location'"
+            )
         else:
             self._copy_db_button.setEnabled(False)
             self._copy_db_button.setToolTip(
-                "Copy to IDB (only available when input source is 'From Selection' or 'From Location')"
+                "Copy to IDB requires recipe output to be bytes, not text. "
+                "Add an operation like 'To Hex' → 'From Hex' or adjust your recipe."
             )
 
     def _on_copy_db_clicked(self):
@@ -332,20 +349,17 @@ class OutputPanel(QWidget):
             logger.warning("No output available to copy to IDB")
             return
 
-        if isinstance(self._current_output, str):
-            data = self._current_output.encode("utf-8")
-        else:
-            data = self._current_output
+        if not isinstance(self._current_output, bytes):
+            logger.warning("Recipe output is %s, not bytes — cannot patch IDB", type(self._current_output).__name__)
+            return
 
         address = self._input_model.get_external_address()
         if address is None:
-            logger.warning(
-                "Cannot determine address to patch (no selection address stored)"
-            )
+            logger.warning("Cannot determine address to patch (no selection address stored)")
             return
 
-        logger.debug("Emitting copy_to_db_requested: address=%s, len=%d", hex(address), len(data))
-        self.copy_to_db_requested.emit(address, data)
+        logger.debug("Emitting copy_to_db_requested: address=%s, len=%d", hex(address), len(self._current_output))
+        self.copy_to_db_requested.emit(address, self._current_output)
 
     def _on_set_comment_clicked(self):
         """Handle set comment at cursor action.
