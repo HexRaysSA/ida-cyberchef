@@ -122,11 +122,13 @@ class OutputPanel(QWidget):
 
         self._copy_button = QPushButton("📋")
         self._copy_button.setToolTip("Copy to clipboard")
+        self._copy_button.setEnabled(False)
         self._copy_button.clicked.connect(self._on_copy_clicked)
         button_layout.addWidget(self._copy_button)
 
         self._save_button = QPushButton("💾")
         self._save_button.setToolTip("Save to file")
+        self._save_button.setEnabled(False)
         self._save_button.clicked.connect(self._on_save_clicked)
         button_layout.addWidget(self._save_button)
 
@@ -174,7 +176,7 @@ class OutputPanel(QWidget):
         """Connect signals and slots."""
         self._execution_model.execution_completed.connect(self._update_output)
         self._input_model.source_changed.connect(self._on_input_source_changed)
-        self._update_copy_db_button_state()
+        self._update_button_states()
 
     def _update_output(self):
         """Update output display with execution results."""
@@ -184,20 +186,14 @@ class OutputPanel(QWidget):
             self._current_output = result.data
             self._auto_select_format(result.data)
             self._render_output(result.data)
-            if self._set_comment_button is not None:
-                self._set_comment_button.setEnabled(True)
         elif result and not result.success:
             self._current_output = b""
             self._output_display.setPlainText(f"Error: {result.error}")
-            if self._set_comment_button is not None:
-                self._set_comment_button.setEnabled(False)
         else:
             self._current_output = b""
             self._output_display.clear()
-            if self._set_comment_button is not None:
-                self._set_comment_button.setEnabled(False)
 
-        self._update_copy_db_button_state()
+        self._update_button_states()
 
     def _render_output(self, data: bytes | str):
         """Render output data using selected format.
@@ -301,36 +297,37 @@ class OutputPanel(QWidget):
 
     def _on_input_source_changed(self, source: InputSource):
         """Handle input source change."""
-        self._update_copy_db_button_state()
+        self._update_button_states()
 
-    def _update_copy_db_button_state(self):
-        """Update Copy to IDB button enabled state and tooltip.
+    def _update_button_states(self):
+        """Update enabled state and tooltips for all action buttons."""
+        has_output = bool(self._current_output)
 
-        The button requires both:
-        - Input source is FROM_SELECTION or FROM_LOCATION (so we have an address)
-        - Recipe output is bytes (strings can't be patched into the IDB)
-        """
-        if self._copy_db_button is None:
-            return
+        self._copy_button.setEnabled(has_output)
+        self._save_button.setEnabled(has_output)
 
-        source = self._input_model.get_input_source()
-        has_address = source in (InputSource.FROM_SELECTION, InputSource.FROM_LOCATION)
-        has_bytes_output = isinstance(self._current_output, bytes) and len(self._current_output) > 0
+        if self._set_comment_button is not None:
+            self._set_comment_button.setEnabled(has_output)
 
-        if has_address and has_bytes_output:
-            self._copy_db_button.setEnabled(True)
-            self._copy_db_button.setToolTip("Patch output bytes into IDB")
-        elif not has_address:
-            self._copy_db_button.setEnabled(False)
-            self._copy_db_button.setToolTip(
-                "Copy to IDB requires input source 'From Selection' or 'From Location'"
-            )
-        else:
-            self._copy_db_button.setEnabled(False)
-            self._copy_db_button.setToolTip(
-                "Copy to IDB requires recipe output to be bytes, not text. "
-                "Add an operation like 'To Hex' → 'From Hex' or adjust your recipe."
-            )
+        if self._copy_db_button is not None:
+            source = self._input_model.get_input_source()
+            has_address = source in (InputSource.FROM_SELECTION, InputSource.FROM_LOCATION)
+            has_bytes_output = isinstance(self._current_output, bytes) and len(self._current_output) > 0
+
+            if has_address and has_bytes_output:
+                self._copy_db_button.setEnabled(True)
+                self._copy_db_button.setToolTip("Patch output bytes into IDB")
+            elif not has_address:
+                self._copy_db_button.setEnabled(False)
+                self._copy_db_button.setToolTip(
+                    "Copy to IDB requires input source 'From Selection' or 'From Location'"
+                )
+            else:
+                self._copy_db_button.setEnabled(False)
+                self._copy_db_button.setToolTip(
+                    "Copy to IDB requires recipe output to be bytes, not text. "
+                    "Add an operation like 'To Hex' → 'From Hex' or adjust your recipe."
+                )
 
     def _on_copy_db_clicked(self):
         """Handle copy to IDB action.
