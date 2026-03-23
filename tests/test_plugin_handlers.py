@@ -95,6 +95,7 @@ def _load_plugin_module(monkeypatch: pytest.MonkeyPatch):
     [
         pytest.param(0xFFFFFFFFFFFFFFFF, b"\xAA", "Cannot patch IDB: invalid address", id="badaddr"),
         pytest.param("0x401000", b"\xAA", "Cannot patch IDB: invalid address", id="non-int-address"),
+        pytest.param(-1, b"\xAA", "Cannot patch IDB: invalid address", id="negative-address"),
         pytest.param(0x401000, b"", "Cannot patch IDB: invalid data", id="empty-bytes"),
         pytest.param(0x401000, "AA", "Cannot patch IDB: invalid data", id="non-bytes-data"),
     ],

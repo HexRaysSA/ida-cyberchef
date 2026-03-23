@@ -224,7 +224,7 @@ class CyberChefForm(ida_kernwin.PluginForm):
             data: Bytes to write
         """
         logger.debug("_on_copy_to_db called: address=%s, data type=%s, len=%s", hex(address) if isinstance(address, int) else address, type(data).__name__, len(data) if isinstance(data, bytes) else "N/A")
-        if not isinstance(address, int) or address == ida_idaapi.BADADDR:
+        if not isinstance(address, int) or address < 0 or address == ida_idaapi.BADADDR:
             message = f"Cannot patch IDB: invalid address {address!r}"
             logger.warning(message)
             ida_kernwin.warning(message)
