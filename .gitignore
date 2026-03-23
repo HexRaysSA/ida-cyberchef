@@ -10,3 +10,5 @@ dist/
 todo.md
 docs/plans/
 /uv.lock
+
+.venv/
