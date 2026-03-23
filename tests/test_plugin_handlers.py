@@ -21,7 +21,7 @@ def _load_plugin_module(monkeypatch: pytest.MonkeyPatch):
         patched_memory[address] = data
 
     ida_bytes.patch_bytes = patch_bytes
-    ida_bytes.get_bytes = lambda address, size: patched_memory.get(address, b"\x00" * size)
+    ida_bytes.get_bytes = lambda address, length: patched_memory.get(address, b"\x00" * length)
     ida_bytes.set_cmt = lambda ea, text, repeatable: None
 
     ida_idaapi = types.ModuleType("ida_idaapi")
@@ -118,15 +118,18 @@ def test_on_copy_to_db_invalid_inputs_warn_and_return(
     assert expected_message in caplog.text
 
 
+@pytest.mark.parametrize("address", [0, 0x401000], ids=["zero-address", "nonzero-address"])
 def test_on_copy_to_db_valid_inputs_patch_bytes(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    address: int,
 ):
     plugin, ida_bytes, _ida_idaapi, ida_kernwin = _load_plugin_module(monkeypatch)
     form = plugin.CyberChefForm()
 
     with caplog.at_level(logging.INFO):
-        form._on_copy_to_db(0x401000, b"\xDE\xAD")
+        form._on_copy_to_db(address, b"\xDE\xAD")
 
-    assert ida_bytes.patch_calls == [(0x401000, b"\xDE\xAD")]
+    assert ida_bytes.patch_calls == [(address, b"\xDE\xAD")]
     assert ida_kernwin.warning_calls == []
-    assert "Patched 2 bytes at 0x401000" in caplog.text
+    assert f"Patched 2 bytes at {hex(address)}" in caplog.text
