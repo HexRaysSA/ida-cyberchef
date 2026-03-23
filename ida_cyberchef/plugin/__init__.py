@@ -280,7 +280,7 @@ class send_to_cyberchef_action_handler_t(ida_kernwin.action_handler_t):
             ida_kernwin.BWN_HEXVIEW,
             ida_kernwin.BWN_DISASM,
         ):
-            return
+            return ida_kernwin.AST_DISABLE
 
         has_range, start, end = ida_kernwin.read_range_selection(v)
         if has_range and ida_idaapi.BADADDR not in (start, end) and end > start:
