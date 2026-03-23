@@ -229,12 +229,14 @@ def test_cyberchef_match(vector):
         if re.search(expected_match, error_msg):
             return
         raise
+    search_flags = 0
     if isinstance(result, bytes):
+        search_flags = re.DOTALL
         try:
             result = result.decode("utf-8")
         except UnicodeDecodeError:
             result = result.decode("latin-1")
-    assert re.search(expected_match, str(result)), (
+    assert re.search(expected_match, str(result), flags=search_flags), (
         f"[{vector['module']}/{vector['name']}] "
         f"pattern {expected_match!r:.200} not found in {str(result)!r:.200}"
     )

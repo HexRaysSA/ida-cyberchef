@@ -153,7 +153,7 @@ def test_clear_preview_clears_text_without_collapsing_preview(qtbot):
     widget.clear_preview()
 
     assert widget._preview_visible is True
-    assert widget._preview_widget.toPlainText() == ""u
+    assert widget._preview_widget.toPlainText() == ""
 
 
 def test_arg_selector_updates_dependent_row_visibility(qtbot):
