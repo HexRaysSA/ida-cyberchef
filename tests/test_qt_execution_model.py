@@ -157,7 +157,7 @@ def test_recipe_panel_clears_stale_state_after_recipe_edit(qtbot):
     _set_stale_preview(second_widget, "old second preview")
     second_widget.set_error("old error")
 
-    recipe_model.update_operation_args(0, {})
+    recipe_model.update_operation_args(0, {"edited": True})
 
     execution_model.set_results(
         [
