@@ -111,9 +111,11 @@ class UILocationHook(ida_kernwin.UI_Hooks):
 
         has_range, start, end = ida_kernwin.read_range_selection(v)
         if not has_range:
+            self.w.get_input_model().clear_external_data()
             return
 
         if ida_idaapi.BADADDR in (start, end):
+            self.w.get_input_model().clear_external_data()
             return
 
         # TODO: maybe use item head/end
