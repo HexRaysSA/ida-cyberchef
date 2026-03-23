@@ -155,6 +155,24 @@ class InputPanel(QWidget):
 
         self._input_model.input_changed.connect(self._on_model_changed)
 
+    def set_location_source(self, address: int, length: int) -> None:
+        """Set location-backed input state and sync the UI.
+
+        Args:
+            address: Effective address to read from
+            length: Number of bytes to read
+        """
+        self._input_model.set_input_source(InputSource.FROM_LOCATION)
+
+        if self._location_radio is not None:
+            self._location_radio.setChecked(True)
+
+        self._on_source_changed()
+        self._input_model.set_location_params(address, length)
+
+        if self._location_widget is not None:
+            self._location_widget.set_location(address, length)
+
     def _on_source_changed(self):
         """Handle input source change."""
         if self._manual_radio is None:

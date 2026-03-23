@@ -81,19 +81,7 @@ def _populate_widget_from_selection(form, start: int, length: int) -> None:
         start: Start address of the selection
         length: Number of bytes selected
     """
-    input_model = form.w.get_input_model()
-    input_panel = form.w.get_input_panel()
-
-    input_model.set_input_source(InputSource.FROM_LOCATION)
-
-    if input_panel._location_radio:
-        input_panel._location_radio.setChecked(True)
-        input_panel._on_source_changed()
-
-    input_model.set_location_params(start, length)
-
-    if input_panel._location_widget:
-        input_panel._location_widget.set_location(start, length)
+    form.w.set_location_source(start, length)
 
 
 class UILocationHook(ida_kernwin.UI_Hooks):

@@ -4,6 +4,7 @@ build/
 dist/
 *.egg-info/
 .pytest_cache/
+.venv/
 .beads/ida-cyberchef.db
 .DS_Store
 todo.md
