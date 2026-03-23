@@ -99,6 +99,7 @@ class UILocationHook(ida_kernwin.UI_Hooks):
         v = ida_kernwin.get_current_viewer()
         ok, start, _end, length = _read_and_validate_selection(v)
         if not ok:
+            self.w.get_input_model().clear_external_data()
             return
 
         # TODO: maybe use item head/end
