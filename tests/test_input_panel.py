@@ -1,6 +1,6 @@
 import pytest
 
-from ida_cyberchef.qt_models.input_model import InputModel
+from ida_cyberchef.qt_models.input_model import InputModel, InputSource
 from ida_cyberchef.widgets.input_panel import InputPanel
 
 
@@ -36,3 +36,19 @@ def test_input_panel_shows_location_widget_when_from_location_selected(
 
     assert panel._location_widget.isVisible()
     assert panel._text_area.isReadOnly()
+
+
+def test_input_panel_set_location_source_updates_ui_and_model(input_panel_with_ida):
+    panel, model = input_panel_with_ida
+    panel.show()
+
+    panel.set_location_source(0x401000, 128)
+
+    assert panel._location_radio.isChecked()
+    assert panel._location_widget.isVisible()
+    assert panel._text_area.isReadOnly()
+    assert model.get_input_source() == InputSource.FROM_LOCATION
+    assert model.get_location_address() == 0x401000
+    assert model.get_location_length() == 128
+    assert panel._location_widget._address_edit.text() == "0x00401000"
+    assert panel._location_widget._length_edit.text() == "128"
