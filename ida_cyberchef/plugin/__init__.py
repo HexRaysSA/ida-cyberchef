@@ -97,28 +97,13 @@ class UILocationHook(ida_kernwin.UI_Hooks):
 
     def populate_from_selection(self):
         v = ida_kernwin.get_current_viewer()
-
-        if ida_kernwin.get_widget_type(v) not in (
-            ida_kernwin.BWN_HEXVIEW,
-            ida_kernwin.BWN_DISASM,
-        ):
-            return
-
-        if ida_kernwin.get_viewer_place_type(v) != ida_kernwin.TCCPT_IDAPLACE:
-            # not the disassembly view
-            # TODO: hex view
-            return
-
-        has_range, start, end = ida_kernwin.read_range_selection(v)
-        if not has_range:
-            return
-
-        if ida_idaapi.BADADDR in (start, end):
+        ok, start, _end, length = _read_and_validate_selection(v)
+        if not ok:
             return
 
         # TODO: maybe use item head/end
 
-        buf = ida_bytes.get_bytes(start, end - start)
+        buf = ida_bytes.get_bytes(start, length)
         self.w.get_input_model().set_external_data(buf, start)
 
     def populate(self, ea: int):
