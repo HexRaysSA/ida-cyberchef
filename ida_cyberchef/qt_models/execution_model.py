@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
+from ida_cyberchef.core.output_model import typed_output_from_value
 from ida_cyberchef.core.recipe_executor import RecipeExecutor, StepResult
 from ida_cyberchef.qt_models.input_model import InputModel
 from ida_cyberchef.qt_models.recipe_model import RecipeModel
@@ -66,7 +67,7 @@ class ExecutionModel(QObject):
 
         recipe = self._recipe_model.get_recipe_steps()
         if not recipe:
-            passthrough_result = StepResult(success=True, data=input_data, error=None)
+            passthrough_result = StepResult(success=True, data=typed_output_from_value(input_data), error=None)
             self._results = [passthrough_result]
             self.execution_completed.emit()
             return

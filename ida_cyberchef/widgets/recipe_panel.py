@@ -220,11 +220,6 @@ class RecipePanel(QWidget):
 
                 if result.success and result.data is not None:
                     widget.clear_error()
-                    preview_bytes = (
-                        result.data.encode("utf-8")
-                        if isinstance(result.data, str)
-                        else result.data
-                    )
-                    widget.set_preview_data(preview_bytes)
+                    widget.set_preview_data(result.data)
                 elif not result.success and result.error is not None:
                     widget.set_error(result.error)

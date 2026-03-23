@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from ida_cyberchef.core.hex_formatter import HexFormatter
+from ida_cyberchef.core.output_model import OutputKind, TypedOutput
 
 
 class OperationStepWidget(QFrame):
@@ -498,14 +499,32 @@ class OperationStepWidget(QFrame):
 
         return args
 
-    def set_preview_data(self, data: bytes):
+    def set_preview_data(self, output: TypedOutput) -> None:
         """Set preview data to display.
 
         Args:
-            data: Bytes to display as hex dump
+            output: Typed output to preview.
         """
-        hex_dump = self._hex_formatter.format_hex_dump(data)
-        self._preview_widget.setPlainText(hex_dump)
+        kind = output.kind
+        value = output.value
+
+        if kind == OutputKind.BYTES:
+            text = self._hex_formatter.format_hex_dump(value)
+        elif kind in (OutputKind.TEXT, OutputKind.NUMBER):
+            text = str(value)
+        elif kind == OutputKind.JSON:
+            import json as _json
+            text = _json.dumps(value, indent=2)
+        elif kind == OutputKind.FILE:
+            data = value.get("data", b"")
+            text = f"File: {value.get('name', '')}, {len(data)} bytes"
+        elif kind == OutputKind.FILE_LIST:
+            lines = [f"File: {item.get('name', '')}, {len(item.get('data', b''))} bytes" for item in value]
+            text = "\n".join(lines)
+        else:
+            text = str(value)
+
+        self._preview_widget.setPlainText(text)
 
     def set_error(self, error: str):
         """Set error state and message.

@@ -1,4 +1,5 @@
-from ida_cyberchef.core.recipe_executor import RecipeExecutor
+from ida_cyberchef.core.output_model import OutputKind, TypedOutput
+from ida_cyberchef.core.recipe_executor import RecipeExecutor, StepResult
 
 
 def test_execute_single_operation():
@@ -51,43 +52,35 @@ def test_empty_recipe_returns_empty_list():
     assert len(results) == 0
 
 
-def test_step_result_holds_string_data():
-    from ida_cyberchef.core.recipe_executor import StepResult
-
-    result = StepResult(success=True, data="hello world", error=None)
-    assert result.data == "hello world"
-    assert isinstance(result.data, str)
-
-
-def test_step_result_holds_bytes_data():
-    from ida_cyberchef.core.recipe_executor import StepResult
-
-    result = StepResult(success=True, data=b"hello world", error=None)
-    assert result.data == b"hello world"
-    assert isinstance(result.data, bytes)
+def test_step_result_holds_typed_output():
+    output = TypedOutput(kind=OutputKind.TEXT, value="hello world")
+    result = StepResult(success=True, data=output, error=None)
+    assert result.data is output
+    assert result.data.kind == OutputKind.TEXT
+    assert result.data.value == "hello world"
 
 
-def test_recipe_executor_preserves_string_output():
-    """Verify RecipeExecutor preserves str output from bake()."""
+def test_recipe_executor_wraps_string_output():
+    """Verify RecipeExecutor wraps str output as TypedOutput(TEXT)."""
     executor = RecipeExecutor()
-    # To Base64 returns string
     recipe = [{"operation": "To Base64", "args": {}}]
     results = executor.execute_recipe(b"test", recipe)
 
     assert len(results) == 1
     assert results[0].success
-    assert isinstance(results[0].data, str)
-    assert results[0].data == "dGVzdA=="  # "test" in base64
+    assert isinstance(results[0].data, TypedOutput)
+    assert results[0].data.kind == OutputKind.TEXT
+    assert results[0].data.value == "dGVzdA=="
 
 
-def test_recipe_executor_preserves_bytes_output():
-    """Verify RecipeExecutor preserves bytes output from bake()."""
+def test_recipe_executor_wraps_bytes_output():
+    """Verify RecipeExecutor wraps bytes output as TypedOutput(BYTES)."""
     executor = RecipeExecutor()
-    # From Base64 returns bytes
     recipe = [{"operation": "From Base64", "args": {}}]
     results = executor.execute_recipe(b"dGVzdA==", recipe)
 
     assert len(results) == 1
     assert results[0].success
-    assert isinstance(results[0].data, bytes)
-    assert results[0].data == b"test"
+    assert isinstance(results[0].data, TypedOutput)
+    assert results[0].data.kind == OutputKind.BYTES
+    assert results[0].data.value == b"test"
