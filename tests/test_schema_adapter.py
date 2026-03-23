@@ -82,8 +82,10 @@ def test_shared_adapter_round_trips_display_labels_and_runtime_values():
     registry = OperationRegistry()
     enigma_op = registry.find_operation("Enigma")
     datetime_op = registry.find_operation("Translate DateTime Format")
+    to_hex_op = registry.find_operation("To Hex")
     assert enigma_op is not None
     assert datetime_op is not None
+    assert to_hex_op is not None
 
     rotor_arg = next(
         arg for arg in enigma_op["args"] if arg["name"] == "Right-hand rotor"
@@ -91,6 +93,7 @@ def test_shared_adapter_round_trips_display_labels_and_runtime_values():
     preset_arg = next(
         arg for arg in datetime_op["args"] if arg["name"] == "Built in formats"
     )
+    delimiter_arg = next(arg for arg in to_hex_op["args"] if arg["name"] == "Delimiter")
 
     assert "III" in get_display_items(rotor_arg)
     assert (
@@ -113,6 +116,8 @@ def test_shared_adapter_round_trips_display_labels_and_runtime_values():
         get_display_label_for_value(preset_arg, "YYYY-MM-DD HH:mm:ss")
         == "International date and time"
     )
+    assert get_option_value_for_display(delimiter_arg, "\\x") == "\\x"
+    assert get_display_label_for_value(delimiter_arg, "\\x") == "\\x"
 
 
 def test_shared_adapter_reports_arg_selector_dependencies():

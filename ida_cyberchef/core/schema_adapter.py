@@ -69,6 +69,13 @@ def _decode_runtime_string(value: Any) -> Any:
     return value
 
 
+def _decode_option_runtime_value(arg_type: str, value: Any) -> Any:
+    """Decode option values only for schema types that use escaped runtime strings."""
+    if arg_type in {"editableOption", "editableOptionShort"}:
+        return _decode_runtime_string(value)
+    return value
+
+
 def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
     """Return normalised option metadata for list-backed schema arguments."""
     raw_value = _parse_schema_value(arg.get("value", ""))
@@ -86,7 +93,7 @@ def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
             options.append(
                 {
                     "label": label,
-                    "value": _decode_runtime_string(runtime_value),
+                    "value": _decode_option_runtime_value(arg_type, runtime_value),
                     "raw": entry,
                 }
             )
@@ -95,7 +102,7 @@ def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
         options.append(
             {
                 "label": str(entry),
-                "value": _decode_runtime_string(entry),
+                "value": _decode_option_runtime_value(arg_type, entry),
                 "raw": entry,
             }
         )
