@@ -461,8 +461,7 @@ class cyberchef_plugmod_t(ida_idaapi.plugmod_t):
         for caption in existing:
             action_name = f"cyberchef:send_to_{caption.replace('-', '_').lower()}"
 
-            if ida_kernwin.unregister_action(action_name):
-                pass
+            ida_kernwin.unregister_action(action_name)
 
             ida_kernwin.register_action(
                 ida_kernwin.action_desc_t(
