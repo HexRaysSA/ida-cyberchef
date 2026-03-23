@@ -154,15 +154,14 @@ def test_update_button_states_copy_db_disabled_for_json(qtbot):
     assert not panel._copy_db_button.isEnabled()
 
 
-def _set_final_result(exec_model, result):
+def _mock_final_result(exec_model, result):
     exec_model._results = [result] if result is not None else []
 
 
 def test_update_output_preserves_selected_format_for_same_output_kind(qtbot):
     panel, _, exec_model = _make_panel(qtbot)
-    panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _set_final_result(
+    _mock_final_result(
         exec_model,
         StepResult(
             success=True,
@@ -173,7 +172,7 @@ def test_update_output_preserves_selected_format_for_same_output_kind(qtbot):
     panel._update_output()
     panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _set_final_result(
+    _mock_final_result(
         exec_model,
         StepResult(
             success=True,
@@ -190,7 +189,7 @@ def test_update_output_preserves_selected_format_for_same_output_kind(qtbot):
 def test_update_output_resets_format_when_output_kind_changes(qtbot):
     panel, _, exec_model = _make_panel(qtbot)
 
-    _set_final_result(
+    _mock_final_result(
         exec_model,
         StepResult(
             success=True,
@@ -201,7 +200,7 @@ def test_update_output_resets_format_when_output_kind_changes(qtbot):
     panel._update_output()
     panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _set_final_result(
+    _mock_final_result(
         exec_model,
         StepResult(
             success=True,
@@ -218,7 +217,7 @@ def test_update_output_resets_format_when_output_kind_changes(qtbot):
 def test_update_output_auto_selects_default_again_after_clear(qtbot):
     panel, _, exec_model = _make_panel(qtbot)
 
-    _set_final_result(
+    _mock_final_result(
         exec_model,
         StepResult(
             success=True,
@@ -229,10 +228,10 @@ def test_update_output_auto_selects_default_again_after_clear(qtbot):
     panel._update_output()
     panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _set_final_result(exec_model, StepResult(success=False, data=None, error="boom"))
+    _mock_final_result(exec_model, StepResult(success=False, data=None, error="boom"))
     panel._update_output()
 
-    _set_final_result(
+    _mock_final_result(
         exec_model,
         StepResult(
             success=True,
