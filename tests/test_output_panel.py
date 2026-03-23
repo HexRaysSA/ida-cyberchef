@@ -1,9 +1,8 @@
 """Tests for OutputPanel format-awareness."""
 
-from unittest.mock import MagicMock
-
+from ida_cyberchef.core.input_parser import InputFormat
 from ida_cyberchef.core.output_model import OutputKind, TypedOutput
-from ida_cyberchef.core.recipe_executor import StepResult
+from ida_cyberchef.qt_models.recipe_model import RecipeModel
 from ida_cyberchef.widgets.output_panel import _FORMATS_FOR_KIND
 
 
@@ -43,21 +42,26 @@ def test_formats_for_kind_error_is_empty():
 
 def _make_panel(qtbot, show_ida_buttons=False):
     from ida_cyberchef.qt_models.execution_model import ExecutionModel
-    from ida_cyberchef.qt_models.input_model import InputModel, InputSource
+    from ida_cyberchef.qt_models.input_model import InputModel
     from ida_cyberchef.widgets.output_panel import OutputPanel
 
     input_model = InputModel()
     input_model.set_manual_text("")
-    exec_model = ExecutionModel(input_model, MagicMock())
-    exec_model._recipe_model = MagicMock()
+    recipe_model = RecipeModel()
+    exec_model = ExecutionModel(input_model, recipe_model, debounce_ms=50)
 
     panel = OutputPanel(exec_model, input_model, show_ida_buttons=show_ida_buttons)
     qtbot.addWidget(panel)
-    return panel, input_model, exec_model
+    return panel, input_model, recipe_model, exec_model
+
+
+def _run_execution(qtbot, exec_model):
+    with qtbot.waitSignal(exec_model.execution_completed, timeout=2000):
+        exec_model.schedule_execution()
 
 
 def test_format_output_bytes_hex_dump(qtbot):
-    panel, _, _ = _make_panel(qtbot)
+    panel, _, _, _ = _make_panel(qtbot)
 
     output = TypedOutput(kind=OutputKind.BYTES, value=b"\xde\xad\xbe\xef")
     result = panel._format_output(output, "Hex Dump")
@@ -68,7 +72,7 @@ def test_format_output_bytes_hex_dump(qtbot):
 def test_format_output_json_pretty(qtbot):
     import json
 
-    panel, _, _ = _make_panel(qtbot)
+    panel, _, _, _ = _make_panel(qtbot)
 
     data = {"key": "value", "num": 42}
     output = TypedOutput(kind=OutputKind.JSON, value=data)
@@ -81,7 +85,7 @@ def test_format_output_json_pretty(qtbot):
 def test_format_output_json_compact(qtbot):
     import json
 
-    panel, _, _ = _make_panel(qtbot)
+    panel, _, _, _ = _make_panel(qtbot)
 
     data = {"key": "value"}
     output = TypedOutput(kind=OutputKind.JSON, value=data)
@@ -91,7 +95,7 @@ def test_format_output_json_compact(qtbot):
 
 
 def test_format_output_file_info(qtbot):
-    panel, _, _ = _make_panel(qtbot)
+    panel, _, _, _ = _make_panel(qtbot)
 
     file_value = {"name": "test.bin", "type": "application/octet-stream", "data": b"\x00" * 10}
     output = TypedOutput(kind=OutputKind.FILE, value=file_value)
@@ -101,7 +105,7 @@ def test_format_output_file_info(qtbot):
 
 
 def test_format_output_file_list_summary(qtbot):
-    panel, _, _ = _make_panel(qtbot)
+    panel, _, _, _ = _make_panel(qtbot)
 
     files = [
         {"name": "a.bin", "type": "", "data": b"\x00\x01"},
@@ -118,7 +122,7 @@ def test_format_output_file_list_summary(qtbot):
 def test_update_button_states_copy_db_disabled_for_text(qtbot):
     from ida_cyberchef.qt_models.input_model import InputSource
 
-    panel, input_model, _ = _make_panel(qtbot, show_ida_buttons=True)
+    panel, input_model, _, _ = _make_panel(qtbot, show_ida_buttons=True)
     input_model.set_external_data(b"\xde\xad", address=0x1000)
     input_model.set_input_source(InputSource.FROM_SELECTION)
 
@@ -131,7 +135,7 @@ def test_update_button_states_copy_db_disabled_for_text(qtbot):
 def test_update_button_states_copy_db_enabled_for_bytes_with_address(qtbot):
     from ida_cyberchef.qt_models.input_model import InputSource
 
-    panel, input_model, _ = _make_panel(qtbot, show_ida_buttons=True)
+    panel, input_model, _, _ = _make_panel(qtbot, show_ida_buttons=True)
     input_model.set_external_data(b"\xde\xad", address=0x1000)
     input_model.set_input_source(InputSource.FROM_SELECTION)
 
@@ -144,7 +148,7 @@ def test_update_button_states_copy_db_enabled_for_bytes_with_address(qtbot):
 def test_update_button_states_copy_db_disabled_for_json(qtbot):
     from ida_cyberchef.qt_models.input_model import InputSource
 
-    panel, input_model, _ = _make_panel(qtbot, show_ida_buttons=True)
+    panel, input_model, _, _ = _make_panel(qtbot, show_ida_buttons=True)
     input_model.set_external_data(b"\xde\xad", address=0x1000)
     input_model.set_input_source(InputSource.FROM_SELECTION)
 
@@ -154,91 +158,48 @@ def test_update_button_states_copy_db_disabled_for_json(qtbot):
     assert not panel._copy_db_button.isEnabled()
 
 
-def _mock_final_result(exec_model, result):
-    exec_model._results = [result] if result is not None else []
-
-
 def test_update_output_preserves_selected_format_for_same_output_kind(qtbot):
-    panel, _, exec_model = _make_panel(qtbot)
+    panel, input_model, _, exec_model = _make_panel(qtbot)
 
-    _mock_final_result(
-        exec_model,
-        StepResult(
-            success=True,
-            data=TypedOutput(kind=OutputKind.BYTES, value=b"\xde\xad"),
-            error=None,
-        ),
-    )
-    panel._update_output()
+    input_model.set_input_format(InputFormat.HEX_STRING)
+    input_model.set_manual_text("de ad")
+    _run_execution(qtbot, exec_model)
     panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _mock_final_result(
-        exec_model,
-        StepResult(
-            success=True,
-            data=TypedOutput(kind=OutputKind.BYTES, value=b"\xbe\xef"),
-            error=None,
-        ),
-    )
-    panel._update_output()
+    input_model.set_manual_text("be ef")
+    _run_execution(qtbot, exec_model)
 
     assert panel._output_format_combo.currentText() == "Hex String (Spaced)"
     assert panel._output_display.toPlainText() == "be ef"
 
 
 def test_update_output_resets_format_when_output_kind_changes(qtbot):
-    panel, _, exec_model = _make_panel(qtbot)
+    panel, input_model, recipe_model, exec_model = _make_panel(qtbot)
 
-    _mock_final_result(
-        exec_model,
-        StepResult(
-            success=True,
-            data=TypedOutput(kind=OutputKind.BYTES, value=b"\xde\xad"),
-            error=None,
-        ),
-    )
-    panel._update_output()
+    input_model.set_input_format(InputFormat.HEX_STRING)
+    input_model.set_manual_text("de ad")
+    _run_execution(qtbot, exec_model)
     panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _mock_final_result(
-        exec_model,
-        StepResult(
-            success=True,
-            data=TypedOutput(kind=OutputKind.TEXT, value="hello"),
-            error=None,
-        ),
-    )
-    panel._update_output()
+    recipe_model.add_operation("To Base64", {})
+    _run_execution(qtbot, exec_model)
 
     assert panel._output_format_combo.currentText() == "Text"
-    assert panel._output_display.toPlainText() == "hello"
+    assert panel._output_display.toPlainText() == "3q0="
 
 
 def test_update_output_auto_selects_default_again_after_clear(qtbot):
-    panel, _, exec_model = _make_panel(qtbot)
+    panel, input_model, _, exec_model = _make_panel(qtbot)
 
-    _mock_final_result(
-        exec_model,
-        StepResult(
-            success=True,
-            data=TypedOutput(kind=OutputKind.BYTES, value=b"\xde\xad"),
-            error=None,
-        ),
-    )
-    panel._update_output()
+    input_model.set_input_format(InputFormat.HEX_STRING)
+    input_model.set_manual_text("de ad")
+    _run_execution(qtbot, exec_model)
     panel._output_format_combo.setCurrentText("Hex String (Spaced)")
 
-    _mock_final_result(exec_model, StepResult(success=False, data=None, error="boom"))
-    panel._update_output()
+    input_model.set_manual_text("not hex")
+    _run_execution(qtbot, exec_model)
 
-    _mock_final_result(
-        exec_model,
-        StepResult(
-            success=True,
-            data=TypedOutput(kind=OutputKind.BYTES, value=b"\xbe\xef"),
-            error=None,
-        ),
-    )
-    panel._update_output()
+    input_model.set_manual_text("be ef")
+    _run_execution(qtbot, exec_model)
 
     assert panel._output_format_combo.currentText() == "Hex Dump"
