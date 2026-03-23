@@ -70,12 +70,17 @@ def test_empty_recipe_passes_through_input(qtbot):
     with qtbot.waitSignal(exec_model.execution_completed, timeout=2000):
         exec_model.schedule_execution()
 
+    from ida_cyberchef.core.output_model import OutputKind
+
     results = exec_model.get_results()
     assert len(results) == 1
     assert results[0].success is True
-    assert results[0].data == test_data.encode("utf-8")
+    assert results[0].data is not None
+    assert results[0].data.kind == OutputKind.BYTES
+    assert results[0].data.value == test_data.encode("utf-8")
     assert results[0].error is None
 
     final_result = exec_model.get_final_result()
     assert final_result is not None
-    assert final_result.data == test_data.encode("utf-8")
+    assert final_result.data is not None
+    assert final_result.data.value == test_data.encode("utf-8")

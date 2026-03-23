@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from ida_cyberchef.core.output_model import TypedOutput, typed_output_from_value
 from ida_cyberchef.cyberchef import bake
 
 
@@ -11,7 +12,7 @@ class StepResult:
     """Result of executing a single recipe step."""
 
     success: bool
-    data: Optional[Any]
+    data: Optional[TypedOutput]
     error: Optional[str]
 
 
@@ -43,7 +44,7 @@ class RecipeExecutor:
                         chef_recipe.append(s["operation"])
 
                 output = bake(input_data, chef_recipe)  # type: ignore[arg-type]
-                results.append(StepResult(success=True, data=output, error=None))
+                results.append(StepResult(success=True, data=typed_output_from_value(output), error=None))
 
             except Exception as e:
                 results.append(StepResult(success=False, data=None, error=str(e)))
