@@ -21,6 +21,8 @@ def plugin_module(monkeypatch):
     ida_bytes = types.ModuleType("ida_bytes")
 
     def get_bytes(start, length):
+        assert start != ida_idaapi.BADADDR
+        assert length > 0
         state["get_bytes_calls"].append((start, length))
         return state["buffer"]
 
