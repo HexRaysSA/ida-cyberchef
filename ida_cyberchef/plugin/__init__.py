@@ -224,8 +224,20 @@ class CyberChefForm(ida_kernwin.PluginForm):
             data: Bytes to write
         """
         logger.debug("_on_copy_to_db called: address=%s, data type=%s, len=%s", hex(address) if isinstance(address, int) else address, type(data).__name__, len(data) if isinstance(data, bytes) else "N/A")
-        assert isinstance(address, int) and address != ida_idaapi.BADADDR, f"invalid address: {address!r}"
-        assert isinstance(data, bytes) and len(data) > 0, f"invalid data: {type(data).__name__}, len={len(data) if isinstance(data, bytes) else 'N/A'}"
+        if not isinstance(address, int) or address == ida_idaapi.BADADDR:
+            message = f"Cannot patch IDB: invalid address {address!r}"
+            logger.warning(message)
+            ida_kernwin.warning(message)
+            return
+
+        if not isinstance(data, bytes) or len(data) == 0:
+            data_len = len(data) if isinstance(data, bytes) else "N/A"
+            message = (
+                f"Cannot patch IDB: invalid data {type(data).__name__}, len={data_len}"
+            )
+            logger.warning(message)
+            ida_kernwin.warning(message)
+            return
 
         ida_bytes.patch_bytes(address, data)
 
@@ -419,7 +431,6 @@ class cyberchef_plugmod_t(ida_idaapi.plugmod_t):
 
     def register_autoinst_hooks(self):
         self.installation_hooks = create_desktop_widget_hooks_t(self)
-        assert self.installation_hooks is not None
         self.installation_hooks.hook()
 
     def unregister_autoinst_hooks(self):
