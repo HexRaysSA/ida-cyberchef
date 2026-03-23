@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from ida_cyberchef.cyberchef import (
-    coerce_schema_boolean,
-    decode_escaped_string,
-    get_argument_default_index,
+from ida_cyberchef.core.schema_adapter import (
+    get_argument_default_value as get_shared_argument_default_value,
+    get_display_items,
+    get_option_value_for_display,
+    get_toggle_values,
+    restore_saved_argument_value,
 )
 
 
@@ -36,111 +37,20 @@ class SchemaArgumentViewModel:
     toggle_values: tuple[str, ...] = field(default_factory=tuple)
     raw_argument: dict[str, Any] = field(default_factory=dict)
 
-
-def _parse_schema_value(value: Any) -> Any:
-    """Parse a JSON-encoded schema value when needed."""
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except (json.JSONDecodeError, ValueError):
-            return value
-    return value
-
-
-def _decode_runtime_string(value: Any) -> Any:
-    """Decode CyberChef escape sequences for runtime string values."""
-    if isinstance(value, str):
-        return decode_escaped_string(value)
-    return value
-
-
-def _normalise_option_entry(arg_type: str, entry: Any) -> SchemaOptionViewModel:
-    """Convert a raw schema option entry into a widget-facing choice."""
-    if isinstance(entry, dict):
-        label = str(entry.get("name", entry.get("value", "")))
-        if arg_type == "populateMultiOption":
-            return SchemaOptionViewModel(label=label, value=label)
-
-        runtime_value = entry.get("value", label)
-        return SchemaOptionViewModel(
-            label=label,
-            value=_decode_runtime_string(runtime_value),
-        )
-
-    runtime_value = _decode_runtime_string(entry)
-    return SchemaOptionViewModel(label=str(entry), value=runtime_value)
-
-
 def _normalise_option_values(arg: dict[str, Any]) -> tuple[SchemaOptionViewModel, ...]:
     """Return normalized choices for list-backed schema arguments."""
-    raw_value = _parse_schema_value(arg.get("value", ""))
-    if not isinstance(raw_value, list):
-        return ()
     return tuple(
-        _normalise_option_entry(str(arg.get("type", "string")), entry)
-        for entry in raw_value
+        SchemaOptionViewModel(
+            label=display_label,
+            value=get_option_value_for_display(arg, display_label),
+        )
+        for display_label in get_display_items(arg)
     )
-
-
-def _normalise_toggle_values(arg: dict[str, Any]) -> tuple[str, ...]:
-    """Return the available toggleString formats."""
-    raw_values = _parse_schema_value(arg.get("toggleValues", []))
-    if not isinstance(raw_values, list):
-        return ()
-    return tuple(str(value) for value in raw_values)
 
 
 def get_default_argument_value(arg: dict[str, Any]) -> Any:
     """Return the normalized default value for an argument schema entry."""
-    arg_type = str(arg.get("type", "string"))
-    raw_value = _parse_schema_value(arg.get("value", ""))
-    options = _normalise_option_values(arg)
-
-    if arg_type in {"binaryString", "binaryShortString"}:
-        return _decode_runtime_string(raw_value)
-
-    if arg_type == "boolean":
-        return coerce_schema_boolean(raw_value)
-
-    if arg_type == "number":
-        if isinstance(raw_value, str):
-            try:
-                return int(raw_value) if "." not in raw_value else float(raw_value)
-            except ValueError:
-                return raw_value
-        return raw_value
-
-    if arg_type in {
-        "argSelector",
-        "editableOption",
-        "editableOptionShort",
-        "option",
-        "populateOption",
-        "populateMultiOption",
-    }:
-        if options:
-            default_index = min(get_argument_default_index(arg), len(options) - 1)
-            return options[default_index].value
-        return raw_value
-
-    if arg_type == "toggleString":
-        toggle_values = _normalise_toggle_values(arg)
-        if isinstance(raw_value, dict):
-            return {
-                "string": str(raw_value.get("string", "")),
-                "option": str(
-                    raw_value.get(
-                        "option",
-                        toggle_values[0] if toggle_values else "",
-                    )
-                ),
-            }
-        return {
-            "string": _decode_runtime_string(raw_value) if raw_value else "",
-            "option": toggle_values[0] if toggle_values else "",
-        }
-
-    return raw_value
+    return get_shared_argument_default_value(arg)
 
 
 def normalise_argument_view_model(
@@ -152,7 +62,11 @@ def normalise_argument_view_model(
         saved_value = arg["saved_value"]
 
     default_value = get_default_argument_value(arg)
-    value = default_value if saved_value is _MISSING else saved_value
+    value = (
+        default_value
+        if saved_value is _MISSING
+        else restore_saved_argument_value(arg, saved_value)
+    )
 
     if str(arg.get("type", "string")) == "toggleString" and not isinstance(value, dict):
         value = {
@@ -166,7 +80,7 @@ def normalise_argument_view_model(
         value=value,
         default_value=default_value,
         options=_normalise_option_values(arg),
-        toggle_values=_normalise_toggle_values(arg),
+        toggle_values=get_toggle_values(arg),
         raw_argument=arg.copy(),
     )
 

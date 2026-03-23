@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ida_cyberchef.core.schema_adapter import get_dependent_args
 from ida_cyberchef.core.hex_formatter import HexFormatter
 from ida_cyberchef.core.output_model import OutputKind, TypedOutput
 from ida_cyberchef.qt_models.schema_adapter import (
@@ -54,6 +55,7 @@ class OperationStepWidget(QFrame):
         self._index = index
         self._operation = normalise_operation_view_model(operation)
         self._arg_widgets: Dict[str, QWidget] = {}
+        self._arg_row_widgets: Dict[str, list[QWidget]] = {}
         self._preview_visible = False
         self._error_visible = False
 
@@ -184,6 +186,7 @@ class OperationStepWidget(QFrame):
 
             widget = self._create_arg_widget(arg)
             self._arg_widgets[arg_name] = widget
+            row_widgets = [widget]
 
             # Boolean checkbox is self-labeled, no separate label needed
             if arg_type == "boolean":
@@ -197,6 +200,7 @@ class OperationStepWidget(QFrame):
                 label.setWordWrap(True)
                 label.setFixedWidth(80)
                 self._args_grid.addWidget(label, row, 1)
+                row_widgets = [label]
 
                 # Widget is container with value_input and format_combo
                 # We need to extract and place them separately
@@ -205,8 +209,10 @@ class OperationStepWidget(QFrame):
 
                 if value_input:
                     self._args_grid.addWidget(value_input, row, 2)
+                    row_widgets.append(value_input)
                 if format_combo:
                     self._args_grid.addWidget(format_combo, row, 3)
+                    row_widgets.append(format_combo)
 
             # Text/multiline: label | text edit spanning 2 columns
             elif arg_type in ("text", "binaryString"):
@@ -217,6 +223,7 @@ class OperationStepWidget(QFrame):
                 label.setFixedWidth(80)
                 self._args_grid.addWidget(label, row, 1)
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [label, widget]
 
             # Label type: no label, just display widget
             elif arg_type == "label":
@@ -231,8 +238,12 @@ class OperationStepWidget(QFrame):
                 label.setFixedWidth(80)
                 self._args_grid.addWidget(label, row, 1)
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [label, widget]
 
+            self._arg_row_widgets[arg_name] = row_widgets
             row += 1
+
+        self._update_all_arg_selector_visibility()
 
     def _set_combo_selection(self, widget: QComboBox, value: Any) -> None:
         """Select a combo box entry by runtime value, keeping readable labels."""
@@ -356,7 +367,11 @@ class OperationStepWidget(QFrame):
 
         # Arg selector (mode dropdown with conditional args)
         elif arg_type == "argSelector":
-            return self._create_option_widget(arg)
+            widget = self._create_option_widget(arg)
+            widget.currentTextChanged.connect(
+                lambda _text, arg_name=arg.name: self._update_arg_selector_visibility(arg_name)
+            )
+            return widget
 
         # Label (display-only)
         elif arg_type == "label":
@@ -403,6 +418,44 @@ class OperationStepWidget(QFrame):
         """Handle argument value changes."""
         args = self.get_current_args()
         self.args_changed.emit(self._index, args)
+
+    def _set_row_visible(self, arg_name: str, visible: bool) -> None:
+        """Show or hide all widgets associated with an argument row."""
+        for widget in self._arg_row_widgets.get(arg_name, []):
+            widget.setVisible(visible)
+
+    def _update_all_arg_selector_visibility(self) -> None:
+        """Apply argSelector visibility rules across the operation."""
+        operation_args = [arg.raw_argument for arg in self._operation.get("args", [])]
+        visibility = {arg.name: True for arg in self._operation.get("args", [])}
+
+        for arg in self._operation.get("args", []):
+            if arg.arg_type != "argSelector":
+                continue
+
+            widget = self._arg_widgets.get(arg.name)
+            if not isinstance(widget, QComboBox):
+                continue
+
+            selected_value = (
+                widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
+            )
+            visible_args, hidden_args = get_dependent_args(
+                operation_args,
+                arg.raw_argument,
+                selected_value,
+            )
+            for dependent_arg in visible_args:
+                visibility[dependent_arg] = True
+            for dependent_arg in hidden_args:
+                visibility[dependent_arg] = False
+
+        for arg_name, is_visible in visibility.items():
+            self._set_row_visible(arg_name, is_visible)
+
+    def _update_arg_selector_visibility(self, _arg_name: str) -> None:
+        """Refresh argSelector-driven row visibility when a selector changes."""
+        self._update_all_arg_selector_visibility()
 
     def _on_preview_clicked(self):
         """Handle preview button click."""
