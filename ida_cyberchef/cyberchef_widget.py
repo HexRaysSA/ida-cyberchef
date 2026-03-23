@@ -131,6 +131,15 @@ class CyberChefWidget(QWidget):
         """
         return self._input_panel
 
+    def set_location_source(self, address: int, length: int) -> None:
+        """Set location-backed input state on the input panel.
+
+        Args:
+            address: Effective address to read from
+            length: Number of bytes to read
+        """
+        self._input_panel.set_location_source(address, length)
+
     def _on_operation_selected(self, operation: dict):
         """Handle operation selection from browser widget.
 
