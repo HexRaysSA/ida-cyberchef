@@ -9,38 +9,6 @@ import STPyV8
 
 _chef_instance = None
 
-_NODE_API_SYNC_WRAPPER_OLD = """    wrapped = function wrapped(input) {
-      var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-      var _prepareOp2 = prepareOp(opInstance, input, args),
-        transformedInput = _prepareOp2.transformedInput,
-        transformedArgs = _prepareOp2.transformedArgs;
-      var result = opInstance.run(transformedInput, transformedArgs);
-      return new _NodeDish.default({
-        value: result,
-        type: opInstance.outputType
-      });
-    };"""
-
-_NODE_API_SYNC_WRAPPER_NEW = """    wrapped = function wrapped(input) {
-      var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-      var _prepareOp2 = prepareOp(opInstance, input, args),
-        transformedInput = _prepareOp2.transformedInput,
-        transformedArgs = _prepareOp2.transformedArgs;
-      var result = opInstance.run(transformedInput, transformedArgs);
-      if (result && typeof result.then === \"function\") {
-        return result.then(function (resolvedResult) {
-          return new _NodeDish.default({
-            value: resolvedResult,
-            type: opInstance.outputType
-          });
-        });
-      }
-      return new _NodeDish.default({
-        value: result,
-        type: opInstance.outputType
-      });
-    };"""
-
 
 class DishType(IntEnum):
     """CyberChef Dish type enumeration."""
@@ -402,23 +370,6 @@ def get_chef():
     return _chef_instance
 
 
-def patch_bundle_source(source: str) -> str:
-    """Patch bundled CyberChef code for STPyV8 execution.
-
-    Raises:
-        RuntimeError: If the expected node wrapper snippet is not present.
-    """
-    if _NODE_API_SYNC_WRAPPER_OLD not in source:
-        raise RuntimeError("Failed to patch CyberChef async operation wrapper")
-
-    source = source.replace(_NODE_API_SYNC_WRAPPER_OLD, _NODE_API_SYNC_WRAPPER_NEW, 1)
-    return source.replace(
-        "window.app.options.attemptHighlight = false;",
-        "window.app&&window.app.options&&(window.app.options.attemptHighlight=false);",
-        2,
-    )
-
-
 def install_bake_helper(ctx: STPyV8.JSContext) -> None:
     """Install an async-aware recipe executor in the JS context."""
     ctx.eval("""
@@ -731,7 +682,7 @@ def load_cyberchef(path: str | None = None):
 
     # Load and execute CyberChef
     with open(path, "rb") as f:
-        source = patch_bundle_source(f.read().decode("utf-8"))
+        source = f.read().decode("utf-8")
     ctx.eval(source)
     install_bake_helper(ctx)
 

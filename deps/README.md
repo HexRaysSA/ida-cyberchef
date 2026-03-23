@@ -1,38 +1,21 @@
-We're using a minor fork of CyberChef: https://github.com/williballenthin/CyberChef/tree/commonjs-minimal-interpeter
+We use a fork of CyberChef at https://github.com/williballenthin/CyberChef, branch `ida-cyberchef-fixes`. The submodule points to this fork directly.
 
-But in the event that this fork disappears for some reason, versus [CyberChef at commit 2a1294f1c089bb8e68d38d1803d08858907f352a](https://github.com/gchq/CyberChef/commit/2a1294f1c089bb8e68d38d1803d08858907f352a)
-we've applied the patch in ./CyberChef.patch.
+The fork contains two fixes on top of upstream CyberChef:
+- **Async wrapper** (`src/node/api.mjs`): the sync operation wrapper detects and resolves promise results from Babel-transpiled async operations
+- **Highlight guard** (`src/core/Utils.mjs`): `window.app.options.attemptHighlight = false` is wrapped in a safe conditional for environments where `window.app.options` may not exist
 
+These fixes live as commits in the fork — no build-time or runtime patching is needed.
 
-```
-Author: Willi Ballenthin <wballenthin@hex-rays.com>
-Date:   Sat Oct 11 22:28:56 2025 +0200
+## Build/runtime contract
 
-    fix: inject process.versions.node at build time
+The bundle (`ida_cyberchef/data/CyberChef.js`) is built with `just build`, which runs `npm run node` in the submodule and copies the output. The Python runtime loads the bundle without modification.
 
-    This makes isNodeEnvironment() return true during webpack bundling,
-    ensuring the Node.js code paths are included in the bundle.
+The Python runtime (`ida_cyberchef/cyberchef.py`) provides the minimal JS environment:
+- `globalThis.app` with `alert` — CyberChef expects a web-like app object
+- Timer/process/crypto polyfills — the bundle assumes a Node-like environment
+- CommonJS `module.exports` — the bundle is built as a CommonJS module
 
-    This allows the bundle to work in alternative JS runtimes like
-    STPyV8 and PythonMonkey that provide Node.js polyfills.
-
-    Without this, the webpack closure captures 'false' from the browser
-    polyfill at build time, and runtime polyfills can't override it.
-    better minimal runtime detection
-
-commit 724c3c88f29cb7ae39e9eea2ce958f6767dda2b2
-Author: Willi Ballenthin <wballenthin@hex-rays.com>
-Date:   Fri Oct 10 17:22:50 2025 +0200
-
-    add CommonJS build for a minimal JS interpreter
-
-commit ca1cc19af97acf9c4feaff9743597299eb2ecd9b
-Author: Willi Ballenthin <wballenthin@hex-rays.com>
-Date:   Sat Oct 11 13:17:48 2025 +0200
-
-    update JS import syntax
-```
-
-Basically: we fix the JS syntax and then make the NodeJS profile even more minimal - it relies on *very* little from the interpreter environment.
-This way we can load it into a barebones SpiderMonkey/V8 interpreter.
-
+When updating the CyberChef fork or rebuilding the bundle:
+1. Make changes in the submodule, commit, and push to the fork
+2. Run `just build`
+3. The resulting `CyberChef.js` is loaded directly — no patching
