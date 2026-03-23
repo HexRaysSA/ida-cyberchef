@@ -135,3 +135,23 @@ def test_populate_multi_option_restores_saved_selection(qtbot):
         widget.get_current_args()["Standard Enigmas"]
         == "German Service Enigma (Fourth - 4 rotor)"
     )
+
+
+def test_arg_selector_updates_dependent_row_visibility(qtbot):
+    """argSelector widgets should show and hide dependent rows."""
+    registry = OperationRegistry()
+    enigma_op = registry.find_operation("Enigma")
+    assert enigma_op is not None
+
+    widget = OperationStepWidget(0, normalise_operation_view_model(enigma_op))
+    qtbot.addWidget(widget)
+
+    model_widget = widget._arg_widgets["Model"]
+    leftmost_rotor_widget = widget._arg_widgets["Left-most (4th) rotor"]
+
+    assert model_widget.currentText() == "3-rotor"
+    assert leftmost_rotor_widget.isHidden() is True
+
+    model_widget.setCurrentText("4-rotor")
+
+    assert leftmost_rotor_widget.isHidden() is False
