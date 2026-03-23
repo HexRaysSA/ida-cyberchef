@@ -7,6 +7,17 @@ from typing import Any, TypedDict
 
 import STPyV8
 
+from ida_cyberchef.core.schema_adapter import (
+    canonicalise_option_value,
+    coerce_schema_boolean,
+    decode_escaped_string,
+    expand_populate_multi_option,
+    get_argument_default_value,
+    normalise_recipe_argument_value,
+    sanitise_operation_name,
+    should_apply_schema_default,
+)
+
 _chef_instance = None
 
 
@@ -93,11 +104,6 @@ def _py_urandom_json(length: Any) -> str:
     return json.dumps(list(os.urandom(num_bytes)))
 
 
-def sanitise_operation_name(value: str) -> str:
-    """Return the name form used by CyberChef's name matching."""
-    return value.replace(" ", "").lower()
-
-
 def get_operation_schema() -> dict[str, Any]:
     """Load the generated operation schema."""
     global _OPERATION_SCHEMA
@@ -126,72 +132,6 @@ def get_schema_operation(name: str) -> dict[str, Any] | None:
     return get_operation_schema_by_name().get(sanitise_operation_name(name), [None])[0]
 
 
-def decode_escaped_string(value: str) -> str:
-    """Decode the escape sequences used in CyberChef argument defaults."""
-    return value.encode("raw_unicode_escape").decode("unicode_escape")
-
-
-def coerce_schema_boolean(value: Any) -> bool:
-    """Convert schema boolean values into native booleans."""
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered == "true":
-            return True
-        if lowered == "false":
-            return False
-    return bool(value)
-
-
-def get_argument_default_index(arg: dict[str, Any]) -> int:
-    """Return the default index for list-like argument values."""
-    default_index = arg.get("defaultIndex")
-    if isinstance(default_index, int):
-        return default_index
-    return 0
-
-
-def get_argument_default_value(op_name: str, arg: dict[str, Any]) -> Any:
-    """Return the normalised default value for a schema argument."""
-    arg_type = arg.get("type")
-    value = arg.get("value")
-
-    if arg_type in {"binaryString", "binaryShortString"} and isinstance(value, str):
-        return decode_escaped_string(value)
-
-    if arg_type == "boolean":
-        return coerce_schema_boolean(value)
-
-    if arg_type == "argSelector":
-        if isinstance(value, list) and value:
-            default_entry = value[get_argument_default_index(arg)]
-            if isinstance(default_entry, dict):
-                return default_entry.get("name", "")
-            return default_entry
-        return value
-
-    if arg_type in {"editableOption", "editableOptionShort"}:
-        if isinstance(value, list) and value:
-            default_entry = value[get_argument_default_index(arg)]
-            if isinstance(default_entry, dict):
-                default_value = default_entry.get("value", default_entry.get("name", ""))
-            else:
-                default_value = default_entry
-            if isinstance(default_value, str):
-                return decode_escaped_string(default_value)
-            return default_value
-        return value
-
-    if arg_type == "populateMultiOption":
-        if isinstance(value, list) and value:
-            default_entry = value[get_argument_default_index(arg)]
-            if isinstance(default_entry, dict):
-                return default_entry.get("name", "")
-            return default_entry
-        return value
-
-    return value
-
-
 def canonicalise_argument_name(args: list[dict[str, Any]], key: str) -> str | None:
     """Return the canonical schema argument name for a provided key."""
     sanitised_key = sanitise_operation_name(key)
@@ -200,94 +140,6 @@ def canonicalise_argument_name(args: list[dict[str, Any]], key: str) -> str | No
         if sanitise_operation_name(arg_name) == sanitised_key:
             return arg_name
     return None
-
-
-def canonicalise_option_value(arg: dict[str, Any], value: Any) -> Any:
-    """Resolve display names to the values expected by the runtime."""
-    if not isinstance(value, str):
-        return value
-
-    options = arg.get("value")
-    if not isinstance(options, list):
-        return value
-
-    for option in options:
-        if isinstance(option, dict):
-            option_name = str(option.get("name", ""))
-            option_value = option.get("value", option_name)
-            if sanitise_operation_name(option_name) == sanitise_operation_name(value):
-                if isinstance(option_value, str):
-                    return decode_escaped_string(option_value)
-                return option_value
-            if isinstance(option_value, str) and option_value == value:
-                return decode_escaped_string(option_value)
-        elif sanitise_operation_name(str(option)) == sanitise_operation_name(value):
-            return option
-
-    return value
-
-
-def expand_populate_multi_option(arg: dict[str, Any], value: Any) -> dict[str, Any]:
-    """Expand populateMultiOption selections into their target arguments."""
-    if not isinstance(value, str):
-        return {}
-
-    options = arg.get("value")
-    targets = arg.get("target")
-    if not isinstance(options, list) or not isinstance(targets, list):
-        return {}
-
-    for option in options:
-        if not isinstance(option, dict):
-            continue
-        option_name = str(option.get("name", ""))
-        if sanitise_operation_name(option_name) != sanitise_operation_name(value):
-            continue
-        expanded_values = option.get("value", [])
-        if not isinstance(expanded_values, list):
-            return {}
-        return {
-            str(target_index): expanded_values[index]
-            for index, target_index in enumerate(targets)
-            if index < len(expanded_values)
-        }
-
-    return {}
-
-
-def normalise_recipe_argument_value(op_name: str, arg: dict[str, Any], value: Any) -> Any:
-    """Return a recipe argument value in the form CyberChef expects."""
-    arg_type = arg.get("type")
-
-    if arg_type in {"binaryString", "binaryShortString"} and isinstance(value, str):
-        return decode_escaped_string(value)
-
-    if arg_type == "boolean":
-        return coerce_schema_boolean(value)
-
-    if arg_type == "number" and isinstance(value, str):
-        try:
-            return int(value) if "." not in value else float(value)
-        except ValueError:
-            return value
-
-    if arg_type in {"option", "editableOption", "editableOptionShort", "argSelector", "populateMultiOption"}:
-        return canonicalise_option_value(arg, value)
-
-    return value
-
-
-def should_apply_schema_default(arg: dict[str, Any]) -> bool:
-    """Return whether the bridge should materialise this argument's default."""
-    return str(arg.get("type", "")) in {
-        "argSelector",
-        "binaryShortString",
-        "binaryString",
-        "boolean",
-        "editableOption",
-        "editableOptionShort",
-        "populateMultiOption",
-    }
 
 
 def normalise_js_recipe_operation(operation: str | RecipeOperation) -> str | RecipeOperation:
@@ -337,16 +189,16 @@ def normalise_js_recipe_operation(operation: str | RecipeOperation) -> str | Rec
         arg_name = str(arg.get("name", ""))
         if arg_name in provided_by_name:
             normalised_args[arg_name] = normalise_recipe_argument_value(
-                name, arg, provided_by_name[arg_name]
+                arg, provided_by_name[arg_name]
             )
             continue
         if arg_name in populate_expansions:
             normalised_args[arg_name] = normalise_recipe_argument_value(
-                name, arg, populate_expansions[arg_name]
+                arg, populate_expansions[arg_name]
             )
             continue
         if should_apply_schema_default(arg):
-            normalised_args[arg_name] = get_argument_default_value(name, arg)
+            normalised_args[arg_name] = get_argument_default_value(arg)
 
     if not normalised_args:
         return name
