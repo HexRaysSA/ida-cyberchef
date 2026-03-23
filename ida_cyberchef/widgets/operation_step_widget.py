@@ -1,6 +1,5 @@
 """Widget for displaying and editing a single recipe step."""
 
-import json
 from typing import Any, Dict
 
 from PySide6.QtCore import Qt, Signal
@@ -21,6 +20,10 @@ from PySide6.QtWidgets import (
 
 from ida_cyberchef.core.hex_formatter import HexFormatter
 from ida_cyberchef.core.output_model import OutputKind, TypedOutput
+from ida_cyberchef.qt_models.schema_adapter import (
+    SchemaArgumentViewModel,
+    normalise_operation_view_model,
+)
 
 
 class OperationStepWidget(QFrame):
@@ -49,7 +52,7 @@ class OperationStepWidget(QFrame):
         super().__init__(parent)
 
         self._index = index
-        self._operation = operation
+        self._operation = normalise_operation_view_model(operation)
         self._arg_widgets: Dict[str, QWidget] = {}
         self._preview_visible = False
         self._error_visible = False
@@ -176,8 +179,8 @@ class OperationStepWidget(QFrame):
         row = 0  # Start at row 0 (same row as operation name)
 
         for arg in self._operation.get("args", []):
-            arg_type = arg.get("type", "string")
-            arg_name = arg["name"]
+            arg_type = arg.arg_type
+            arg_name = arg.name
 
             widget = self._create_arg_widget(arg)
             self._arg_widgets[arg_name] = widget
@@ -231,37 +234,56 @@ class OperationStepWidget(QFrame):
 
             row += 1
 
-    def _parse_json_value(self, value: Any) -> Any:
-        """Parse JSON-encoded value if it's a string.
+    def _set_combo_selection(self, widget: QComboBox, value: Any) -> None:
+        """Select a combo box entry by runtime value, keeping readable labels."""
+        for index in range(widget.count()):
+            if widget.itemData(index) == value:
+                widget.setCurrentIndex(index)
+                return
 
-        Args:
-            value: Value from schema (may be JSON-encoded string)
+        if value is None:
+            return
 
-        Returns: Parsed value or original if not JSON
-        """
-        if isinstance(value, str):
-            try:
-                return json.loads(value)
-            except (json.JSONDecodeError, ValueError):
-                return value
-        return value
+        if widget.isEditable():
+            widget.setCurrentText(str(value))
+            return
 
-    def _create_arg_widget(self, arg: dict) -> QWidget:
+        if widget.count() == 0 or widget.findText(str(value)) < 0:
+            widget.addItem(str(value), value)
+        widget.setCurrentIndex(widget.findData(value))
+
+    def _create_option_widget(
+        self,
+        arg: SchemaArgumentViewModel,
+        *,
+        editable: bool = False,
+    ) -> QComboBox:
+        """Create a combo box backed by normalized option view models."""
+        widget = QComboBox()
+        widget.setEditable(editable)
+        for option in arg.options:
+            widget.addItem(option.label, option.value)
+
+        self._set_combo_selection(widget, arg.value)
+        widget.setMaximumWidth(200)
+        widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        widget.currentTextChanged.connect(self._on_arg_changed)
+        return widget
+
+    def _create_arg_widget(self, arg: SchemaArgumentViewModel) -> QWidget:
         """Create appropriate widget for argument type.
 
         Args:
-            arg: Argument definition dict
+            arg: Normalized argument view model
 
         Returns: Widget for editing argument value
         """
-        arg_type = arg.get("type", "string")
-        raw_value = arg.get("value", "")
-        parsed_value = self._parse_json_value(raw_value)
+        arg_type = arg.arg_type
 
         # Boolean checkbox
         if arg_type == "boolean":
-            widget = QCheckBox(arg["name"])
-            widget.setChecked(parsed_value if isinstance(parsed_value, bool) else False)
+            widget = QCheckBox(arg.name)
+            widget.setChecked(bool(arg.value))
             # Connect signal AFTER setting initial value
             widget.stateChanged.connect(self._on_arg_changed)
             return widget
@@ -269,57 +291,20 @@ class OperationStepWidget(QFrame):
         # Number spinner
         elif arg_type == "number":
             widget = QSpinBox()
-            widget.setValue(
-                int(parsed_value) if isinstance(parsed_value, (int, float)) else 0
-            )
+            widget.setValue(int(arg.value) if isinstance(arg.value, (int, float)) else 0)
             widget.setRange(-999999, 999999)
             widget.setMaximumWidth(100)
             # Connect signal AFTER setting initial value
             widget.valueChanged.connect(self._on_arg_changed)
             return widget
 
-        # Option dropdown (JSON array of choices)
-        elif arg_type == "option":
-            widget = QComboBox()
-            if isinstance(parsed_value, list):
-                # Schema default: value is array of choices
-                widget.addItems(parsed_value)
-                widget.setCurrentIndex(0)
-
-                # If there's a saved selection, use it
-                saved = arg.get("saved_value")
-                if saved and saved in parsed_value:
-                    widget.setCurrentText(saved)
-            elif isinstance(parsed_value, str):
-                # Fallback: value is a single string (shouldn't happen with new recipe_panel)
-                widget.addItem(parsed_value)
-
-            widget.setMaximumWidth(200)
-            widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            # Connect signal AFTER setting initial value
-            widget.currentTextChanged.connect(self._on_arg_changed)
-            return widget
+        # Option dropdown
+        elif arg_type in ("option", "populateOption", "populateMultiOption"):
+            return self._create_option_widget(arg)
 
         # Editable option dropdown
         elif arg_type in ("editableOption", "editableOptionShort"):
-            widget = QComboBox()
-            widget.setEditable(True)
-            if isinstance(parsed_value, list):
-                widget.addItems(parsed_value)
-                widget.setCurrentIndex(0)
-
-                saved = arg.get("saved_value")
-                if saved:
-                    # For editable, saved might not be in list
-                    widget.setCurrentText(saved)
-            elif isinstance(parsed_value, str):
-                widget.addItem(parsed_value)
-
-            widget.setMaximumWidth(200)
-            widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            # Connect signal AFTER setting initial value
-            widget.currentTextChanged.connect(self._on_arg_changed)
-            return widget
+            return self._create_option_widget(arg, editable=True)
 
         # Toggle string (value input + format dropdown)
         elif arg_type == "toggleString":
@@ -327,9 +312,7 @@ class OperationStepWidget(QFrame):
             layout = QHBoxLayout(container)
             layout.setContentsMargins(0, 0, 0, 0)
 
-            # Check for saved_value first (takes precedence when reloading)
-            saved_value = arg.get("saved_value")
-            value_to_use = saved_value if saved_value is not None else parsed_value
+            value_to_use = arg.value
 
             # Extract string and option from dict or use raw value
             if isinstance(value_to_use, dict):
@@ -341,7 +324,7 @@ class OperationStepWidget(QFrame):
 
             # Value input
             value_input = QLineEdit()
-            value_input.setPlaceholderText(arg["name"])
+            value_input.setPlaceholderText(arg.name)
             value_input.setText(string_value)
             value_input.setMaximumWidth(200)
             value_input.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -350,16 +333,15 @@ class OperationStepWidget(QFrame):
             layout.addWidget(value_input)
 
             # Format dropdown
-            toggle_values = self._parse_json_value(arg.get("toggleValues", "[]"))
             format_combo = None
-            if isinstance(toggle_values, list) and toggle_values:
+            if arg.toggle_values:
                 format_combo = QComboBox()
-                format_combo.addItems(toggle_values)
+                format_combo.addItems(list(arg.toggle_values))
                 format_combo.setMaximumWidth(100)
                 layout.addWidget(format_combo)
 
                 # Set saved option or default to first
-                if selected_option and selected_option in toggle_values:
+                if selected_option and selected_option in arg.toggle_values:
                     format_combo.setCurrentText(selected_option)
                 else:
                     format_combo.setCurrentIndex(0)
@@ -374,31 +356,17 @@ class OperationStepWidget(QFrame):
 
         # Arg selector (mode dropdown with conditional args)
         elif arg_type == "argSelector":
-            widget = QComboBox()
-            if isinstance(parsed_value, list):
-                mode_names = [
-                    mode.get("name", f"Mode {i}")
-                    if isinstance(mode, dict)
-                    else str(mode)
-                    for i, mode in enumerate(parsed_value)
-                ]
-                widget.addItems(mode_names)
-                widget.setCurrentIndex(0)
-            widget.setMaximumWidth(200)
-            widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            # Connect signal AFTER setting initial value
-            widget.currentTextChanged.connect(self._on_arg_changed)
-            return widget
+            return self._create_option_widget(arg)
 
         # Label (display-only)
         elif arg_type == "label":
-            widget = QLabel(str(parsed_value))
+            widget = QLabel(str(arg.value))
             return widget
 
         # Text/multiline string
         elif arg_type in ("text", "binaryString"):
             widget = QTextEdit()
-            widget.setPlainText(str(parsed_value) if parsed_value else "")
+            widget.setPlainText(str(arg.value) if arg.value else "")
             widget.setMaximumHeight(80)
             widget.setMaximumWidth(300)
             widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -410,9 +378,9 @@ class OperationStepWidget(QFrame):
         # Enum (legacy, kept for compatibility)
         elif arg_type == "enum":
             widget = QComboBox()
-            widget.addItems(arg.get("options", []))
-            current = str(parsed_value) if parsed_value else ""
-            if current in arg.get("options", []):
+            widget.addItems(list(arg.raw_argument.get("options", [])))
+            current = str(arg.value) if arg.value else ""
+            if current in arg.raw_argument.get("options", []):
                 widget.setCurrentText(current)
             widget.setMaximumWidth(200)
             widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -423,8 +391,8 @@ class OperationStepWidget(QFrame):
         # Default: string/shortString/binaryShortString
         else:
             widget = QLineEdit()
-            widget.setPlaceholderText(arg["name"])
-            widget.setText(str(parsed_value) if parsed_value else "")
+            widget.setPlaceholderText(arg.name)
+            widget.setText(str(arg.value) if arg.value is not None else "")
             widget.setMaximumWidth(200)
             widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             # Connect signal AFTER setting initial value
@@ -450,8 +418,8 @@ class OperationStepWidget(QFrame):
         args = {}
 
         for arg in self._operation.get("args", []):
-            arg_name = arg["name"]
-            arg_type = arg.get("type", "string")
+            arg_name = arg.name
+            arg_type = arg.arg_type
             widget = self._arg_widgets[arg_name]
 
             # Boolean checkbox
@@ -464,7 +432,12 @@ class OperationStepWidget(QFrame):
 
             # Combobox (option, editableOption, argSelector, enum)
             elif isinstance(widget, QComboBox):
-                args[arg_name] = widget.currentText()
+                current_value = (
+                    widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
+                )
+                args[arg_name] = (
+                    current_value if current_value is not None else widget.currentText()
+                )
 
             # Text edit (text, binaryString)
             elif isinstance(widget, QTextEdit):
