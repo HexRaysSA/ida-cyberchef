@@ -188,7 +188,7 @@ def test_bake_empty_recipe():
     assert result == b"hello" or result == "hello"
 
 
-def test_crypto_get_random_values_uses_runtime_bridge():
+def test_crypto_get_random_values_produces_distinct_random_bytes():
     chef = get_chef()
     ctx = chef._stpyv8_context
     ctx.locals.random_size = 32
