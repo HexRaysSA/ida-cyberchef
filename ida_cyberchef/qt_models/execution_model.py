@@ -59,6 +59,11 @@ class ExecutionModel(QObject):
 
     def _execute_pipeline(self):
         """Execute pipeline (in main thread due to STPyV8 limitations)."""
+        if self._input_model.get_parse_error() is not None:
+            self._results = []
+            self.execution_completed.emit()
+            return
+
         input_data = self._input_model.get_input_bytes()
         if input_data is None:
             self._results = []

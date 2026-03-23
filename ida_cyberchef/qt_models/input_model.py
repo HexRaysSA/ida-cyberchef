@@ -34,6 +34,7 @@ class InputModel(QObject):
     input_changed = Signal()
     source_changed = Signal(InputSource)
     location_params_changed = Signal('quint64', 'quint64')
+    parse_error_changed = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -49,6 +50,7 @@ class InputModel(QObject):
         self._location_data: Optional[bytes] = None
 
         self._parser = InputParser()
+        self._manual_parse_result = self._parser.parse(self._manual_text, self._format)
 
     def get_input_source(self) -> InputSource:
         """Get current input source type."""
@@ -57,8 +59,10 @@ class InputModel(QObject):
     def set_input_source(self, source: InputSource):
         """Set input source type."""
         if self._source != source:
+            previous_error = self.get_parse_error()
             self._source = source
             self.source_changed.emit(source)
+            self._emit_parse_error_if_changed(previous_error)
             self.input_changed.emit()
 
     def get_input_format(self) -> InputFormat:
@@ -68,13 +72,19 @@ class InputModel(QObject):
     def set_input_format(self, format: InputFormat):
         """Set input format for manual input."""
         if self._format != format:
+            previous_error = self.get_parse_error()
             self._format = format
+            self._manual_parse_result = self._parser.parse(self._manual_text, self._format)
+            self._emit_parse_error_if_changed(previous_error)
             self.input_changed.emit()
 
     def set_manual_text(self, text: str):
         """Set manual input text."""
         if self._manual_text != text:
+            previous_error = self.get_parse_error()
             self._manual_text = text
+            self._manual_parse_result = self._parser.parse(self._manual_text, self._format)
+            self._emit_parse_error_if_changed(previous_error)
             self.input_changed.emit()
 
     def get_manual_text(self) -> str:
@@ -107,11 +117,17 @@ class InputModel(QObject):
         Returns: Input bytes, or None if parsing fails
         """
         if self._source == InputSource.MANUAL:
-            return self._parser.parse(self._manual_text, self._format)
+            return self._manual_parse_result.data
         elif self._source == InputSource.FROM_LOCATION:
             return self._location_data if self._location_data else b""
         else:
             return self._external_data
+
+    def get_parse_error(self) -> Optional[str]:
+        """Get the current visible parse error for manual input, if any."""
+        if self._source != InputSource.MANUAL:
+            return None
+        return self._manual_parse_result.error
 
     def set_location_params(self, address: int, length: int):
         """Set location parameters and fetch data from IDA.
@@ -155,3 +171,9 @@ class InputModel(QObject):
     def get_location_length(self) -> Optional[int]:
         """Get location length (only valid when source == FROM_LOCATION)."""
         return self._location_length
+
+    def _emit_parse_error_if_changed(self, previous_error: Optional[str]) -> None:
+        """Emit parse_error_changed when the visible parse error changes."""
+        current_error = self.get_parse_error()
+        if current_error != previous_error:
+            self.parse_error_changed.emit(current_error)

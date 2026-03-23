@@ -84,3 +84,21 @@ def test_empty_recipe_passes_through_input(qtbot):
     assert final_result is not None
     assert final_result.data is not None
     assert final_result.data.value == test_data.encode("utf-8")
+
+
+def test_invalid_manual_input_does_not_passthrough_empty_recipe(qtbot):
+    from ida_cyberchef.core.input_parser import InputFormat
+
+    input_model = InputModel()
+    recipe_model = RecipeModel()
+    exec_model = ExecutionModel(input_model, recipe_model, debounce_ms=50)
+
+    input_model.set_input_format(InputFormat.HEX_STRING)
+    input_model.set_manual_text("zz")
+
+    with qtbot.waitSignal(exec_model.execution_completed, timeout=2000):
+        exec_model.schedule_execution()
+
+    assert input_model.get_parse_error() is not None
+    assert exec_model.get_results() == []
+    assert exec_model.get_final_result() is None

@@ -52,3 +52,25 @@ def test_input_panel_set_location_source_updates_ui_and_model(input_panel_with_i
     assert model.get_location_length() == 128
     assert panel._location_widget._address_edit.text() == "0x00401000"
     assert panel._location_widget._length_edit.text() == "128"
+
+
+def test_input_panel_marks_invalid_manual_input(qtbot):
+    model = InputModel()
+    panel = InputPanel(model)
+    qtbot.addWidget(panel)
+    panel.show()
+
+    panel._format_combo.setCurrentText("Hex String")
+    panel._text_area.setPlainText("zz")
+
+    qtbot.waitUntil(lambda: panel._validation_label.isVisible())
+
+    assert panel._validation_label.text()
+    assert "border" in panel._text_area.styleSheet()
+
+    panel._text_area.setPlainText("41")
+
+    qtbot.waitUntil(lambda: not panel._validation_label.isVisible())
+
+    assert panel._validation_label.text() == ""
+    assert "border" not in panel._text_area.styleSheet()

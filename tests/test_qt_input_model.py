@@ -105,3 +105,35 @@ def test_set_location_params_fetches_ida_bytes(monkeypatch):
     assert model.get_location_address() == 0x401000
     assert model.get_location_length() == 5
     assert model._location_data == mock_bytes
+
+
+def test_manual_parse_error_is_tracked_and_cleared(qtbot):
+    model = InputModel()
+    model.set_input_format(InputFormat.HEX_STRING)
+
+    with qtbot.waitSignal(model.parse_error_changed, timeout=1000) as invalid_signal:
+        model.set_manual_text("zz")
+
+    assert invalid_signal.args == [model.get_parse_error()]
+    assert model.get_parse_error() is not None
+    assert model.get_input_bytes() is None
+
+    with qtbot.waitSignal(model.parse_error_changed, timeout=1000) as valid_signal:
+        model.set_manual_text("41")
+
+    assert valid_signal.args == [None]
+    assert model.get_parse_error() is None
+    assert model.get_input_bytes() == b"A"
+
+
+def test_parse_error_hidden_for_non_manual_sources(qtbot):
+    model = InputModel()
+    model.set_input_format(InputFormat.HEX_STRING)
+    model.set_manual_text("zz")
+    assert model.get_parse_error() is not None
+
+    with qtbot.waitSignal(model.parse_error_changed, timeout=1000) as hidden_signal:
+        model.set_input_source(InputSource.FROM_CURSOR)
+
+    assert hidden_signal.args == [None]
+    assert model.get_parse_error() is None
