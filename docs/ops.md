@@ -3,7 +3,7 @@
 This document lists all 443 available CyberChef operations.
 
 Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.
-See the Runtime support section in `readme.md` for the broader support policy. Operations missing from the CyberChef build entirely (not in the schema) do not appear below.
+See the Runtime support section in `readme.md` for the broader support policy.
 
 ## Operations
 
@@ -8450,7 +8450,7 @@ Simplified Chinese GB18030 (54936)
 
 [More info](https://wikipedia.org/wiki/Character_encoding)
 
-**Input:** `string` → **Output:** `html`
+**Input:** `ArrayBuffer` → **Output:** `html`
 
 **Arguments:**
   - **Mode** (option): `Encode`, `Decode`
@@ -8645,7 +8645,7 @@ Base92 is a notation for encoding arbitrary byte data using a restricted set of 
 
 [More info](https://wikipedia.org/wiki/List_of_numeral_systems)
 
-**Input:** `string` → **Output:** `string`
+**Input:** `string` → **Output:** `byteArray`
 
 ---
 
