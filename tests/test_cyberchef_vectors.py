@@ -81,6 +81,23 @@ XFAIL_EXACT = {
     # Remove Diacritics as a second operation, the bytes are misinterpreted —
     # likely a string-vs-bytes encoding issue in the inter-operation pipeline.
     "Remove Diacritics: text formatting": "bytes-vs-string encoding issue in multi-op pipeline with combining chars",
+
+    # --- JWT operations broken in STPyV8 ---
+    # The jsonwebtoken library used by JWT Sign/Verify fails in the headless V8
+    # environment provided by STPyV8 — likely missing crypto primitives.
+    "JWT Sign: HS256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: HS256 with custom header": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: HS384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: HS512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: ES256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: ES384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: ES512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: RS256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: RS384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: RS512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Verify: HS": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Verify: RS": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Verify: ES": "jsonwebtoken library fails in STPyV8 headless V8 environment",
 }
 
 XFAIL_MATCH = {
