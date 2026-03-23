@@ -1,9 +1,9 @@
 # CyberChef Operations Reference
 
-This document lists all 443 available CyberChef operations.
+This document lists all 471 available CyberChef operations.
 
 Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.
-See the Runtime support section in `readme.md` for the broader support policy. Operations missing from the CyberChef build entirely (not in the schema) do not appear below.
+See the Runtime support section in `readme.md` for the broader support policy.
 
 ## Operations
 
@@ -281,6 +281,24 @@ Adds line numbers to the output.
 
 **Arguments:**
   - **Offset** (number): default ``
+
+---
+
+### `Adler32Checksum()`
+
+**Operation:** `Adler-32 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Adler-32 is a checksum algorithm which was invented by Mark Adler in 1995, and is a modification of the Fletcher checksum. Compared to a cyclic redundancy check of the same length, it trades reliability for speed (preferring the latter).
+
+Adler-32 is more reliable than Fletcher-16, and slightly less reliable than Fletcher-32.
+
+[More info](https://wikipedia.org/wiki/Adler-32)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
 
 ---
 
@@ -1086,6 +1104,24 @@ Caesar Box is a transposition cipher used in the Roman Empire, in which letters 
 
 ---
 
+### `CaretMDecode()`
+
+**Operation:** `Caret/M-decode`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Decodes caret or M-encoded strings, i.e. ^M turns into a newline, M-^] turns into 0x9d. Sources such as `cat -v`.
+
+Please be aware that when using `cat -v` ^_ (caret-underscore) will not be encoded, but represents a valid encoding (namely that of 0x1f).
+
+[More info](https://en.wikipedia.org/wiki/Caret_notation)
+
+**Input:** `string` → **Output:** `byteArray`
+
+---
+
 ### `CartesianProduct()`
 
 **Operation:** `Cartesian Product`
@@ -1510,6 +1546,33 @@ Converts a unit of area to another format.
 **Arguments:**
   - **Input units** (option): `[Metric]`, `Square metre (sq m)`, `Square kilometre (sq km)` (+42 more)
   - **Output units** (option): `[Metric]`, `Square metre (sq m)`, `Square kilometre (sq km)` (+42 more)
+
+---
+
+### `ConvertCoOrdinateFormat()`
+
+**Operation:** `Convert co-ordinate format`
+
+**Category:** `Utils`
+
+**Module:** Hashing
+
+Converts geographical coordinates between different formats.
+
+Supported formats:Degrees Minutes Seconds (DMS)Degrees Decimal Minutes (DDM)Decimal Degrees (DD)GeohashMilitary Grid Reference System (MGRS)Ordnance Survey National Grid (OSNG)Universal Transverse Mercator (UTM)
+The operation can try to detect the input co-ordinate format and delimiter automatically, but this may not always work correctly.
+
+[More info](https://wikipedia.org/wiki/Geographic_coordinate_conversion)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Input Format** (option): `Auto`, `Degrees Minutes Seconds`, `Degrees Decimal Minutes` (+5 more)
+  - **Input Delimiter** (option): `Auto`, `Direction Preceding`, `Direction Following` (+4 more)
+  - **Output Format** (option): `Degrees Minutes Seconds`, `Degrees Decimal Minutes`, `Decimal Degrees` (+4 more)
+  - **Output Delimiter** (option): `Space`, `\n`, `Comma` (+2 more)
+  - **Include Compass Directions** (option): `None`, `Before`, `After`
+  - **Precision** (number): default `3`
 
 ---
 
@@ -2185,6 +2248,34 @@ Compares two inputs (separated by the specified delimiter) and highlights the di
 
 ---
 
+### `DisassembleARM()`
+
+**Operation:** `Disassemble ARM`
+
+**Category:** `Other`
+
+**Module:** Shellcode
+
+Disassembles ARM machine code into assembly language.
+
+Supports ARM (32-bit), Thumb, and ARM64 (AArch64) architectures using the Capstone disassembly framework.
+
+Input should be in hexadecimal.
+
+[More info](https://wikipedia.org/wiki/ARM_architecture_family)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Architecture** (option): `ARM (32-bit)`, `ARM64 (AArch64)`
+  - **Mode** (option): `ARM`, `Thumb`, `Thumb + Cortex-M` (+1 more)
+  - **Endianness** (option): `Little Endian`, `Big Endian`
+  - **Starting address (hex)** (number): default ``
+  - **Show instruction hex** (boolean): default `true`
+  - **Show instruction position** (boolean): default `true`
+
+---
+
 ### `DisassembleX86()`
 
 **Operation:** `Disassemble x86`
@@ -2689,6 +2780,26 @@ e.g. `a-z` becomes `abcdefghijklmnopqrstuvwxyz`.
 
 ---
 
+### `ExtractAudioMetadata()`
+
+**Operation:** `Extract Audio Metadata`
+
+**Category:** `Extractors`
+
+**Module:** Default
+
+Extract common audio metadata across MP3 (ID3v2/ID3v1/GEOB), WAV/BWF/BW64 (INFO/bext/iXML/axml), FLAC (Vorbis Comment/Picture), OGG (Vorbis/OpusTags), AAC (ADTS), AC3 (Dolby Digital), WMA (ASF), plus best-effort MP4/M4A and AIFF scanning. Outputs normalized JSON.
+
+[More info](https://wikipedia.org/wiki/Audio_file_format)
+
+**Input:** `ArrayBuffer` → **Output:** `html`
+
+**Arguments:**
+  - **Filename (optional)** (string): default ``
+  - **Max embedded text bytes (iXML/axml/etc)** (number): default `524288`
+
+---
+
 ### `ExtractEXIF()`
 
 **Operation:** `Extract EXIF`
@@ -3070,6 +3181,160 @@ Splits up the input using the specified delimiter and then filters each branch b
 
 ---
 
+### `FindReplace()`
+
+**Operation:** `Find / Replace`
+
+**Category:** `Utils`
+
+**Module:** Regex
+
+Replaces all occurrences of the first string with the second.
+
+Includes support for regular expressions (regex), simple strings and extended strings (which support \n, \r, \t, \b, \f and escaped hex bytes using \x notation, e.g. \x00 for a null byte).
+
+[More info](https://wikipedia.org/wiki/Regular_expression)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Find** (toggleString): default ``
+  - **Replace** (binaryString): default ``
+  - **Global match** (boolean): default `true`
+  - **Case insensitive** (boolean): default ``
+  - **Multiline matching** (boolean): default `true`
+  - **Dot matches all** (boolean): default ``
+
+---
+
+### `FlaskSessionDecode()`
+
+**Operation:** `Flask Session Decode`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Decodes the payload of a Flask session cookie (itsdangerous) into JSON.
+
+**Input:** `string` → **Output:** `JSON`
+
+**Arguments:**
+  - **View TimeStamp** (boolean): default ``
+
+---
+
+### `FlaskSessionSign()`
+
+**Operation:** `Flask Session Sign`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Signs a JSON payload to produce a Flask session cookie (itsdangerous HMAC).
+
+**Input:** `JSON` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Salt** (toggleString): default `cookie-session`
+  - **Algorithm** (option): `sha1`, `sha256`
+
+---
+
+### `FlaskSessionVerify()`
+
+**Operation:** `Flask Session Verify`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Verifies the HMAC signature of a Flask session cookie (itsdangerous) generated.
+
+**Input:** `string` → **Output:** `JSON`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Salt** (toggleString): default `cookie-session`
+  - **Algorithm** (option): `sha1`, `sha256`
+  - **View TimeStamp** (boolean): default `true`
+
+---
+
+### `Fletcher16Checksum()`
+
+**Operation:** `Fletcher-16 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-16)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `Fletcher32Checksum()`
+
+**Operation:** `Fletcher-32 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-32)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `Fletcher64Checksum()`
+
+**Operation:** `Fletcher-64 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-64)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `Fletcher8Checksum()`
+
+**Operation:** `Fletcher-8 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
 ### `FlipImage()`
 
 **Operation:** `Flip Image`
@@ -3347,6 +3612,32 @@ Base92 is a notation for encoding arbitrary byte data using a restricted set of 
 [More info](https://wikipedia.org/wiki/List_of_numeral_systems)
 
 **Input:** `string` → **Output:** `byteArray`
+
+---
+
+### `FromBech32()`
+
+**Operation:** `From Bech32`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Bech32 is an encoding scheme primarily used for Bitcoin SegWit addresses (BIP-0173). It uses a 32-character alphabet that excludes easily confused characters (1, b, i, o) and includes a checksum for error detection.
+
+Bech32m (BIP-0350) is an updated version used for Bitcoin Taproot addresses.
+
+Auto-detect will attempt Bech32 first, then Bech32m if the checksum fails.
+
+Output format options allow you to see the Human-Readable Part (HRP) along with the decoded data.
+
+[More info](https://wikipedia.org/wiki/Bech32)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Encoding** (option): `Auto-detect`, `Bech32`, `Bech32m`
+  - **Output Format** (option): `Raw`, `Hex`, `Bitcoin scriptPubKey` (+2 more)
 
 ---
 
@@ -3647,7 +3938,7 @@ e.g. `mnchen-3ya` decodes to `münchen`
 
 **Module:** Default
 
-Converts QP-encoded text back to standard text.
+Converts QP-encoded text back to standard text. This format is a content transfer encoding common in email messages.
 
 e.g. The quoted-printable encoded string `hello=20world` becomes `hello world`
 
@@ -4261,6 +4552,29 @@ Compresses data using the deflate algorithm with gzip headers.
 
 ---
 
+### `HAS160()`
+
+**Operation:** `HAS-160`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+HAS-160 is a cryptographic hash function designed for use with the Korean KCDSA digital signature algorithm. It is derived from SHA-1, with assorted changes intended to increase its security. It produces a 160-bit output.
+
+HAS-160 is used in the same way as SHA-1. First it divides input in blocks of 512 bits each and pads the final block. A digest function updates the intermediate hash value by processing the input blocks in turn.
+
+The message digest algorithm consists, by default, of 80 rounds.
+
+[More info](https://wikipedia.org/wiki/HAS-160)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+**Arguments:**
+  - **Rounds** (number): default `80`
+
+---
+
 ### `HASSHClientFingerprint()`
 
 **Operation:** `HASSH Client Fingerprint`
@@ -4544,6 +4858,24 @@ Only /24 ranges and currently handled. Remove headers to easily copy out results
 
 ---
 
+### `ImageBrightnessContrast()`
+
+**Operation:** `Image Brightness / Contrast`
+
+**Category:** `Multimedia`
+
+**Module:** Image
+
+Adjust the brightness or contrast of an image.
+
+**Input:** `ArrayBuffer` → **Output:** `html`
+
+**Arguments:**
+  - **Brightness** (number): default ``
+  - **Contrast** (number): default ``
+
+---
+
 ### `ImageFilter()`
 
 **Operation:** `Image Filter`
@@ -4558,6 +4890,25 @@ Applies a greyscale or sepia filter to an image.
 
 **Arguments:**
   - **Filter type** (option): `Greyscale`, `Sepia`
+
+---
+
+### `ImageHueSaturationLightness()`
+
+**Operation:** `Image Hue/Saturation/Lightness`
+
+**Category:** `Multimedia`
+
+**Module:** Image
+
+Adjusts the hue / saturation / lightness (HSL) values of an image.
+
+**Input:** `ArrayBuffer` → **Output:** `html`
+
+**Arguments:**
+  - **Hue** (number): default ``
+  - **Saturation** (number): default ``
+  - **Lightness** (number): default ``
 
 ---
 
@@ -4942,6 +5293,7 @@ jq is a lightweight and flexible command-line JSON processor.
 
 **Arguments:**
   - **Query** (string): default ``
+  - **Raw** (boolean): default ``
 
 ---
 
@@ -5746,6 +6098,24 @@ Supported image formats: png, jpg, bmp, pbm.
 
 ---
 
+### `PListViewer()`
+
+**Operation:** `P-list Viewer`
+
+**Category:** `Other`
+
+**Module:** Default
+
+In the macOS, iOS, NeXTSTEP, and GNUstep programming frameworks, property list files are files that store serialized objects. Property list files use the filename extension .plist, and thus are often referred to as p-list files.
+
+This operation displays plist files in a human readable format.
+
+[More info](https://wikipedia.org/wiki/Property_list)
+
+**Input:** `string` → **Output:** `string`
+
+---
+
 ### `PEMToHex()`
 
 **Operation:** `PEM to Hex`
@@ -5989,6 +6359,28 @@ Add the specified number of the specified character to the beginning or end of e
 
 ---
 
+### `ParseASN1HexString()`
+
+**Operation:** `Parse ASN.1 hex string`
+
+**Category:** `Data format`
+
+**Module:** PublicKey
+
+Abstract Syntax Notation One (ASN.1) is a standard and notation that describes rules and structures for representing, encoding, transmitting, and decoding data in telecommunications and computer networking.
+
+This operation parses arbitrary ASN.1 data (encoded as an hex string: use the 'To Hex' operation if necessary) and presents the resulting tree.
+
+[More info](https://wikipedia.org/wiki/Abstract_Syntax_Notation_One)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Starting index** (number): default ``
+  - **Truncate octet strings longer than** (number): default `32`
+
+---
+
 ### `ParseCSR()`
 
 **Operation:** `Parse CSR`
@@ -6025,7 +6417,27 @@ Parses a DateTime string in your specified format and displays it in whichever t
 **Arguments:**
   - **Built in formats** (populateOption): default `[{'name': 'Standard date and time', 'value': 'DD/MM/YYYY HH:mm:ss'}, {'name': 'American-style date and time', 'value': 'MM/DD/YYYY HH:mm:ss'}, {'name': 'International date and time', 'value': 'YYYY-MM-DD HH:mm:ss'}, {'name': 'Verbose date and time', 'value': 'dddd Do MMMM YYYY HH:mm:ss Z z'}, {'name': 'UNIX timestamp (seconds)', 'value': 'X'}, {'name': 'UNIX timestamp offset (milliseconds)', 'value': 'x'}, {'name': 'Automatic', 'value': ''}]`
   - **Input format string** (binaryString): default `DD/MM/YYYY HH:mm:ss`
-  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+594 more)
+  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+595 more)
+
+---
+
+### `ParseEthernetFrame()`
+
+**Operation:** `Parse Ethernet frame`
+
+**Category:** `Networking`
+
+**Module:** Default
+
+Parses an Ethernet frame and either shows the deduced values (Source and destination MAC, VLANs) or returns the packet data.Good for use in conjunction with the Parse IPv4, and Parse TCP/UDP recipes.
+
+[More info](https://en.wikipedia.org/wiki/Ethernet_frame#Frame_%E2%80%93_data_link_layer)
+
+**Input:** `string` → **Output:** `html`
+
+**Arguments:**
+  - **Input type** (option): `Raw`, `Hex`
+  - **Return type** (option): `Text output`, `Packet data`, `Packet data (hex)`
 
 ---
 
@@ -6068,6 +6480,7 @@ Given an IPv4 header, this operations parses and displays each field in an easil
 
 **Arguments:**
   - **Input format** (option): `Hex`, `Raw`
+  - **Output format** (option): `Table`, `Data (hex)`, `Data (raw)`
 
 ---
 
@@ -6274,6 +6687,48 @@ Attempts to identify and categorise information contained in a user-agent string
 
 ---
 
+### `ParseX509CRL()`
+
+**Operation:** `Parse X.509 CRL`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+Parse Certificate Revocation List (CRL)
+
+[More info](https://wikipedia.org/wiki/Certificate_revocation_list)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Input format** (option): `PEM`, `DER Hex`, `Base64` (+1 more)
+
+---
+
+### `ParseX509Certificate()`
+
+**Operation:** `Parse X.509 certificate`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+X.509 is an ITU-T standard for a public key infrastructure (PKI) and Privilege Management Infrastructure (PMI). It is commonly involved with SSL/TLS security.
+
+This operation displays the contents of a certificate in a human readable format, similar to the openssl command line tool.
+
+Tags: X509, server hello, handshake
+
+[More info](https://wikipedia.org/wiki/X.509)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Input format** (option): `PEM`, `DER Hex`, `Base64` (+1 more)
+
+---
+
 ### `ParseColourCode()`
 
 **Operation:** `Parse colour code`
@@ -6375,6 +6830,55 @@ Encodes a valid JSON object into a protobuf byte array using the input .proto sc
 
 **Arguments:**
   - **Schema (.proto text)** (text)
+
+---
+
+### `PseudoRandomIntegerGenerator()`
+
+**Operation:** `Pseudo-Random Integer Generator`
+
+**Category:** `Other`
+
+**Module:** Ciphers
+
+A cryptographically-secure pseudo-random number generator (PRNG).
+
+Generates random integers within a specified range using the browser's built-in `crypto.getRandomValues()` method if available.
+
+The supported range of integers is from `-(2^53 - 1)` to `(2^53 - 1)`.
+
+[More info](https://wikipedia.org/wiki/Pseudorandom_number_generator)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Number of Integers** (number): default `1`
+  - **Min Value** (number): default ``
+  - **Max Value** (number): default `99`
+  - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+3 more)
+  - **Output** (option): `Raw`, `Hex`, `Decimal`
+
+---
+
+### `PseudoRandomNumberGenerator()`
+
+**Operation:** `Pseudo-Random Number Generator`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+A cryptographically-secure pseudo-random number generator (PRNG).
+
+This operation uses the browser's built-in `crypto.getRandomValues()` method if available. If this cannot be found, it falls back to a Fortuna-based PRNG algorithm.
+
+[More info](https://wikipedia.org/wiki/Pseudorandom_number_generator)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Number of bytes** (number): default `32`
+  - **Output as** (option): `Hex`, `Integer`, `Byte array` (+1 more)
 
 ---
 
@@ -6499,6 +7003,70 @@ It was discovered that the first few bytes of the RC4 keystream are strongly non
   - **Input format** (option): `Latin1`, `UTF8`, `UTF16` (+4 more)
   - **Output format** (option): `Latin1`, `UTF8`, `UTF16` (+4 more)
   - **Number of dwords to drop** (number): default `192`
+
+---
+
+### `RC6Decrypt()`
+
+**Operation:** `RC6 Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+RC6 is a symmetric key block cipher derived from RC5. It was designed by Ron Rivest, Matt Robshaw, Ray Sidney, and Yiqun Lisa Yin to meet the requirements of the AES competition, and was one of the five finalists.
+
+RC6 is parameterised as RC6-w/r/b where w is word size in bits (any multiple of 8 from 8-256), r is the number of rounds (1-255), and b is the key length in bytes. The standard AES submission uses w=32, r=20. Common word sizes: 8, 16, 32 (standard), 64, 128.
+
+IV: The Initialisation Vector should be 4*w/8 bytes (e.g. 16 bytes for w=32). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/RC6)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Word Size** (number): default `32`
+  - **Rounds** (number): default `20`
+
+---
+
+### `RC6Encrypt()`
+
+**Operation:** `RC6 Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+RC6 is a symmetric key block cipher derived from RC5. It was designed by Ron Rivest, Matt Robshaw, Ray Sidney, and Yiqun Lisa Yin to meet the requirements of the AES competition, and was one of the five finalists.
+
+RC6 is parameterised as RC6-w/r/b where w is word size in bits (any multiple of 8 from 8-256), r is the number of rounds (1-255), and b is the key length in bytes. The standard AES submission uses w=32, r=20. Common word sizes: 8, 16, 32 (standard), 64, 128.
+
+IV: The Initialisation Vector should be 4*w/8 bytes (e.g. 16 bytes for w=32). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/RC6)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Word Size** (number): default `32`
+  - **Rounds** (number): default `20`
 
 ---
 
@@ -8182,6 +8750,22 @@ Adds syntax highlighting to a range of source code languages. Note that this wil
 
 ---
 
+### `TCPIPChecksum()`
+
+**Operation:** `TCP/IP Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Calculates the checksum for a TCP (Transport Control Protocol) or IP (Internet Protocol) header from an input of raw bytes.
+
+[More info](https://wikipedia.org/wiki/IPv4_header_checksum)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
 ### `Tail()`
 
 **Operation:** `Tail`
@@ -8450,7 +9034,7 @@ Simplified Chinese GB18030 (54936)
 
 [More info](https://wikipedia.org/wiki/Character_encoding)
 
-**Input:** `string` → **Output:** `html`
+**Input:** `ArrayBuffer` → **Output:** `html`
 
 **Arguments:**
   - **Mode** (option): `Encode`, `Decode`
@@ -8629,7 +9213,7 @@ Adds a '' delimiter to the start and end of the data. This is standard for Adobe
 
 **Arguments:**
   - **Alphabet** (editableOption): `Standard`, `Z85 (ZeroMQ)`, `IPv6`
-  - **Include delimeter** (boolean): default ``
+  - **Include delimiter** (boolean): default ``
 
 ---
 
@@ -8645,7 +9229,36 @@ Base92 is a notation for encoding arbitrary byte data using a restricted set of 
 
 [More info](https://wikipedia.org/wiki/List_of_numeral_systems)
 
-**Input:** `string` → **Output:** `string`
+**Input:** `string` → **Output:** `byteArray`
+
+---
+
+### `ToBech32()`
+
+**Operation:** `To Bech32`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Bech32 is an encoding scheme primarily used for Bitcoin SegWit addresses (BIP-0173). It uses a 32-character alphabet that excludes easily confused characters (1, b, i, o) and includes a checksum for error detection.
+
+Bech32m (BIP-0350) is an updated version that fixes a weakness in the original Bech32 checksum and is used for Bitcoin Taproot addresses.
+
+The Human-Readable Part (HRP) identifies the network or purpose (e.g., 'bc' for Bitcoin mainnet, 'tb' for testnet, 'age' for AGE encryption keys).
+
+Maximum output length is 90 characters as per specification.
+
+[More info](https://wikipedia.org/wiki/Bech32)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+**Arguments:**
+  - **Human-Readable Part (HRP)** (string): default `bc`
+  - **Encoding** (option): `Bech32`, `Bech32m`
+  - **Input Format** (option): `Raw bytes`, `Hex`
+  - **Mode** (option): `Generic`, `Bitcoin SegWit`
+  - **Witness Version** (number): default ``
 
 ---
 
@@ -9033,7 +9646,7 @@ e.g. `münchen` encodes to `mnchen-3ya`
 
 **Module:** Default
 
-Quoted-Printable, or QP encoding, is an encoding using printable ASCII characters (alphanumeric and the equals sign '=') to transmit 8-bit data over a 7-bit data path or, generally, over a medium which is not 8-bit clean. It is defined as a MIME content transfer encoding for use in e-mail.
+Quoted-Printable, or QP encoding, is an encoding using printable ASCII characters (alphanumeric and the equals sign '=') to transmit 8-bit data over a 7-bit data path or, generally, over a medium which is not 8-bit clean. It is defined as a MIME content transfer encoding for use in email.
 
 QP works by using the equals sign '=' as an escape character. It also limits line length to 76, as some software has limits on line length.
 
@@ -9155,9 +9768,9 @@ Run with no input to see the relevant format string examples.
 **Arguments:**
   - **Built in formats** (populateOption): default `[{'name': 'Standard date and time', 'value': 'DD/MM/YYYY HH:mm:ss'}, {'name': 'American-style date and time', 'value': 'MM/DD/YYYY HH:mm:ss'}, {'name': 'International date and time', 'value': 'YYYY-MM-DD HH:mm:ss'}, {'name': 'Verbose date and time', 'value': 'dddd Do MMMM YYYY HH:mm:ss Z z'}, {'name': 'UNIX timestamp (seconds)', 'value': 'X'}, {'name': 'UNIX timestamp offset (milliseconds)', 'value': 'x'}, {'name': 'Automatic', 'value': ''}]`
   - **Input format string** (binaryString): default `DD/MM/YYYY HH:mm:ss`
-  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+594 more)
+  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+595 more)
   - **Output format string** (binaryString): default `dddd Do MMMM YYYY HH:mm:ss Z z`
-  - **Output timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+594 more)
+  - **Output timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+595 more)
 
 ---
 
