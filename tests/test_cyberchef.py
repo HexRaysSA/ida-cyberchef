@@ -1,4 +1,6 @@
 import hashlib
+import json
+import uuid
 
 from ida_cyberchef.cyberchef import DishType, bake, decode_escaped_string, get_chef, plate
 
@@ -198,6 +200,49 @@ def test_bake_empty_recipe():
     """Test bake with empty recipe returns input unchanged."""
     result = bake(b"hello", [])
     assert result == b"hello" or result == "hello"
+
+
+def test_crypto_get_random_values_produces_distinct_random_bytes():
+    chef = get_chef()
+    ctx = chef._stpyv8_context
+    ctx.locals.random_size = 32
+
+    first = json.loads(
+        ctx.eval("""
+        (function() {
+            const values = new Uint8Array(random_size);
+            crypto.getRandomValues(values);
+            return JSON.stringify(Array.from(values));
+        })()
+        """)
+    )
+    second = json.loads(
+        ctx.eval("""
+        (function() {
+            const values = new Uint8Array(random_size);
+            crypto.getRandomValues(values);
+            return JSON.stringify(Array.from(values));
+        })()
+        """)
+    )
+
+    assert len(first) == 32
+    assert len(second) == 32
+    assert all(0 <= value <= 255 for value in first)
+    assert all(0 <= value <= 255 for value in second)
+    assert first != second
+
+
+def test_bake_generate_uuid_produces_distinct_v4_values():
+    first = bake("", ["Generate UUID"])
+    second = bake("", ["Generate UUID"])
+
+    first_uuid = uuid.UUID(first)
+    second_uuid = uuid.UUID(second)
+
+    assert first_uuid.version == 4
+    assert second_uuid.version == 4
+    assert first != second
 
 
 def test_decode_escaped_string_standard_escapes():

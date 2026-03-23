@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from enum import IntEnum
 from pathlib import Path
@@ -114,6 +115,14 @@ FLOW_CONTROL_DEFAULT_ARGUMENTS: dict[str, dict[str, Any]] = {
 
 _OPERATION_SCHEMA: dict[str, Any] | None = None
 _OPERATION_SCHEMA_BY_NAME: dict[str, list[dict[str, Any]]] | None = None
+
+
+def _py_urandom_json(length: Any) -> str:
+    """Return a JSON-encoded list of cryptographically random bytes."""
+    num_bytes = int(length)
+    if num_bytes < 0:
+        raise ValueError("Random byte length must be non-negative")
+    return json.dumps(list(os.urandom(num_bytes)))
 
 
 def sanitise_operation_name(value: str) -> str:
@@ -527,6 +536,7 @@ def load_cyberchef(path: str | None = None):
         path = str(Path(__file__).parent / "data" / "CyberChef.js")
     ctx = STPyV8.JSContext()
     ctx.enter()
+    ctx.locals.py_urandom_json = _py_urandom_json
 
     # Setup minimal global environment for CyberChef
     ctx.eval("""
@@ -627,14 +637,16 @@ def load_cyberchef(path: str | None = None):
         };
     }
 
-    // Crypto API polyfill
+    // Crypto API polyfill. Only getRandomValues is bridged to Python's
+    // os.urandom; crypto.subtle remains unavailable in this runtime.
     if (typeof crypto === 'undefined') {
         globalThis.crypto = {};
     }
     if (!globalThis.crypto.getRandomValues) {
         globalThis.crypto.getRandomValues = function(array) {
+            const randomValues = JSON.parse(py_urandom_json(array.length));
             for (let i = 0; i < array.length; i++) {
-                array[i] = Math.floor(Math.random() * 256);
+                array[i] = randomValues[i];
             }
             return array;
         };
