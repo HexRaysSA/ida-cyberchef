@@ -37,10 +37,10 @@ UPSTREAM_BUG_XFAILS = {
         "UTF-8 encoded word decoded incorrectly after upstream update to v10.22.1"
     ),
     "jwt_sign_hs256_fixed_iat_payload": (
-        "jsonwebtoken library fails in STPyV8 headless V8 environment"
+        "Unsupported in the current STPyV8 runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
     ),
     "jwt_verify_static_hs256_token": (
-        "jsonwebtoken library fails in STPyV8 headless V8 environment"
+        "Unsupported in the current STPyV8 runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
     ),
 }
 
