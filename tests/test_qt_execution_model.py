@@ -90,6 +90,7 @@ def test_empty_recipe_passes_through_input(qtbot):
 
 
 def _build_recipe_panel(qtbot, input_text, operations, input_format=InputFormat.TEXT_UTF8):
+    """Build a recipe panel and return input, recipe, execution models, and panel."""
     input_model = InputModel()
     input_model.set_input_format(input_format)
     input_model.set_manual_text(input_text)
@@ -128,7 +129,7 @@ def test_recipe_panel_clears_later_stale_preview_and_error(qtbot):
         input_model.set_manual_text("abc")
 
     assert first_widget._error_visible is True
-    assert first_widget._error_label.text().startswith("Error: ")
+    assert first_widget._error_label.text() == "Error: cannot convert float NaN to integer"
     assert second_widget._preview_widget.toPlainText() == ""
     assert second_widget._error_visible is False
 
@@ -149,6 +150,10 @@ def test_recipe_panel_clears_stale_state_after_recipe_edit(qtbot):
         recipe_model.update_operation_args(0, {"Delimiter": "None"})
 
     assert first_widget._error_visible is True
+    assert (
+        first_widget._error_label.text()
+        == "Error: 'float' object cannot be interpreted as an integer"
+    )
     assert second_widget._preview_widget.toPlainText() == ""
     assert second_widget._error_visible is False
 
