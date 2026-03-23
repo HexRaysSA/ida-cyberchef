@@ -1,5 +1,6 @@
 """Tests for OperationStepWidget."""
 
+from ida_cyberchef.core.output_model import OutputKind, TypedOutput
 from ida_cyberchef.core.operation_registry import OperationRegistry
 from ida_cyberchef.qt_models.schema_adapter import normalise_operation_view_model
 from ida_cyberchef.widgets.operation_step_widget import OperationStepWidget
@@ -135,3 +136,21 @@ def test_populate_multi_option_restores_saved_selection(qtbot):
         widget.get_current_args()["Standard Enigmas"]
         == "German Service Enigma (Fourth - 4 rotor)"
     )
+
+
+def test_clear_preview_clears_text_without_collapsing_preview(qtbot):
+    """clear_preview should remove stale text without changing expansion state."""
+    registry = OperationRegistry()
+    xor_op = registry.find_operation("XOR")
+    assert xor_op is not None
+
+    widget = OperationStepWidget(0, xor_op)
+    qtbot.addWidget(widget)
+
+    widget._on_preview_clicked()
+    widget.set_preview_data(TypedOutput(kind=OutputKind.TEXT, value="stale preview"))
+
+    widget.clear_preview()
+
+    assert widget._preview_visible is True
+    assert widget._preview_widget.toPlainText() == ""
