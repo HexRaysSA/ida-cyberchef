@@ -1,6 +1,6 @@
 import hashlib
 
-from ida_cyberchef.cyberchef import bake, get_chef, plate
+from ida_cyberchef.cyberchef import bake, decode_escaped_string, get_chef, plate
 
 
 def rechef(dish_result, chef):
@@ -184,3 +184,25 @@ def test_bake_empty_recipe():
     """Test bake with empty recipe returns input unchanged."""
     result = bake(b"hello", [])
     assert result == b"hello" or result == "hello"
+
+
+def test_decode_escaped_string_standard_escapes():
+    assert decode_escaped_string("\\n") == "\n"
+    assert decode_escaped_string("\\t") == "\t"
+    assert decode_escaped_string("\\x0a") == "\n"
+
+
+def test_decode_escaped_string_non_ascii_passthrough():
+    assert decode_escaped_string("café") == "café"
+    assert decode_escaped_string("Ñ") == "Ñ"
+    assert decode_escaped_string("—") == "—"
+
+
+def test_decode_escaped_string_unicode_escape():
+    assert decode_escaped_string("\\u00e9") == "é"
+    assert decode_escaped_string("\\u00d1") == "Ñ"
+
+
+def test_decode_escaped_string_mixed():
+    assert decode_escaped_string("café\\n") == "café\n"
+    assert decode_escaped_string("\\t—\\t") == "\t—\t"
