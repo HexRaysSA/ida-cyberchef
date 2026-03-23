@@ -807,6 +807,19 @@ def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberCh
     }
 
 
+def _parse_dish_type(raw_type: Any) -> DishType | None:
+    """Return a valid DishType for a raw Dish type value, if possible."""
+    if isinstance(raw_type, bool):
+        return None
+    if isinstance(raw_type, float) and not raw_type.is_integer():
+        return None
+
+    try:
+        return DishType(int(raw_type))
+    except (TypeError, ValueError):
+        return None
+
+
 def plate(v: Dish | Any, chef=None) -> Dish | Any:
     """Convert between Python types and CyberChef Dish objects.
 
@@ -816,12 +829,13 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
 
     Returns: Native Python type if input is Dish, Dish dict/instance if input is Python type
     """
-    is_dish_object = (isinstance(v, dict) and "value" in v and "type" in v) or (
-        hasattr(v, "value") and hasattr(v, "type")
-    )
+    dish_type = None
+    if isinstance(v, dict) and "value" in v and "type" in v:
+        dish_type = _parse_dish_type(v["type"])
+    elif hasattr(v, "value") and hasattr(v, "type"):
+        dish_type = _parse_dish_type(v.type)
 
-    if is_dish_object:
-        dish_type = DishType(int(v["type"] if isinstance(v, dict) else v.type))
+    if dish_type is not None:
         value = v["value"] if isinstance(v, dict) else v.value
 
         if dish_type == DishType.BYTE_ARRAY:

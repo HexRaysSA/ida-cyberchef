@@ -1,6 +1,6 @@
 import hashlib
 
-from ida_cyberchef.cyberchef import bake, decode_escaped_string, get_chef, plate
+from ida_cyberchef.cyberchef import DishType, bake, decode_escaped_string, get_chef, plate
 
 
 def rechef(dish_result, chef):
@@ -86,6 +86,20 @@ def test_url_encode():
     chef = get_chef()
     result = plate(chef.URLEncode("Hello World!"))
     assert result == "Hello%20World!"
+
+
+def test_plate_does_not_misidentify_json_dict_as_dish():
+    payload = {"value": 1, "type": "integer"}
+    assert plate(payload) == {"value": payload, "type": DishType.JSON}
+
+
+def test_plate_does_not_misidentify_out_of_range_type_as_dish():
+    payload = {"value": b"x", "type": 99}
+    assert plate(payload) == {"value": payload, "type": DishType.JSON}
+
+
+def test_plate_still_handles_valid_dish_dict():
+    assert plate({"value": "hello", "type": DishType.STRING}) == "hello"
 
 
 def test_bake_simple():
