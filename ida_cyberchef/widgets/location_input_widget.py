@@ -3,21 +3,29 @@
 import logging
 
 from PySide6.QtCore import QTimer, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QWidget
 
 logger = logging.getLogger(__name__)
 
 VALID_STYLE = "font-family: 'Courier New', Courier, monospace;"
 INVALID_STYLE = "font-family: 'Courier New', Courier, monospace; border: 1px solid red;"
 
+MODE_LENGTH = 0
+MODE_END_ADDRESS = 1
+
 
 class LocationInputWidget(QWidget):
-    """Widget for inputting location parameters (address and length).
+    """Widget for inputting location parameters (address and length or end address).
 
-    Layout:
-    ┌─────────────────────────────────────────────────┐
-    │ Address: [0x00401000          ] Length: [256  ] │
-    └─────────────────────────────────────────────────┘
+    Layout (length mode):
+    ┌──────────────────────────────────────────────────────────┐
+    │ Address: [0x00401000    ] [Length ▾]: [256    ]           │
+    └──────────────────────────────────────────────────────────┘
+
+    Layout (end address mode):
+    ┌──────────────────────────────────────────────────────────┐
+    │ Address: [0x00401000    ] [End Addr ▾]: [0x00401100    ] │
+    └──────────────────────────────────────────────────────────┘
     """
 
     location_changed = Signal('quint64', 'quint64')
@@ -28,7 +36,6 @@ class LocationInputWidget(QWidget):
         self._connect_signals()
 
     def _setup_ui(self):
-        """Setup widget UI."""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
@@ -40,7 +47,10 @@ class LocationInputWidget(QWidget):
         self._address_edit.setMinimumWidth(120)
         layout.addWidget(self._address_edit)
 
-        layout.addWidget(QLabel("Length:"))
+        self._mode_combo = QComboBox()
+        self._mode_combo.addItem("Length:", MODE_LENGTH)
+        self._mode_combo.addItem("End Addr:", MODE_END_ADDRESS)
+        layout.addWidget(self._mode_combo)
 
         self._length_edit = QLineEdit()
         self._length_edit.setText("256")
@@ -48,10 +58,16 @@ class LocationInputWidget(QWidget):
         self._length_edit.setMinimumWidth(80)
         layout.addWidget(self._length_edit)
 
+        self._end_addr_edit = QLineEdit()
+        self._end_addr_edit.setPlaceholderText("0x00000000")
+        self._end_addr_edit.setStyleSheet(VALID_STYLE)
+        self._end_addr_edit.setMinimumWidth(120)
+        self._end_addr_edit.hide()
+        layout.addWidget(self._end_addr_edit)
+
         layout.addStretch()
 
     def _connect_signals(self):
-        """Connect signals and slots."""
         self._debounce_timer = QTimer(self)
         self._debounce_timer.setSingleShot(True)
         self._debounce_timer.setInterval(300)
@@ -59,13 +75,22 @@ class LocationInputWidget(QWidget):
 
         self._address_edit.textChanged.connect(self._schedule_update)
         self._length_edit.textChanged.connect(self._schedule_update)
+        self._end_addr_edit.textChanged.connect(self._schedule_update)
+        self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+
+    def _on_mode_changed(self, index: int):
+        if index == MODE_LENGTH:
+            self._end_addr_edit.hide()
+            self._length_edit.show()
+        else:
+            self._length_edit.hide()
+            self._end_addr_edit.show()
+        self._schedule_update()
 
     def _schedule_update(self):
-        """Restart debounce timer on any text change."""
         self._debounce_timer.start()
 
     def _parse_address(self, text: str) -> int | None:
-        """Parse address text as hexadecimal."""
         text = text.strip()
         if not text:
             return None
@@ -77,7 +102,6 @@ class LocationInputWidget(QWidget):
             return None
 
     def _parse_length(self, text: str) -> int | None:
-        """Parse length text as decimal."""
         text = text.strip()
         if not text:
             return None
@@ -87,13 +111,43 @@ class LocationInputWidget(QWidget):
         except ValueError:
             return None
 
-    def _on_params_changed(self):
-        """Handle parameter changes with validation and visual feedback."""
-        address_text = self._address_edit.text()
-        length_text = self._length_edit.text()
+    def _compute_length(self, address: int | None) -> int | None:
+        """Compute length from either length field or end address field."""
+        if self._mode_combo.currentIndex() == MODE_LENGTH:
+            length_text = self._length_edit.text()
+            length = self._parse_length(length_text)
+            if length_text.strip():
+                self._length_edit.setStyleSheet(
+                    INVALID_STYLE if length is None else VALID_STYLE
+                )
+                if length is None:
+                    logger.warning("invalid length value: %r", length_text.strip())
+            else:
+                self._length_edit.setStyleSheet(VALID_STYLE)
+            return length
+        else:
+            end_text = self._end_addr_edit.text()
+            end_addr = self._parse_address(end_text)
+            if end_text.strip():
+                if end_addr is None or (address is not None and end_addr <= address):
+                    self._end_addr_edit.setStyleSheet(INVALID_STYLE)
+                    if end_addr is None:
+                        logger.warning("invalid end address value: %r", end_text.strip())
+                    elif address is not None:
+                        logger.warning("end address must be greater than start address")
+                    return None
+                else:
+                    self._end_addr_edit.setStyleSheet(VALID_STYLE)
+            else:
+                self._end_addr_edit.setStyleSheet(VALID_STYLE)
+                return None
+            if address is not None and end_addr is not None:
+                return end_addr - address
+            return None
 
+    def _on_params_changed(self):
+        address_text = self._address_edit.text()
         address = self._parse_address(address_text)
-        length = self._parse_length(length_text)
 
         if address_text.strip():
             if address is None:
@@ -104,14 +158,7 @@ class LocationInputWidget(QWidget):
         else:
             self._address_edit.setStyleSheet(VALID_STYLE)
 
-        if length_text.strip():
-            if length is None:
-                self._length_edit.setStyleSheet(INVALID_STYLE)
-                logger.warning("invalid length value: %r", length_text.strip())
-            else:
-                self._length_edit.setStyleSheet(VALID_STYLE)
-        else:
-            self._length_edit.setStyleSheet(VALID_STYLE)
+        length = self._compute_length(address)
 
         if address is not None and length is not None:
             self.location_changed.emit(address, length)
@@ -124,4 +171,7 @@ class LocationInputWidget(QWidget):
             length: Number of bytes
         """
         self._address_edit.setText(f"0x{address:08x}")
-        self._length_edit.setText(str(length))
+        if self._mode_combo.currentIndex() == MODE_END_ADDRESS:
+            self._end_addr_edit.setText(f"0x{address + length:08x}")
+        else:
+            self._length_edit.setText(str(length))

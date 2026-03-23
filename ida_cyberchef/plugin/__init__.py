@@ -45,6 +45,57 @@ def find_next_available_caption(prefix: str = "CyberChef-") -> str:
     raise RuntimeError("All 26 CyberChef instances in use")
 
 
+def _read_and_validate_selection(v) -> tuple[bool, int, int, int]:
+    """Read and validate a range selection from the given viewer.
+
+    Args:
+        v: IDA viewer handle from ida_kernwin.get_current_viewer()
+
+    Returns:
+        (ok, start, end, length) where ok is False if validation failed.
+    """
+    if ida_kernwin.get_widget_type(v) not in (
+        ida_kernwin.BWN_HEXVIEW,
+        ida_kernwin.BWN_DISASM,
+    ):
+        return False, 0, 0, 0
+
+    has_range, start, end = ida_kernwin.read_range_selection(v)
+    if not has_range or ida_idaapi.BADADDR in (start, end):
+        logger.warning("No valid selection for Send to CyberChef")
+        return False, 0, 0, 0
+
+    length = end - start
+    if length <= 0:
+        logger.warning("Invalid selection length for Send to CyberChef")
+        return False, 0, 0, 0
+
+    return True, start, end, length
+
+
+def _populate_widget_from_selection(form, start: int, length: int) -> None:
+    """Populate a CyberChefForm widget with a selection from IDA.
+
+    Args:
+        form: CyberChefForm instance with a valid .w attribute
+        start: Start address of the selection
+        length: Number of bytes selected
+    """
+    input_model = form.w.get_input_model()
+    input_panel = form.w.get_input_panel()
+
+    input_model.set_input_source(InputSource.FROM_LOCATION)
+
+    if input_panel._location_radio:
+        input_panel._location_radio.setChecked(True)
+        input_panel._on_source_changed()
+
+    input_model.set_location_params(start, length)
+
+    if input_panel._location_widget:
+        input_panel._location_widget.set_location(start, length)
+
+
 class UILocationHook(ida_kernwin.UI_Hooks):
     def __init__(self, w, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -236,39 +287,14 @@ class send_to_cyberchef_action_handler_t(ida_kernwin.action_handler_t):
     def activate(self, ctx):
         """Handle 'Send to CyberChef' action - always creates new instance."""
         v = ida_kernwin.get_current_viewer()
-
-        if ida_kernwin.get_widget_type(v) not in (
-            ida_kernwin.BWN_HEXVIEW,
-            ida_kernwin.BWN_DISASM,
-        ):
-            return 0
-
-        has_range, start, end = ida_kernwin.read_range_selection(v)
-        if not has_range or ida_idaapi.BADADDR in (start, end):
-            logger.warning("No valid selection for Send to CyberChef")
-            return 0
-
-        length = end - start
-        if length <= 0:
-            logger.warning("Invalid selection length for Send to CyberChef")
+        ok, start, _end, length = _read_and_validate_selection(v)
+        if not ok:
             return 0
 
         form = self.plugmod.create_viewer()
 
         if form and form.w:
-            input_model = form.w.get_input_model()
-            input_panel = form.w.get_input_panel()
-
-            input_model.set_input_source(InputSource.FROM_LOCATION)
-
-            if input_panel._location_radio:
-                input_panel._location_radio.setChecked(True)
-                input_panel._on_source_changed()
-
-            input_model.set_location_params(start, length)
-
-            if input_panel._location_widget:
-                input_panel._location_widget.set_location(start, length)
+            _populate_widget_from_selection(form, start, length)
 
         return 1
 
@@ -306,21 +332,8 @@ class send_to_specific_widget_action_handler_t(ida_kernwin.action_handler_t):
     def activate(self, ctx):
         """Send selection to specific CyberChef instance."""
         v = ida_kernwin.get_current_viewer()
-
-        if ida_kernwin.get_widget_type(v) not in (
-            ida_kernwin.BWN_HEXVIEW,
-            ida_kernwin.BWN_DISASM,
-        ):
-            return 0
-
-        has_range, start, end = ida_kernwin.read_range_selection(v)
-        if not has_range or ida_idaapi.BADADDR in (start, end):
-            logger.warning("No valid selection for Send to CyberChef")
-            return 0
-
-        length = end - start
-        if length <= 0:
-            logger.warning("Invalid selection length for Send to CyberChef")
+        ok, start, _end, length = _read_and_validate_selection(v)
+        if not ok:
             return 0
 
         widget = ida_kernwin.find_widget(self.caption)
@@ -332,19 +345,7 @@ class send_to_specific_widget_action_handler_t(ida_kernwin.action_handler_t):
 
         form = self.form_registry.get(self.caption)
         if form and hasattr(form, "w"):
-            input_model = form.w.get_input_model()
-            input_panel = form.w.get_input_panel()
-
-            input_model.set_input_source(InputSource.FROM_LOCATION)
-
-            if input_panel._location_radio:
-                input_panel._location_radio.setChecked(True)
-                input_panel._on_source_changed()
-
-            input_model.set_location_params(start, length)
-
-            if input_panel._location_widget:
-                input_panel._location_widget.set_location(start, length)
+            _populate_widget_from_selection(form, start, length)
         else:
             logger.warning(f"Cannot populate {self.caption} - unable to access form")
 
