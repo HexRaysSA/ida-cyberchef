@@ -151,7 +151,7 @@ def get_schema_operation(name: str) -> dict[str, Any] | None:
 
 def decode_escaped_string(value: str) -> str:
     """Decode the escape sequences used in CyberChef argument defaults."""
-    return bytes(value, "utf-8").decode("unicode_escape")
+    return value.encode("raw_unicode_escape").decode("unicode_escape")
 
 
 def coerce_schema_boolean(value: Any) -> bool:
