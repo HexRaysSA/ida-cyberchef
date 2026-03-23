@@ -1,6 +1,6 @@
 """Widget for displaying and editing a single recipe step."""
 
-from typing import Any, Dict
+from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -54,8 +54,8 @@ class OperationStepWidget(QFrame):
 
         self._index = index
         self._operation = normalise_operation_view_model(operation)
-        self._arg_widgets: Dict[str, QWidget] = {}
-        self._arg_row_widgets: Dict[str, list[QWidget]] = {}
+        self._arg_widgets: dict[str, QWidget] = {}
+        self._arg_row_widgets: dict[str, list[QWidget]] = {}
         self._preview_visible = False
         self._error_visible = False
 
@@ -186,11 +186,11 @@ class OperationStepWidget(QFrame):
 
             widget = self._create_arg_widget(arg)
             self._arg_widgets[arg_name] = widget
-            row_widgets = [widget]
 
             # Boolean checkbox is self-labeled, no separate label needed
             if arg_type == "boolean":
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [widget]
 
             # ToggleString needs 3 columns: label | input | format dropdown
             elif arg_type == "toggleString":
@@ -228,6 +228,7 @@ class OperationStepWidget(QFrame):
             # Label type: no label, just display widget
             elif arg_type == "label":
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [widget]
 
             # All other types: label | widget spanning columns 2-3
             else:
@@ -368,9 +369,7 @@ class OperationStepWidget(QFrame):
         # Arg selector (mode dropdown with conditional args)
         elif arg_type == "argSelector":
             widget = self._create_option_widget(arg)
-            widget.currentTextChanged.connect(
-                lambda _text, arg_name=arg.name: self._update_arg_selector_visibility(arg_name)
-            )
+            widget.currentTextChanged.connect(lambda _text: self._update_arg_selector_visibility())
             return widget
 
         # Label (display-only)
@@ -426,10 +425,11 @@ class OperationStepWidget(QFrame):
 
     def _update_all_arg_selector_visibility(self) -> None:
         """Apply argSelector visibility rules across the operation."""
-        operation_args = [arg.raw_argument for arg in self._operation.get("args", [])]
-        visibility = {arg.name: True for arg in self._operation.get("args", [])}
+        operation_args_view = self._operation.get("args", [])
+        operation_args = [arg.raw_argument for arg in operation_args_view]
+        visibility = {arg.name: True for arg in operation_args_view}
 
-        for arg in self._operation.get("args", []):
+        for arg in operation_args_view:
             if arg.arg_type != "argSelector":
                 continue
 
@@ -453,7 +453,7 @@ class OperationStepWidget(QFrame):
         for arg_name, is_visible in visibility.items():
             self._set_row_visible(arg_name, is_visible)
 
-    def _update_arg_selector_visibility(self, _arg_name: str) -> None:
+    def _update_arg_selector_visibility(self) -> None:
         """Refresh argSelector-driven row visibility when a selector changes."""
         self._update_all_arg_selector_visibility()
 
@@ -463,7 +463,7 @@ class OperationStepWidget(QFrame):
         self._preview_widget.setVisible(self._preview_visible)
         self.preview_toggled.emit(self._index, self._preview_visible)
 
-    def get_current_args(self) -> Dict[str, Any]:
+    def get_current_args(self) -> dict[str, Any]:
         """Get current argument values.
 
         Returns: Dict of argument name -> value

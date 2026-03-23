@@ -63,13 +63,18 @@ def test_normalise_operation_view_model_preserves_editable_option_label_mapping(
 
 
 def test_shared_adapter_extracts_defaults_for_binary_and_populate_multi_option():
-    assert get_argument_default_value({"type": "binaryString", "value": "\\n"}) == "\n"
-
     registry = OperationRegistry()
+    css_beautify_op = registry.find_operation("CSS Beautify")
     bombe_op = registry.find_operation("Multiple Bombe")
+    assert css_beautify_op is not None
     assert bombe_op is not None
 
+    indent_string_arg = next(
+        arg for arg in css_beautify_op["args"] if arg["name"] == "Indent string"
+    )
     default_value = get_argument_default_value(bombe_op["args"][0])
+
+    assert get_argument_default_value(indent_string_arg) == "\t"
     assert default_value == "German Service Enigma (First - 3 rotor)"
 
 
@@ -80,7 +85,9 @@ def test_shared_adapter_round_trips_display_labels_and_runtime_values():
     assert enigma_op is not None
     assert datetime_op is not None
 
-    rotor_arg = next(arg for arg in enigma_op["args"] if arg["name"] == "Right-hand rotor")
+    rotor_arg = next(
+        arg for arg in enigma_op["args"] if arg["name"] == "Right-hand rotor"
+    )
     preset_arg = next(
         arg for arg in datetime_op["args"] if arg["name"] == "Built in formats"
     )
@@ -113,9 +120,11 @@ def test_shared_adapter_reports_arg_selector_dependencies():
     enigma_op = registry.find_operation("Enigma")
     assert enigma_op is not None
 
-    model_arg = enigma_op["args"][0]
+    selector_arg = enigma_op["args"][0]
 
-    visible_args, hidden_args = get_dependent_args(enigma_op["args"], model_arg, "3-rotor")
+    visible_args, hidden_args = get_dependent_args(
+        enigma_op["args"], selector_arg, "3-rotor"
+    )
     assert visible_args == set()
     assert hidden_args == {
         "Left-most (4th) rotor",
@@ -123,7 +132,9 @@ def test_shared_adapter_reports_arg_selector_dependencies():
         "Left-most rotor initial value",
     }
 
-    visible_args, hidden_args = get_dependent_args(enigma_op["args"], model_arg, "4-rotor")
+    visible_args, hidden_args = get_dependent_args(
+        enigma_op["args"], selector_arg, "4-rotor"
+    )
     assert visible_args == {
         "Left-most (4th) rotor",
         "Left-most rotor ring setting",

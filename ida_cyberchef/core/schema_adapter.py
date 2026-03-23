@@ -25,7 +25,21 @@ def sanitise_operation_name(value: str) -> str:
 def decode_escaped_string(value: str) -> str:
     """Decode the escape sequences used in CyberChef argument defaults."""
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
+        # CyberChef schema defaults use backslash escapes in free-form strings,
+        # including regex-style sequences such as "\." and "\-". Python's
+        # unicode_escape codec decodes the escapes we need, but can emit
+        # warning noise for those literal regex escapes. Preserve the existing
+        # decoding behavior while keeping schema normalization quiet.
+        warnings.filterwarnings(
+            "ignore",
+            category=DeprecationWarning,
+            message=r"invalid escape sequence",
+        )
+        warnings.filterwarnings(
+            "ignore",
+            category=SyntaxWarning,
+            message=r"invalid escape sequence",
+        )
         return value.encode("raw_unicode_escape").decode("unicode_escape")
 
 
@@ -193,14 +207,15 @@ def get_argument_default_value(arg: dict[str, Any]) -> Any:
 
     if arg_type == "toggleString":
         toggle_values = get_toggle_values(arg)
+        default_option = toggle_values[0] if toggle_values else ""
         if isinstance(raw_value, dict):
             return {
                 "string": str(raw_value.get("string", "")),
-                "option": str(raw_value.get("option", toggle_values[0] if toggle_values else "")),
+                "option": str(raw_value.get("option", default_option)),
             }
         return {
             "string": _decode_runtime_string(raw_value) if raw_value else "",
-            "option": toggle_values[0] if toggle_values else "",
+            "option": default_option,
         }
 
     return raw_value
