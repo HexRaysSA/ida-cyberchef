@@ -1,6 +1,7 @@
 """Tests for OperationStepWidget."""
 
 from ida_cyberchef.core.operation_registry import OperationRegistry
+from ida_cyberchef.qt_models.schema_adapter import normalise_operation_view_model
 from ida_cyberchef.widgets.operation_step_widget import OperationStepWidget
 
 
@@ -56,3 +57,81 @@ def test_togglestring_dict_value_displays_correctly(qtbot):
     # Should extract "deadbeef" for input, "Hex" for dropdown
     assert value_input.text() == "deadbeef"
     assert format_combo.currentText() == "Hex"
+
+
+def test_enigma_editable_option_shows_label_but_returns_runtime_value(qtbot):
+    """Editable option widgets should render names while storing runtime values."""
+    registry = OperationRegistry()
+    enigma_op = registry.find_operation("Enigma")
+    assert enigma_op is not None
+
+    widget = OperationStepWidget(
+        0,
+        normalise_operation_view_model(
+            enigma_op,
+            {
+                "Model": "4-rotor",
+                "Right-hand rotor": "BDFHJLCPRTXVZNYEIWGAKMUSQO<W",
+                "Strict output": False,
+            },
+        ),
+    )
+    qtbot.addWidget(widget)
+
+    rotor_widget = widget._arg_widgets["Right-hand rotor"]
+    model_widget = widget._arg_widgets["Model"]
+    strict_output_widget = widget._arg_widgets["Strict output"]
+
+    assert rotor_widget.currentText() == "III"
+    assert model_widget.currentText() == "4-rotor"
+    assert strict_output_widget.isChecked() is False
+
+    current_args = widget.get_current_args()
+    assert current_args["Right-hand rotor"] == "BDFHJLCPRTXVZNYEIWGAKMUSQO<W"
+    assert current_args["Model"] == "4-rotor"
+    assert current_args["Strict output"] is False
+
+
+def test_populate_option_shows_readable_choice_and_preserves_runtime_value(qtbot):
+    """populateOption widgets should show labels while round-tripping saved values."""
+    registry = OperationRegistry()
+    datetime_op = registry.find_operation("Translate DateTime Format")
+    assert datetime_op is not None
+
+    widget = OperationStepWidget(
+        0,
+        normalise_operation_view_model(
+            datetime_op,
+            {"Built in formats": "YYYY-MM-DD HH:mm:ss"},
+        ),
+    )
+    qtbot.addWidget(widget)
+
+    preset_widget = widget._arg_widgets["Built in formats"]
+
+    assert preset_widget.currentText() == "International date and time"
+    assert widget.get_current_args()["Built in formats"] == "YYYY-MM-DD HH:mm:ss"
+
+
+def test_populate_multi_option_restores_saved_selection(qtbot):
+    """populateMultiOption widgets should restore saved preset names."""
+    registry = OperationRegistry()
+    bombe_op = registry.find_operation("Multiple Bombe")
+    assert bombe_op is not None
+
+    widget = OperationStepWidget(
+        0,
+        normalise_operation_view_model(
+            bombe_op,
+            {"Standard Enigmas": "German Service Enigma (Fourth - 4 rotor)"},
+        ),
+    )
+    qtbot.addWidget(widget)
+
+    preset_widget = widget._arg_widgets["Standard Enigmas"]
+
+    assert preset_widget.currentText() == "German Service Enigma (Fourth - 4 rotor)"
+    assert (
+        widget.get_current_args()["Standard Enigmas"]
+        == "German Service Enigma (Fourth - 4 rotor)"
+    )

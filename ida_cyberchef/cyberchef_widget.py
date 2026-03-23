@@ -6,6 +6,7 @@ from ida_cyberchef.core.operation_registry import OperationRegistry
 from ida_cyberchef.qt_models.execution_model import ExecutionModel
 from ida_cyberchef.qt_models.input_model import InputModel
 from ida_cyberchef.qt_models.recipe_model import RecipeModel
+from ida_cyberchef.qt_models.schema_adapter import get_operation_default_args
 from ida_cyberchef.widgets.input_panel import InputPanel
 from ida_cyberchef.widgets.operation_browser_widget import OperationBrowserWidget
 from ida_cyberchef.widgets.output_panel import OutputPanel
@@ -146,63 +147,7 @@ class CyberChefWidget(QWidget):
         Args:
             operation: Operation dictionary from registry
         """
-        import json
-        from typing import Any
-
-        def get_default_arg_value(arg: dict) -> Any:
-            """Extract default value from argument definition.
-
-            Args:
-                arg: Argument definition from schema
-
-            Returns: Appropriate default value for CyberChef
-            """
-            arg_type = arg.get("type", "string")
-            raw_value = arg.get("value", "")
-
-            try:
-                parsed_value = (
-                    json.loads(raw_value) if isinstance(raw_value, str) else raw_value
-                )
-            except (json.JSONDecodeError, ValueError):
-                parsed_value = raw_value
-
-            if arg_type in ("option", "editableOption", "editableOptionShort"):
-                if isinstance(parsed_value, list) and parsed_value:
-                    return parsed_value[0]
-                return parsed_value
-
-            elif arg_type == "toggleString":
-                toggle_values = arg.get("toggleValues", "[]")
-                try:
-                    toggle_list = (
-                        json.loads(toggle_values)
-                        if isinstance(toggle_values, str)
-                        else toggle_values
-                    )
-                except (json.JSONDecodeError, ValueError):
-                    toggle_list = []
-
-                if isinstance(toggle_list, list) and toggle_list:
-                    return {
-                        "string": parsed_value if parsed_value else "",
-                        "option": toggle_list[0],
-                    }
-                return parsed_value
-
-            elif arg_type == "argSelector":
-                if isinstance(parsed_value, list) and parsed_value:
-                    first_mode = parsed_value[0]
-                    if isinstance(first_mode, dict):
-                        return first_mode.get("name", "")
-                return parsed_value
-
-            return parsed_value
-
-        args = {}
-        for arg in operation.get("args", []):
-            args[arg["name"]] = get_default_arg_value(arg)
-
+        args = get_operation_default_args(operation)
         self._recipe_model.add_operation(operation["name"], args, -1)
 
     def load_recipe_from_file(self, filename: str):
