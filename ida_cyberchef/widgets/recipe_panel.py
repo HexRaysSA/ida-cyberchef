@@ -151,12 +151,15 @@ class RecipePanel(QWidget):
         """Update step widgets with execution results."""
         results = self._execution_model.get_results()
 
+        for widget in self._step_widgets:
+            widget.clear_error()
+            widget.clear_preview()
+
         for i, widget in enumerate(self._step_widgets):
             if i < len(results):
                 result = results[i]
 
                 if result.success and result.data is not None:
-                    widget.clear_error()
                     widget.set_preview_data(result.data)
                 elif not result.success and result.error is not None:
                     widget.set_error(result.error)

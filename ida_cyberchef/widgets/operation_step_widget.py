@@ -552,6 +552,10 @@ class OperationStepWidget(QFrame):
 
         self._preview_widget.setPlainText(text)
 
+    def clear_preview(self) -> None:
+        """Clear preview text without changing the expanded state."""
+        self._preview_widget.setPlainText("")
+
     def set_error(self, error: str):
         """Set error state and message.
 
