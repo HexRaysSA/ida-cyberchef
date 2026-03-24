@@ -42,7 +42,7 @@ def test_location_widget_no_signal_on_invalid_address(qtbot):
     qtbot.addWidget(widget)
 
     received = []
-    widget.location_changed.connect(lambda a, l: received.append((a, l)))
+    widget.location_changed.connect(lambda a, length: received.append((a, length)))
 
     widget._address_edit.setText("not_hex")
     widget._length_edit.setText("128")
@@ -57,7 +57,7 @@ def test_location_widget_no_signal_on_invalid_length(qtbot):
     qtbot.addWidget(widget)
 
     received = []
-    widget.location_changed.connect(lambda a, l: received.append((a, l)))
+    widget.location_changed.connect(lambda a, length: received.append((a, length)))
 
     widget._address_edit.setText("0x401000")
     widget._length_edit.setText("abc")
@@ -72,7 +72,7 @@ def test_location_widget_no_signal_on_zero_length(qtbot):
     qtbot.addWidget(widget)
 
     received = []
-    widget.location_changed.connect(lambda a, l: received.append((a, l)))
+    widget.location_changed.connect(lambda a, length: received.append((a, length)))
 
     widget._address_edit.setText("0x401000")
     widget._length_edit.setText("0")
@@ -146,7 +146,7 @@ def test_location_widget_end_addr_no_signal_when_end_before_start(qtbot):
     widget._mode_combo.setCurrentIndex(MODE_END_ADDRESS)
 
     received = []
-    widget.location_changed.connect(lambda a, l: received.append((a, l)))
+    widget.location_changed.connect(lambda a, length: received.append((a, length)))
 
     widget._address_edit.setText("0x401100")
     widget._end_addr_edit.setText("0x401000")
@@ -162,7 +162,7 @@ def test_location_widget_end_addr_no_signal_when_equal(qtbot):
     widget._mode_combo.setCurrentIndex(MODE_END_ADDRESS)
 
     received = []
-    widget.location_changed.connect(lambda a, l: received.append((a, l)))
+    widget.location_changed.connect(lambda a, length: received.append((a, length)))
 
     widget._address_edit.setText("0x401000")
     widget._end_addr_edit.setText("0x401000")

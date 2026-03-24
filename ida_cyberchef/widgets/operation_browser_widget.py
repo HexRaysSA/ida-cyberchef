@@ -1,7 +1,6 @@
 """Persistent operation browser widget with search and documentation."""
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,

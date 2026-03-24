@@ -15,7 +15,7 @@ class OperationRegistry:
                 Path(__file__).parent.parent / "data" / "operation_schema.json"
             )
 
-        with open(schema_path) as f:
+        with open(schema_path, encoding="utf-8") as f:
             self._schema = json.load(f)
 
         self._operations = self._schema["operations"]

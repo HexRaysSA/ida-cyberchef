@@ -6,9 +6,9 @@ from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
 
-logger = logging.getLogger(__name__)
-
 from ida_cyberchef.core.input_parser import InputFormat, InputParser
+
+logger = logging.getLogger(__name__)
 
 try:
     import ida_bytes

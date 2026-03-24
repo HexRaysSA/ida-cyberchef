@@ -12,16 +12,16 @@ from ida_cyberchef.core.recipe_models import OperationStep, RecipeDefinition
 from ida_cyberchef.cyberchef import DishType, bake, get_chef, load_cyberchef, plate
 
 __all__ = [
-    "CyberChefWidget",
+    "CyberChefWidget",  # noqa: F822
     "bake",
     "get_chef",
     "load_cyberchef",
     "plate",
     "DishType",
-    "InputModel",
-    "RecipeModel",
-    "ExecutionModel",
-    "InputSource",
+    "InputModel",  # noqa: F822
+    "RecipeModel",  # noqa: F822
+    "ExecutionModel",  # noqa: F822
+    "InputSource",  # noqa: F822
     "InputFormat",
     "RecipeDefinition",
     "OperationStep",

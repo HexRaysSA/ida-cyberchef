@@ -163,7 +163,7 @@ class CyberChefWidget(QWidget):
 
         from ida_cyberchef.core.recipe_models import RecipeDefinition
 
-        with open(filename) as f:
+        with open(filename, encoding="utf-8") as f:
             data = json.load(f)
 
         recipe = RecipeDefinition.model_validate(data)
@@ -194,5 +194,5 @@ class CyberChefWidget(QWidget):
         """
         recipe = self._recipe_model.to_recipe_definition()
 
-        with open(filename, "w") as f:
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(recipe.model_dump_json(indent=2))

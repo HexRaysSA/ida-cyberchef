@@ -8,8 +8,6 @@ from typing import Any, TypedDict
 import STPyV8
 
 from ida_cyberchef.core.schema_adapter import (
-    canonicalise_option_value,
-    coerce_schema_boolean,
     decode_escaped_string,
     expand_populate_multi_option,
     get_argument_default_value,

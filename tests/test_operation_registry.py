@@ -12,7 +12,7 @@ def test_operation_schema_exists():
 
 
 def test_operation_schema_structure():
-    with open("ida_cyberchef/data/operation_schema.json") as f:
+    with open("ida_cyberchef/data/operation_schema.json", encoding="utf-8") as f:
         schema = json.load(f)
 
     assert "operations" in schema
