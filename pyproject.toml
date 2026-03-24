@@ -19,6 +19,9 @@ qt = [
 dev = [
     "pytest>=8.4.2",
     "pytest-qt>=4.0",
+    "ruff",
+    "ty",
+    "mypy",
 ]
 
 [tool.setuptools.packages.find]
@@ -30,3 +33,16 @@ cyberchef-qt = "ida_cyberchef.main:main"
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+fix = true
+
+[tool.ruff.lint]
+preview = true
+extend-select = ["PLW1514"]  # unspecified-encoding
+ignore = []
+
+[tool.mypy]
+check_untyped_defs = true

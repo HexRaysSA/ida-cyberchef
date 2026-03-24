@@ -12,3 +12,9 @@ clean:
 
 test:
     pytest tests/
+
+lint:
+    -ruff format .
+    ruff check .
+    ruff check --select I .
+    mypy --check-untyped-defs --ignore-missing-imports --exclude tools .
