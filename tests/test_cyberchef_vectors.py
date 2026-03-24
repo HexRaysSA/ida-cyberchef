@@ -75,13 +75,6 @@ XFAIL_EXACT = {
     # parse". Same error scenario, different message from the msgpack library.
     "From MessagePack: no content": "V8 msgpack throws different error message than upstream test expects",
 
-    # --- Unicode combining character pipeline issue ---
-    # Unicode Text Format adds combining characters (U+0336 strikethrough, U+0332
-    # underline) to 'a', producing bytes b'a\xcc\xb6\xcc\xb2'. When this flows into
-    # Remove Diacritics as a second operation, the bytes are misinterpreted —
-    # likely a string-vs-bytes encoding issue in the inter-operation pipeline.
-    "Remove Diacritics: text formatting": "bytes-vs-string encoding issue in multi-op pipeline with combining chars",
-
     # --- JWT operations broken in STPyV8 ---
     # The jsonwebtoken library used by JWT Sign/Verify fails in the headless V8
     # environment provided by STPyV8 — likely missing crypto primitives.
@@ -131,14 +124,6 @@ XFAIL_MATCH = {
     # character 1" before it even reaches the constructor call.
     "JPath Expression: Script-based expression": "JPath library fails at parse stage in V8; browser fails at eval stage",
 
-    # --- Text encoding table differences ---
-    # Text Encoding Brute Force tries all available encodings. The test input is
-    # double-encoded Cyrillic that should round-trip through Windows-1251 to produce
-    # "Булкі праз ляніва сабаку." The encoding tables available in our V8 runtime
-    # differ from the browser's — the Windows-1251 encoding produces different output,
-    # likely because the input string's byte representation crosses the JS/Python
-    # boundary with different encoding assumptions.
-    "Text Encoding Brute Force - Encode": "encoding tables and string boundary handling differ between V8 and browser",
 }
 
 
