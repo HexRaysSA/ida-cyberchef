@@ -3,7 +3,7 @@
   "plugin": {
     "name": "ida-cyberchef",
     "entryPoint": "entrypoint.py",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "idaVersions": ">=9.2",
     "description": "CyberChef in IDA",
     "categories": [

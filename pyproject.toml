@@ -1,6 +1,6 @@
 [project]
 name = "ida-cyberchef"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Qt-based CyberChef interface designed for malware analysis workflows, particularly in IDA Pro"
 readme = "README.md"
 requires-python = ">=3.10"
