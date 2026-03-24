@@ -9,7 +9,6 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).parent.parent
 SCHEMA_PATH = ROOT / "ida_cyberchef" / "data" / "operation_schema.json"
 DOCS_PATH = ROOT / "docs" / "ops.md"

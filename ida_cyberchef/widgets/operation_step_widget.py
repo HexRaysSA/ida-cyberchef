@@ -18,9 +18,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ida_cyberchef.core.schema_adapter import get_dependent_args
 from ida_cyberchef.core.hex_formatter import HexFormatter
 from ida_cyberchef.core.output_model import OutputKind, TypedOutput
+from ida_cyberchef.core.schema_adapter import get_dependent_args
 from ida_cyberchef.qt_models.schema_adapter import (
     SchemaArgumentViewModel,
     normalise_operation_view_model,

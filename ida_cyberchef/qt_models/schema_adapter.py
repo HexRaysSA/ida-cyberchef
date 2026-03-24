@@ -7,12 +7,13 @@ from typing import Any
 
 from ida_cyberchef.core.schema_adapter import (
     get_argument_default_value as get_shared_argument_default_value,
+)
+from ida_cyberchef.core.schema_adapter import (
     get_display_items,
     get_option_value_for_display,
     get_toggle_values,
     restore_saved_argument_value,
 )
-
 
 _MISSING = object()
 

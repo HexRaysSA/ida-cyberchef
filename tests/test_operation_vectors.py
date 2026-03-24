@@ -5,8 +5,8 @@ import gzip
 import hashlib
 import hmac
 import io
-import json
 import ipaddress
+import json
 import math
 import re
 import struct

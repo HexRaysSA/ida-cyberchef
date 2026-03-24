@@ -1,7 +1,7 @@
 """Tests for OperationStepWidget."""
 
-from ida_cyberchef.core.output_model import OutputKind, TypedOutput
 from ida_cyberchef.core.operation_registry import OperationRegistry
+from ida_cyberchef.core.output_model import OutputKind, TypedOutput
 from ida_cyberchef.qt_models.schema_adapter import normalise_operation_view_model
 from ida_cyberchef.widgets.operation_step_widget import OperationStepWidget
 
