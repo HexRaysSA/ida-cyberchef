@@ -6,9 +6,13 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0",
-    "pyside6>=6.10.0",
-    "rich>=13.0.0",
     "stpyv8>=13.1.201.22",
+]
+
+[project.optional-dependencies]
+qt = [
+    # for standalone Qt application, no IDA
+    "pyside6>=6.10.0",
 ]
 
 [dependency-groups]
