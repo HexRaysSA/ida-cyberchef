@@ -176,3 +176,21 @@ def test_recipe_panel_clears_all_stale_state_for_empty_results(qtbot):
     for widget in panel._step_widgets:
         assert widget._preview_widget.toPlainText() == ""
         assert widget._error_visible is False
+
+
+def test_invalid_manual_input_does_not_passthrough_empty_recipe(qtbot):
+    from ida_cyberchef.core.input_parser import InputFormat
+
+    input_model = InputModel()
+    recipe_model = RecipeModel()
+    exec_model = ExecutionModel(input_model, recipe_model, debounce_ms=50)
+
+    input_model.set_input_format(InputFormat.HEX_STRING)
+    input_model.set_manual_text("zz")
+
+    with qtbot.waitSignal(exec_model.execution_completed, timeout=2000):
+        exec_model.schedule_execution()
+
+    assert input_model.get_parse_error() is not None
+    assert exec_model.get_results() == []
+    assert exec_model.get_final_result() is None

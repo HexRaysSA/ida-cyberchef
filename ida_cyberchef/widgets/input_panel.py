@@ -26,6 +26,13 @@ except ImportError:
     IDA_AVAILABLE = False
 
 
+_TEXT_AREA_STYLE = "font-family: 'Courier New', Courier, monospace;"
+_TEXT_AREA_ERROR_STYLE = (
+    "font-family: 'Courier New', Courier, monospace;"
+    "border: 1px solid #d9534f;"
+)
+
+
 class InputPanel(QWidget):
     """Panel for input data entry and source selection.
 
@@ -111,8 +118,14 @@ class InputPanel(QWidget):
         self._text_area.setPlaceholderText("Enter input data...")
         self._text_area.setMaximumHeight(90)
         self._text_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self._text_area.setStyleSheet("font-family: 'Courier New', Courier, monospace;")
+        self._text_area.setStyleSheet(_TEXT_AREA_STYLE)
         layout.addWidget(self._text_area)
+
+        self._validation_label = QLabel()
+        self._validation_label.setStyleSheet("color: #d9534f;")
+        self._validation_label.setWordWrap(True)
+        self._validation_label.setVisible(False)
+        layout.addWidget(self._validation_label)
 
         self._format_combo = QComboBox(self)
         self._format_combo.addItems(
@@ -154,6 +167,8 @@ class InputPanel(QWidget):
         self._text_area.textChanged.connect(self._on_manual_text_changed)
 
         self._input_model.input_changed.connect(self._on_model_changed)
+        self._input_model.parse_error_changed.connect(self._on_parse_error_changed)
+        self._on_parse_error_changed(self._input_model.get_parse_error())
 
     def set_location_source(self, address: int, length: int) -> None:
         """Set location-backed input state and sync the UI.
@@ -256,3 +271,10 @@ class InputPanel(QWidget):
             self._text_area.setPlainText(hex_dump)
         else:
             self._text_area.setPlainText("")
+
+    def _on_parse_error_changed(self, error: str | None) -> None:
+        """Update manual input validation feedback."""
+        has_error = bool(error)
+        self._text_area.setStyleSheet(_TEXT_AREA_ERROR_STYLE if has_error else _TEXT_AREA_STYLE)
+        self._validation_label.setVisible(has_error)
+        self._validation_label.setText(error or "")

@@ -68,3 +68,25 @@ def test_input_panel_clears_preview_when_selection_data_is_cleared(
 
     model.clear_external_data()
     assert panel._text_area.toPlainText() == ""
+
+
+def test_input_panel_marks_invalid_manual_input(qtbot):
+    model = InputModel()
+    panel = InputPanel(model)
+    qtbot.addWidget(panel)
+    panel.show()
+
+    panel._format_combo.setCurrentText("Hex String")
+    panel._text_area.setPlainText("zz")
+
+    qtbot.waitUntil(lambda: panel._validation_label.isVisible())
+
+    assert panel._validation_label.text()
+    assert "border" in panel._text_area.styleSheet()
+
+    panel._text_area.setPlainText("41")
+
+    qtbot.waitUntil(lambda: not panel._validation_label.isVisible())
+
+    assert panel._validation_label.text() == ""
+    assert "border" not in panel._text_area.styleSheet()
