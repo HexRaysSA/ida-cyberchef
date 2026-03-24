@@ -27,10 +27,7 @@ except ImportError:
 
 
 _TEXT_AREA_STYLE = "font-family: 'Courier New', Courier, monospace;"
-_TEXT_AREA_ERROR_STYLE = (
-    "font-family: 'Courier New', Courier, monospace;"
-    "border: 1px solid #d9534f;"
-)
+_TEXT_AREA_ERROR_STYLE = "font-family: 'Courier New', Courier, monospace;border: 1px solid #d9534f;"
 
 
 class InputPanel(QWidget):
@@ -158,9 +155,7 @@ class InputPanel(QWidget):
             self._source_group.buttonClicked.connect(self._on_source_changed)
 
         if self._location_widget is not None:
-            self._location_widget.location_changed.connect(
-                self._on_location_params_changed
-            )
+            self._location_widget.location_changed.connect(self._on_location_params_changed)
 
         self._format_combo.currentTextChanged.connect(self._on_format_changed)
 

@@ -9,9 +9,7 @@ class OperationStep(BaseModel):
     """Single operation in a recipe."""
 
     operation: str = Field(..., description="Operation name")
-    args: Dict[str, Any] = Field(
-        default_factory=dict, description="Operation arguments"
-    )
+    args: Dict[str, Any] = Field(default_factory=dict, description="Operation arguments")
 
 
 class RecipeDefinition(BaseModel):

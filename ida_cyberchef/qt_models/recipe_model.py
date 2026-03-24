@@ -75,9 +75,7 @@ class RecipeModel(QAbstractListModel):
 
     def to_recipe_definition(self) -> RecipeDefinition:
         """Convert to Pydantic model for serialization."""
-        steps = [
-            OperationStep(operation=s["operation"], args=s["args"]) for s in self._steps
-        ]
+        steps = [OperationStep(operation=s["operation"], args=s["args"]) for s in self._steps]
         return RecipeDefinition(steps=steps)
 
     def from_recipe_definition(self, recipe: RecipeDefinition):

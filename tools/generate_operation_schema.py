@@ -30,7 +30,6 @@ EXCLUDED_ATTRIBUTES = {
 }
 
 
-
 def extract_js_value(ctx: Any, js_expression: str) -> Any:
     """Return a JS value as native Python data."""
     js_type = ctx.eval(f"typeof ({js_expression})")
@@ -46,7 +45,6 @@ def extract_js_value(ctx: Any, js_expression: str) -> Any:
         return None
 
     return json.loads(json_text) if json_text else None
-
 
 
 def extract_operation_metadata(chef: Any, ctx: Any, op_attr_name: str) -> OperationMetadata | None:
@@ -114,7 +112,6 @@ def extract_operation_metadata(chef: Any, ctx: Any, op_attr_name: str) -> Operat
     return operation
 
 
-
 def deduplicate_operations(operations: list[OperationMetadata]) -> list[OperationMetadata]:
     """Return operations deduplicated by user-facing name."""
     deduplicated: list[OperationMetadata] = []
@@ -129,7 +126,6 @@ def deduplicate_operations(operations: list[OperationMetadata]) -> list[Operatio
         seen_names.add(name)
 
     return deduplicated
-
 
 
 def extract_categories_and_favorites(categories_json_path: Path) -> dict[str, Any]:
@@ -151,7 +147,6 @@ def extract_categories_and_favorites(categories_json_path: Path) -> dict[str, An
     return {"categories": categories, "favorites": favorites}
 
 
-
 def enhance_schema_with_categories(
     schema: dict[str, Any],
     categories_json_path: Path,
@@ -169,18 +164,13 @@ def enhance_schema_with_categories(
     return schema
 
 
-
 def introspect_operations() -> dict[str, list[OperationMetadata]]:
     """Introspect CyberChef operations through the runtime API."""
     print("Loading CyberChef...", file=sys.stderr)
     chef = cyberchef.get_chef()
     ctx = chef._stpyv8_context
 
-    operation_names = [
-        name
-        for name in dir(chef)
-        if not name.startswith("_") and name not in EXCLUDED_ATTRIBUTES
-    ]
+    operation_names = [name for name in dir(chef) if not name.startswith("_") and name not in EXCLUDED_ATTRIBUTES]
     print(f"Discovering {len(operation_names)} exported operation attributes...", file=sys.stderr)
 
     operations: list[OperationMetadata] = []
@@ -204,7 +194,6 @@ def introspect_operations() -> dict[str, list[OperationMetadata]]:
         print(f"Failed to extract {failed_count} exported attributes", file=sys.stderr)
 
     return {"operations": operations}
-
 
 
 def main() -> None:

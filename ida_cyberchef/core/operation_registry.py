@@ -11,9 +11,7 @@ class OperationRegistry:
 
     def __init__(self, schema_path: Optional[Path] = None):
         if schema_path is None:
-            schema_path = (
-                Path(__file__).parent.parent / "data" / "operation_schema.json"
-            )
+            schema_path = Path(__file__).parent.parent / "data" / "operation_schema.json"
 
         with open(schema_path, encoding="utf-8") as f:
             self._schema = json.load(f)
@@ -93,9 +91,7 @@ class OperationRegistry:
         for part in space_parts:
             # Split by case boundaries, treating each digit as a separate word
             # This allows "Base64" -> ["Base", "6", "4"] for acronym "b64"
-            subwords = re.findall(
-                r"[A-Z]+(?=[A-Z][a-z]|\b|\d|[^A-Za-z0-9])|[A-Z]?[a-z]+|\d", part
-            )
+            subwords = re.findall(r"[A-Z]+(?=[A-Z][a-z]|\b|\d|[^A-Za-z0-9])|[A-Z]?[a-z]+|\d", part)
             if subwords:
                 words.extend(subwords)
             else:

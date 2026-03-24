@@ -150,10 +150,7 @@ def test_recipe_panel_clears_stale_state_after_recipe_edit(qtbot):
         recipe_model.update_operation_args(0, {"Delimiter": "None"})
 
     assert first_widget._error_visible is True
-    assert (
-        first_widget._error_label.text()
-        == "Error: 'float' object cannot be interpreted as an integer"
-    )
+    assert first_widget._error_label.text() == "Error: 'float' object cannot be interpreted as an integer"
     assert second_widget._preview_widget.toPlainText() == ""
     assert second_widget._error_visible is False
 

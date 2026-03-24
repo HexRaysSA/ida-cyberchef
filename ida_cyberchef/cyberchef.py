@@ -118,9 +118,7 @@ def get_operation_schema_by_name() -> dict[str, list[dict[str, Any]]]:
         operations = get_operation_schema().get("operations", [])
         schema_by_name: dict[str, list[dict[str, Any]]] = {}
         for operation in operations:
-            schema_by_name.setdefault(
-                sanitise_operation_name(str(operation.get("name", ""))), []
-            ).append(operation)
+            schema_by_name.setdefault(sanitise_operation_name(str(operation.get("name", ""))), []).append(operation)
         _OPERATION_SCHEMA_BY_NAME = schema_by_name
     return _OPERATION_SCHEMA_BY_NAME
 
@@ -186,14 +184,10 @@ def normalise_js_recipe_operation(operation: str | RecipeOperation) -> str | Rec
     for arg in schema_args:
         arg_name = str(arg.get("name", ""))
         if arg_name in provided_by_name:
-            normalised_args[arg_name] = normalise_recipe_argument_value(
-                arg, provided_by_name[arg_name]
-            )
+            normalised_args[arg_name] = normalise_recipe_argument_value(arg, provided_by_name[arg_name])
             continue
         if arg_name in populate_expansions:
-            normalised_args[arg_name] = normalise_recipe_argument_value(
-                arg, populate_expansions[arg_name]
-            )
+            normalised_args[arg_name] = normalise_recipe_argument_value(arg, populate_expansions[arg_name])
             continue
         if should_apply_schema_default(arg):
             normalised_args[arg_name] = get_argument_default_value(arg)
@@ -749,7 +743,6 @@ def normalise_recipe_operation(operation: str | RecipeOperation) -> tuple[str, d
     return name, args
 
 
-
 def contains_python_flow_control(recipe: list[str | RecipeOperation]) -> bool:
     """Return whether a recipe uses Python-emulated flow control.
 
@@ -762,7 +755,6 @@ def contains_python_flow_control(recipe: list[str | RecipeOperation]) -> bool:
 
     """
     return any(normalise_recipe_operation(operation)[0] in PYTHON_FLOW_CONTROL_OPERATIONS for operation in recipe)
-
 
 
 def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
@@ -791,7 +783,6 @@ def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation])
     return plate(result, chef)  # type: ignore[return-value]
 
 
-
 def coerce_string_value(value: Any) -> str:
     """Convert a recipe value to the string representation used by flow control.
 
@@ -805,7 +796,6 @@ def coerce_string_value(value: Any) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
     return str(value)
-
 
 
 def find_label_index(recipe: list[str | RecipeOperation], label_name: str) -> int:
@@ -824,7 +814,6 @@ def find_label_index(recipe: list[str | RecipeOperation], label_name: str) -> in
         if name == "Label" and args.get("Name", "") == label_name:
             return index
     return -1
-
 
 
 def collect_flow_subrecipe(
@@ -860,7 +849,6 @@ def collect_flow_subrecipe(
         subrecipe.append(recipe[index])
 
     return subrecipe, len(recipe)
-
 
 
 def execute_python_flow_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:
@@ -1000,7 +988,6 @@ def execute_python_flow_recipe(input_data: bytes | str, recipe: list[str | Recip
         raise NotImplementedError(f"Unsupported Python flow-control operation: {name}")
 
     return current
-
 
 
 def bake(input_data: bytes | str, recipe: list[str | RecipeOperation]) -> Any:

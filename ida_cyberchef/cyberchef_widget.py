@@ -84,9 +84,7 @@ class CyberChefWidget(QWidget):
         self._input_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         layout.addWidget(self._input_panel)
 
-        self._recipe_panel = RecipePanel(
-            self._recipe_model, self._execution_model, self._registry
-        )
+        self._recipe_panel = RecipePanel(self._recipe_model, self._execution_model, self._registry)
         self._recipe_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         layout.addWidget(self._recipe_panel)
 
@@ -177,11 +175,7 @@ class CyberChefWidget(QWidget):
             raise ValueError(
                 f"Recipe contains {len(missing_operations)} unknown operation(s): "
                 f"{', '.join(missing_operations[:5])}"
-                + (
-                    f" and {len(missing_operations) - 5} more"
-                    if len(missing_operations) > 5
-                    else ""
-                )
+                + (f" and {len(missing_operations) - 5} more" if len(missing_operations) > 5 else "")
             )
 
         self._recipe_model.from_recipe_definition(recipe)

@@ -148,16 +148,10 @@ class ContextMenuUIHooks(ida_kernwin.UI_Hooks):
 
             if existing:
                 for caption in existing:
-                    action_name = (
-                        f"cyberchef:send_to_{caption.replace('-', '_').lower()}"
-                    )
-                    ida_kernwin.attach_action_to_popup(
-                        widget, popup, action_name, "CyberChef/"
-                    )
+                    action_name = f"cyberchef:send_to_{caption.replace('-', '_').lower()}"
+                    ida_kernwin.attach_action_to_popup(widget, popup, action_name, "CyberChef/")
 
-            ida_kernwin.attach_action_to_popup(
-                widget, popup, "cyberchef:send_new", "CyberChef/"
-            )
+            ida_kernwin.attach_action_to_popup(widget, popup, "cyberchef:send_new", "CyberChef/")
 
 
 class CyberChefForm(ida_kernwin.PluginForm):
@@ -197,7 +191,12 @@ class CyberChefForm(ida_kernwin.PluginForm):
             address: Address to patch
             data: Bytes to write
         """
-        logger.debug("_on_copy_to_db called: address=%s, data type=%s, len=%s", hex(address) if isinstance(address, int) else address, type(data).__name__, len(data) if isinstance(data, bytes) else "N/A")
+        logger.debug(
+            "_on_copy_to_db called: address=%s, data type=%s, len=%s",
+            hex(address) if isinstance(address, int) else address,
+            type(data).__name__,
+            len(data) if isinstance(data, bytes) else "N/A",
+        )
         if not isinstance(address, int) or address < 0 or address == ida_idaapi.BADADDR:
             message = f"Cannot patch IDB: invalid address {address!r}"
             logger.warning(message)
@@ -206,9 +205,7 @@ class CyberChefForm(ida_kernwin.PluginForm):
 
         if not isinstance(data, bytes) or len(data) == 0:
             data_len = len(data) if isinstance(data, bytes) else "N/A"
-            message = (
-                f"Cannot patch IDB: invalid data {type(data).__name__}, len={data_len}"
-            )
+            message = f"Cannot patch IDB: invalid data {type(data).__name__}, len={data_len}"
             logger.warning(message)
             ida_kernwin.warning(message)
             return
@@ -395,9 +392,7 @@ class cyberchef_plugmod_t(ida_idaapi.plugmod_t):
         )
 
         # TODO: add icon
-        ida_kernwin.attach_action_to_menu(
-            self.MENU_PATH, self.ACTION_NAME, ida_kernwin.SETMENU_APP
-        )
+        ida_kernwin.attach_action_to_menu(self.MENU_PATH, self.ACTION_NAME, ida_kernwin.SETMENU_APP)
 
     def unregister_open_action(self):
         ida_kernwin.unregister_action(self.ACTION_NAME)
@@ -453,9 +448,7 @@ class cyberchef_plugmod_t(ida_idaapi.plugmod_t):
                 ida_kernwin.action_desc_t(
                     action_name,
                     f"Send to {caption}",
-                    send_to_specific_widget_action_handler_t(
-                        self.form_registry, caption
-                    ),
+                    send_to_specific_widget_action_handler_t(self.form_registry, caption),
                     None,
                     f"Send selected bytes to {caption}",
                     -1,

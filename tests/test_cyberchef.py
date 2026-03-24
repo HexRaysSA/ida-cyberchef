@@ -57,11 +57,7 @@ def test_chained_operations_with_rechef():
 
 def test_translate_datetime():
     chef = get_chef()
-    result = plate(
-        chef.translateDateTimeFormat(
-            "15/06/2015 20:45:00", {"outputTimezone": "Australia/Queensland"}
-        )
-    )
+    result = plate(chef.translateDateTimeFormat("15/06/2015 20:45:00", {"outputTimezone": "Australia/Queensland"}))
     assert "2015" in result
 
 

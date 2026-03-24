@@ -47,24 +47,18 @@ class CyberChefMainWindow(QMainWindow):
 
     def _load_recipe(self):
         """Load recipe from file."""
-        filename, _ = QFileDialog.getOpenFileName(
-            self, "Load Recipe", "", "Recipe Files (*.json)"
-        )
+        filename, _ = QFileDialog.getOpenFileName(self, "Load Recipe", "", "Recipe Files (*.json)")
 
         if filename:
             try:
                 self._widget.load_recipe_from_file(filename)
-                QMessageBox.information(
-                    self, "Success", f"Recipe loaded from {filename}"
-                )
+                QMessageBox.information(self, "Success", f"Recipe loaded from {filename}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Error loading recipe: {e}")
 
     def _save_recipe(self):
         """Save recipe to file."""
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Save Recipe", "", "Recipe Files (*.json)"
-        )
+        filename, _ = QFileDialog.getSaveFileName(self, "Save Recipe", "", "Recipe Files (*.json)")
 
         if filename:
             try:

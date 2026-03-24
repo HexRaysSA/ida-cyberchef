@@ -37,6 +37,7 @@ class SchemaArgumentViewModel:
     toggle_values: tuple[str, ...] = field(default_factory=tuple)
     raw_argument: dict[str, Any] = field(default_factory=dict)
 
+
 def _normalise_option_values(arg: dict[str, Any]) -> tuple[SchemaOptionViewModel, ...]:
     """Return normalized choices for list-backed schema arguments."""
     return tuple(
@@ -62,11 +63,7 @@ def normalise_argument_view_model(
         saved_value = arg["saved_value"]
 
     default_value = get_default_argument_value(arg)
-    value = (
-        default_value
-        if saved_value is _MISSING
-        else restore_saved_argument_value(arg, saved_value)
-    )
+    value = default_value if saved_value is _MISSING else restore_saved_argument_value(arg, saved_value)
 
     if str(arg.get("type", "string")) == "toggleString" and not isinstance(value, dict):
         value = {
@@ -110,6 +107,5 @@ def normalise_operation_view_model(
 def get_operation_default_args(operation: dict[str, Any]) -> dict[str, Any]:
     """Return normalized default arguments for a schema operation."""
     return {
-        arg_view.name: arg_view.default_value
-        for arg_view in normalise_operation_view_model(operation).get("args", [])
+        arg_view.name: arg_view.default_value for arg_view in normalise_operation_view_model(operation).get("args", [])
     }

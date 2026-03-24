@@ -31,7 +31,6 @@ UNSUPPORTED_OPERATION_NOTES = {
 }
 
 
-
 def render_method_name(operation_name: str) -> str:
     """Return the function-style name used in docs/ops.md."""
     normalized = unicodedata.normalize("NFKD", operation_name)
@@ -39,7 +38,6 @@ def render_method_name(operation_name: str) -> str:
     words = re.findall(r"[A-Za-z0-9]+", ascii_name)
     rendered_words = [word if word.isupper() else word[:1].upper() + word[1:] for word in words]
     return "".join(rendered_words)
-
 
 
 def render_literal(value: Any) -> str:
@@ -54,7 +52,6 @@ def render_literal(value: Any) -> str:
     return str(value)
 
 
-
 def clean_html_description(description: str) -> str:
     """Convert CyberChef HTML descriptions into plain markdown-ish text."""
     text = description.replace("<br><br>", "\n\n").replace("<br>", "\n")
@@ -65,13 +62,11 @@ def clean_html_description(description: str) -> str:
     return text.strip()
 
 
-
 def extract_option_label(option: Any) -> str:
     """Return a display label for an option-like schema entry."""
     if isinstance(option, dict):
         return str(option.get("name", option.get("value", "")))
     return str(option)
-
 
 
 def format_arg(arg: dict[str, Any]) -> str:
@@ -97,17 +92,22 @@ def format_arg(arg: dict[str, Any]) -> str:
             summary += f"; default `{default_label}`"
         return f"  - **{name}** ({arg_type}): {summary}"
 
-    if value not in (None, "", []) or arg_type in {"boolean", "number", "string", "binaryString", "binaryShortString", "toggleString"}:
+    if value not in (None, "", []) or arg_type in {
+        "boolean",
+        "number",
+        "string",
+        "binaryString",
+        "binaryShortString",
+        "toggleString",
+    }:
         return f"  - **{name}** ({arg_type}): default `{render_literal(value)}`"
 
     return f"  - **{name}** ({arg_type})"
 
 
-
 def get_support_annotation(operation_name: str) -> str | None:
     """Return the user-facing support note for an operation, if any."""
     return UNSUPPORTED_OPERATION_NOTES.get(operation_name)
-
 
 
 def generate_operation_doc(operation: dict[str, Any]) -> str:
@@ -153,7 +153,6 @@ def generate_operation_doc(operation: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-
 def generate_docs_markdown(schema: dict[str, Any]) -> str:
     """Render the full operations reference markdown document."""
     operations = sorted(schema.get("operations", []), key=lambda operation: str(operation.get("name", "")))
@@ -173,7 +172,6 @@ def generate_docs_markdown(schema: dict[str, Any]) -> str:
         lines.append(generate_operation_doc(operation))
 
     return "\n".join(lines)
-
 
 
 def main() -> None:

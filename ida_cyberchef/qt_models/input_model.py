@@ -33,7 +33,7 @@ class InputModel(QObject):
 
     input_changed = Signal()
     source_changed = Signal(InputSource)
-    location_params_changed = Signal('quint64', 'quint64')
+    location_params_changed = Signal("quint64", "quint64")
     parse_error_changed = Signal(object)
 
     def __init__(self, parent=None):
@@ -155,13 +155,16 @@ class InputModel(QObject):
                 else:
                     logger.warning(
                         "ida_bytes.get_bytes(0x%x, %d) returned empty data",
-                        address, length,
+                        address,
+                        length,
                     )
                     self._location_data = b""
             except Exception:
                 logger.error(
                     "failed to read %d bytes at 0x%x",
-                    length, address, exc_info=True,
+                    length,
+                    address,
+                    exc_info=True,
                 )
                 self._location_data = b""
         else:

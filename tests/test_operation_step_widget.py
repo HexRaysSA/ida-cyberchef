@@ -132,10 +132,7 @@ def test_populate_multi_option_restores_saved_selection(qtbot):
     preset_widget = widget._arg_widgets["Standard Enigmas"]
 
     assert preset_widget.currentText() == "German Service Enigma (Fourth - 4 rotor)"
-    assert (
-        widget.get_current_args()["Standard Enigmas"]
-        == "German Service Enigma (Fourth - 4 rotor)"
-    )
+    assert widget.get_current_args()["Standard Enigmas"] == "German Service Enigma (Fourth - 4 rotor)"
 
 
 def test_clear_preview_clears_text_without_collapsing_preview(qtbot):

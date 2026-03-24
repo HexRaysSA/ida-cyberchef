@@ -87,9 +87,7 @@ def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
     for entry in raw_value:
         if isinstance(entry, dict):
             label = str(entry.get("name", entry.get("value", "")))
-            runtime_value = label if arg_type == "populateMultiOption" else entry.get(
-                "value", label
-            )
+            runtime_value = label if arg_type == "populateMultiOption" else entry.get("value", label)
             options.append(
                 {
                     "label": label,

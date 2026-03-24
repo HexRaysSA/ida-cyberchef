@@ -6,9 +6,7 @@ from ida_cyberchef.core.operation_registry import OperationRegistry
 
 def test_operation_schema_exists():
     schema_path = Path("ida_cyberchef/data/operation_schema.json")
-    assert schema_path.exists(), (
-        "operation_schema.json must exist in ida_cyberchef/data/"
-    )
+    assert schema_path.exists(), "operation_schema.json must exist in ida_cyberchef/data/"
 
 
 def test_operation_schema_structure():
@@ -66,9 +64,7 @@ def test_acronym_search_operations():
     assert len(results) > 0
     # Should find operations like "Triple DES"
     triple_des_results = [r for r in results if "Triple DES" in r["name"]]
-    assert len(triple_des_results) > 0, (
-        "Acronym 'tdd' should match 'Triple DES' or similar"
-    )
+    assert len(triple_des_results) > 0, "Acronym 'tdd' should match 'Triple DES' or similar"
 
     # Test "b64" should match "To Base64", "From Base64" etc
     results = registry.search_operations("b64")

@@ -56,10 +56,7 @@ def test_normalise_operation_view_model_preserves_editable_option_label_mapping(
     right_hand_rotor = args_by_name["Right-hand rotor"]
 
     assert right_hand_rotor.value == runtime_value
-    assert any(
-        option.label == "III" and option.value == runtime_value
-        for option in right_hand_rotor.options
-    )
+    assert any(option.label == "III" and option.value == runtime_value for option in right_hand_rotor.options)
 
 
 def test_shared_adapter_extracts_defaults_for_binary_and_populate_multi_option():
@@ -69,9 +66,7 @@ def test_shared_adapter_extracts_defaults_for_binary_and_populate_multi_option()
     assert css_beautify_op is not None
     assert bombe_op is not None
 
-    indent_string_arg = next(
-        arg for arg in css_beautify_op["args"] if arg["name"] == "Indent string"
-    )
+    indent_string_arg = next(arg for arg in css_beautify_op["args"] if arg["name"] == "Indent string")
     default_value = get_argument_default_value(bombe_op["args"][0])
 
     assert get_argument_default_value(indent_string_arg) == "\t"
@@ -87,19 +82,12 @@ def test_shared_adapter_round_trips_display_labels_and_runtime_values():
     assert datetime_op is not None
     assert to_hex_op is not None
 
-    rotor_arg = next(
-        arg for arg in enigma_op["args"] if arg["name"] == "Right-hand rotor"
-    )
-    preset_arg = next(
-        arg for arg in datetime_op["args"] if arg["name"] == "Built in formats"
-    )
+    rotor_arg = next(arg for arg in enigma_op["args"] if arg["name"] == "Right-hand rotor")
+    preset_arg = next(arg for arg in datetime_op["args"] if arg["name"] == "Built in formats")
     delimiter_arg = next(arg for arg in to_hex_op["args"] if arg["name"] == "Delimiter")
 
     assert "III" in get_display_items(rotor_arg)
-    assert (
-        get_option_value_for_display(rotor_arg, "III")
-        == "BDFHJLCPRTXVZNYEIWGAKMUSQO<W"
-    )
+    assert get_option_value_for_display(rotor_arg, "III") == "BDFHJLCPRTXVZNYEIWGAKMUSQO<W"
     assert (
         get_display_label_for_value(
             rotor_arg,
@@ -108,14 +96,8 @@ def test_shared_adapter_round_trips_display_labels_and_runtime_values():
         == "III"
     )
 
-    assert (
-        get_option_value_for_display(preset_arg, "International date and time")
-        == "YYYY-MM-DD HH:mm:ss"
-    )
-    assert (
-        get_display_label_for_value(preset_arg, "YYYY-MM-DD HH:mm:ss")
-        == "International date and time"
-    )
+    assert get_option_value_for_display(preset_arg, "International date and time") == "YYYY-MM-DD HH:mm:ss"
+    assert get_display_label_for_value(preset_arg, "YYYY-MM-DD HH:mm:ss") == "International date and time"
     assert get_option_value_for_display(delimiter_arg, "\\x") == "\\x"
     assert get_display_label_for_value(delimiter_arg, "\\x") == "\\x"
 
@@ -127,9 +109,7 @@ def test_shared_adapter_reports_arg_selector_dependencies():
 
     selector_arg = enigma_op["args"][0]
 
-    visible_args, hidden_args = get_dependent_args(
-        enigma_op["args"], selector_arg, "3-rotor"
-    )
+    visible_args, hidden_args = get_dependent_args(enigma_op["args"], selector_arg, "3-rotor")
     assert visible_args == set()
     assert hidden_args == {
         "Left-most (4th) rotor",
@@ -137,9 +117,7 @@ def test_shared_adapter_reports_arg_selector_dependencies():
         "Left-most rotor initial value",
     }
 
-    visible_args, hidden_args = get_dependent_args(
-        enigma_op["args"], selector_arg, "4-rotor"
-    )
+    visible_args, hidden_args = get_dependent_args(enigma_op["args"], selector_arg, "4-rotor")
     assert visible_args == {
         "Left-most (4th) rotor",
         "Left-most rotor ring setting",

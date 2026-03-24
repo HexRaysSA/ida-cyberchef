@@ -12,9 +12,7 @@ import pytest
 
 from ida_cyberchef.cyberchef import bake
 
-_DATA = json.loads(
-    (Path(__file__).parent / "data" / "cyberchef_test_vectors.json").read_text()
-)
+_DATA = json.loads((Path(__file__).parent / "data" / "cyberchef_test_vectors.json").read_text())
 
 EXACT_VECTORS = _DATA["exact_vectors"]
 MATCH_VECTORS = _DATA["match_vectors"]
@@ -51,7 +49,6 @@ XFAIL_EXACT = {
     # HTML. Additionally, the JS image processing library (jimp) may not function
     # fully in our minimal V8 environment — the operation returns empty output.
     "Split Colour Channels: Default (JPEG)": "bridge returns raw bytes; JS image processing may not work in headless V8",
-
     # --- Register flow control not implemented ---
     # The Register operation captures regex groups from the input (e.g. extracting a
     # key from a URL) and makes them available as $R0, $R1, etc. in downstream
@@ -59,7 +56,6 @@ XFAIL_EXACT = {
     # execution, which the Python flow-control emulation does not yet support.
     "Register: RC4 key": "Register flow control op not implemented — needs context threading for $R0 substitution",
     "Register: AES key": "Register flow control op not implemented — needs context threading for $R0 substitution",
-
     # --- CBOR Decode JSON string quoting ---
     # CBOR Decode has outputType "JSON". When CyberChef's JS test harness coerces
     # a JSON string value to a display string, it preserves the JSON quotes:
@@ -67,14 +63,12 @@ XFAIL_EXACT = {
     # returns the native Python string 'Text' without quotes, which is the correct
     # semantic value but doesn't match the JS toString() coercion.
     "From Hex: Can decode text": "CBOR Decode returns native string 'Text'; JS test expects JSON-quoted '\"Text\"'",
-
     # --- Error message differences ---
     # The underlying JS error message from our V8 runtime differs from what
     # CyberChef's test was written against. Our V8 throws "RangeError: Offset is
     # outside the bounds of the DataView" while the test expects "Error: Could not
     # parse". Same error scenario, different message from the msgpack library.
     "From MessagePack: no content": "V8 msgpack throws different error message than upstream test expects",
-
     # --- JWT operations broken in STPyV8 ---
     # The jsonwebtoken library used by JWT Sign/Verify fails in the headless V8
     # environment provided by STPyV8 — likely missing crypto primitives.
@@ -107,7 +101,6 @@ XFAIL_MATCH = {
     # Index of Coincidence: run() returns a raw float (0.0714...), present()
     # formats it as "Index of Coincidence: 0.071...\nNormalized: 1.857...".
     "Index of Coincidence": "bridge returns raw float; JS test expects formatted text from present()",
-
     # --- Fernet timestamp ---
     # Fernet tokens embed the current timestamp in the first 9 bytes. The test regex
     # ^gAAAAABce-[\w-]+ hardcodes a base64 prefix corresponding to a specific
@@ -115,7 +108,6 @@ XFAIL_MATCH = {
     # timestamp, so the prefix differs. The operation works correctly.
     "Fernet Encrypt: no input": "test regex hardcodes a 2020-era timestamp prefix; output is timestamp-dependent",
     "Fernet Encrypt: valid arguments": "test regex hardcodes a 2020-era timestamp prefix; output is timestamp-dependent",
-
     # --- JPath sandboxing difference ---
     # This test is an XSS/sandbox-escape probe that calls
     # constructor("self.postMessage(...)"). CyberChef's browser test expects the
@@ -123,7 +115,6 @@ XFAIL_MATCH = {
     # 'self' either, but the JPath library fails earlier with "Unexpected { at
     # character 1" before it even reaches the constructor call.
     "JPath Expression: Script-based expression": "JPath library fails at parse stage in V8; browser fails at eval stage",
-
 }
 
 
@@ -202,10 +193,7 @@ def test_cyberchef_exact(vector):
     if isinstance(result, str) and isinstance(expected, str):
         result = result.rstrip("\n")
         expected = expected.rstrip("\n")
-    assert result == expected, (
-        f"[{vector['module']}/{vector['name']}] "
-        f"expected {expected!r:.200}, got {result!r:.200}"
-    )
+    assert result == expected, f"[{vector['module']}/{vector['name']}] expected {expected!r:.200}, got {result!r:.200}"
 
 
 @pytest.mark.parametrize(
@@ -239,6 +227,5 @@ def test_cyberchef_match(vector):
         except UnicodeDecodeError:
             result = result.decode("latin-1")
     assert re.search(expected_match, str(result), flags=search_flags), (
-        f"[{vector['module']}/{vector['name']}] "
-        f"pattern {expected_match!r:.200} not found in {str(result)!r:.200}"
+        f"[{vector['module']}/{vector['name']}] pattern {expected_match!r:.200} not found in {str(result)!r:.200}"
     )

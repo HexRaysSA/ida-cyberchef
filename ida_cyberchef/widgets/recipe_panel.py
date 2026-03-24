@@ -101,9 +101,7 @@ class RecipePanel(QWidget):
 
         for i, step in enumerate(steps):
             insert_indicator = InsertIndicatorWidget()
-            insert_indicator.clicked.connect(
-                lambda idx=i: self._show_operation_dialog(idx)
-            )
+            insert_indicator.clicked.connect(lambda idx=i: self._show_operation_dialog(idx))
             self._steps_layout.addWidget(insert_indicator)
 
             op_info = self._registry.find_operation(step["operation"])

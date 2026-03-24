@@ -41,9 +41,7 @@ class HexFormatter:
             lines.append(f"{offset}: {hex_part}  {ascii_part}")
 
         if truncated:
-            lines.append(
-                f"\n... (truncated, showing first {max_bytes:,} of {original_size:,} bytes)"
-            )
+            lines.append(f"\n... (truncated, showing first {max_bytes:,} of {original_size:,} bytes)")
 
         return "\n".join(lines)
 

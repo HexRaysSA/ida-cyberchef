@@ -11,13 +11,11 @@ def test_render_method_name_normalizes_unicode_and_punctuation():
     assert render_method_name("JSON to CSV") == "JSONToCSV"
 
 
-
 def test_get_support_annotation_marks_explicitly_unsupported_operation():
     note = get_support_annotation("Argon2")
 
     assert note is not None
     assert "unsupported" in note.lower()
-
 
 
 def test_generate_operation_doc_includes_support_note():
@@ -38,7 +36,6 @@ def test_generate_operation_doc_includes_support_note():
     assert "### `Magic()`" in doc
     assert "Support:" in doc
     assert "unsupported" in doc.lower()
-
 
 
 def test_generate_docs_markdown_covers_every_schema_operation():

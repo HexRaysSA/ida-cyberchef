@@ -19,9 +19,7 @@ class StepResult:
 class RecipeExecutor:
     """Executes CyberChef recipes and tracks results for each step."""
 
-    def execute_recipe(
-        self, input_data: bytes, recipe: List[Dict[str, Any]]
-    ) -> List[StepResult]:
+    def execute_recipe(self, input_data: bytes, recipe: List[Dict[str, Any]]) -> List[StepResult]:
         """Execute recipe and return results for each step.
 
         Args:

@@ -28,7 +28,7 @@ class LocationInputWidget(QWidget):
     └──────────────────────────────────────────────────────────┘
     """
 
-    location_changed = Signal('quint64', 'quint64')
+    location_changed = Signal("quint64", "quint64")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -117,9 +117,7 @@ class LocationInputWidget(QWidget):
             length_text = self._length_edit.text()
             length = self._parse_length(length_text)
             if length_text.strip():
-                self._length_edit.setStyleSheet(
-                    INVALID_STYLE if length is None else VALID_STYLE
-                )
+                self._length_edit.setStyleSheet(INVALID_STYLE if length is None else VALID_STYLE)
                 if length is None:
                     logger.warning("invalid length value: %r", length_text.strip())
             else:

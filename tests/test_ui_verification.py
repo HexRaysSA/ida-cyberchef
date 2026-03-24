@@ -36,12 +36,8 @@ def test_xor_operation_layout(qtbot):
 
     # Verify dropdown has Hex options
     assert format_combo.count() > 0, "Format dropdown should have options"
-    assert "Hex" in [format_combo.itemText(i) for i in range(format_combo.count())], (
-        "Should have Hex option"
-    )
-    assert "Decimal" in [
-        format_combo.itemText(i) for i in range(format_combo.count())
-    ], "Should have Decimal option"
+    assert "Hex" in [format_combo.itemText(i) for i in range(format_combo.count())], "Should have Hex option"
+    assert "Decimal" in [format_combo.itemText(i) for i in range(format_combo.count())], "Should have Decimal option"
 
     # Simulate user typing "deadbeef"
     value_input.setText("deadbeef")
@@ -77,9 +73,9 @@ def test_to_base64_operation_no_args(qtbot):
     # To Base64 has optional alphabet argument, but we verify structure
 
     # Operation name should be visible in widget
-    assert "To Base64" in [
-        child.text() for child in widget.findChildren(QLabel) if hasattr(child, "text")
-    ], "Operation name should be displayed"
+    assert "To Base64" in [child.text() for child in widget.findChildren(QLabel) if hasattr(child, "text")], (
+        "Operation name should be displayed"
+    )
 
     # Preview button should exist
     assert widget._preview_button is not None, "Preview button should exist"
@@ -166,18 +162,16 @@ def test_save_and_reload_recipe_preserves_values(qtbot):
     format_combo2 = key_container2.property("format_combo")
 
     assert value_input2.text() == "deadbeef", "Key value should be preserved"
-    assert format_combo2.currentText() == "Decimal", (
-        "Format selection should be preserved"
-    )
+    assert format_combo2.currentText() == "Decimal", "Format selection should be preserved"
 
     # Verify dropdown still has all options (not just selected)
     assert format_combo2.count() > 1, "Format dropdown should have multiple options"
     assert "Hex" in [format_combo2.itemText(i) for i in range(format_combo2.count())], (
         "Dropdown should still have Hex option"
     )
-    assert "Decimal" in [
-        format_combo2.itemText(i) for i in range(format_combo2.count())
-    ], "Dropdown should still have Decimal option"
+    assert "Decimal" in [format_combo2.itemText(i) for i in range(format_combo2.count())], (
+        "Dropdown should still have Decimal option"
+    )
 
     # Verify Scheme option dropdown also preserves all choices
     if "Scheme" in widget2._arg_widgets:

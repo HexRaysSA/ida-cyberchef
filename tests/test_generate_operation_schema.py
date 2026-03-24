@@ -14,13 +14,7 @@ from tools.generate_operation_schema import (
 def test_extract_categories_and_favorites():
     """Test extracting category and favorites data from Categories.json."""
     categories_json_path = (
-        Path(__file__).parent.parent
-        / "deps"
-        / "CyberChef"
-        / "src"
-        / "core"
-        / "config"
-        / "Categories.json"
+        Path(__file__).parent.parent / "deps" / "CyberChef" / "src" / "core" / "config" / "Categories.json"
     )
 
     if not categories_json_path.exists():
@@ -59,17 +53,10 @@ def test_deduplicate_operations_keeps_first_operation():
     ]
 
 
-
 def test_enhance_schema_with_categories():
     """Test enhancing schema with category and favorites data."""
     categories_json_path = (
-        Path(__file__).parent.parent
-        / "deps"
-        / "CyberChef"
-        / "src"
-        / "core"
-        / "config"
-        / "Categories.json"
+        Path(__file__).parent.parent / "deps" / "CyberChef" / "src" / "core" / "config" / "Categories.json"
     )
 
     schema = {
@@ -97,9 +84,7 @@ def test_enhance_schema_with_categories():
     to_base64 = next(op for op in enhanced["operations"] if op["name"] == "To Base64")
     assert to_base64["category"] == "Data format"
 
-    aes_decrypt = next(
-        op for op in enhanced["operations"] if op["name"] == "AES Decrypt"
-    )
+    aes_decrypt = next(op for op in enhanced["operations"] if op["name"] == "AES Decrypt")
     assert aes_decrypt["category"] == "Encryption / Encoding"
 
     # Unknown operations should have "Other" category

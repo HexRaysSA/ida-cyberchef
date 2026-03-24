@@ -163,9 +163,7 @@ class OperationStepWidget(QFrame):
         self._preview_widget.setMaximumHeight(150)
         self._preview_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self._preview_widget.setVisible(False)
-        self._preview_widget.setStyleSheet(
-            "font-family: 'Courier New', Courier, monospace; margin-top: 8px;"
-        )
+        self._preview_widget.setStyleSheet("font-family: 'Courier New', Courier, monospace; margin-top: 8px;")
         main_layout.addWidget(self._preview_widget, next_row, 0, 1, 7)
 
         # Error label (spans all 7 columns)
@@ -437,9 +435,7 @@ class OperationStepWidget(QFrame):
             if not isinstance(widget, QComboBox):
                 continue
 
-            selected_value = (
-                widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
-            )
+            selected_value = widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
             visible_args, hidden_args = get_dependent_args(
                 operation_args,
                 arg.raw_argument,
@@ -485,12 +481,8 @@ class OperationStepWidget(QFrame):
 
             # Combobox (option, editableOption, argSelector, enum)
             elif isinstance(widget, QComboBox):
-                current_value = (
-                    widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
-                )
-                args[arg_name] = (
-                    current_value if current_value is not None else widget.currentText()
-                )
+                current_value = widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
+                args[arg_name] = current_value if current_value is not None else widget.currentText()
 
             # Text edit (text, binaryString)
             elif isinstance(widget, QTextEdit):
@@ -540,6 +532,7 @@ class OperationStepWidget(QFrame):
             text = str(value)
         elif kind == OutputKind.JSON:
             import json as _json
+
             text = _json.dumps(value, indent=2)
         elif kind == OutputKind.FILE:
             data = value.get("data", b"")

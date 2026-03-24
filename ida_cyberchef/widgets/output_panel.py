@@ -122,9 +122,7 @@ class OutputPanel(QWidget):
 
         self._output_display = QTextEdit()
         self._output_display.setReadOnly(True)
-        self._output_display.setStyleSheet(
-            "font-family: 'Courier New', Courier, monospace;"
-        )
+        self._output_display.setStyleSheet("font-family: 'Courier New', Courier, monospace;")
         self._output_display.setPlaceholderText("Output will appear here...")
         self._output_display.setMinimumHeight(100)
         self._output_display.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -277,22 +275,14 @@ class OutputPanel(QWidget):
                     return value["data"].decode("utf-8", errors="replace")
             if format_name == "File Info":
                 data = value.get("data", b"")
-                return (
-                    f"Name: {value.get('name', '')}\n"
-                    f"Type: {value.get('type', '')}\n"
-                    f"Size: {len(data)} bytes"
-                )
+                return f"Name: {value.get('name', '')}\nType: {value.get('type', '')}\nSize: {len(data)} bytes"
             return self._hex_formatter.format_hex_dump(value.get("data", b""))
 
         if kind == OutputKind.FILE_LIST:
             lines = []
             for item in value:
                 data = item.get("data", b"")
-                lines.append(
-                    f"{item.get('name', '(unnamed)')}\t"
-                    f"{item.get('type', '')}\t"
-                    f"{len(data)} bytes"
-                )
+                lines.append(f"{item.get('name', '(unnamed)')}\t{item.get('type', '')}\t{len(data)} bytes")
             return "\n".join(lines)
 
         if kind == OutputKind.BYTES:
@@ -359,9 +349,7 @@ class OutputPanel(QWidget):
 
         if kind == OutputKind.FILE:
             default_name = value.get("name", "output.bin")
-            filename, _ = QFileDialog.getSaveFileName(
-                self, "Save Output", default_name, "All Files (*)"
-            )
+            filename, _ = QFileDialog.getSaveFileName(self, "Save Output", default_name, "All Files (*)")
             if not filename:
                 return
             try:
@@ -372,9 +360,7 @@ class OutputPanel(QWidget):
                 QMessageBox.critical(self, "Error", f"Failed to save file: {e}")
             return
 
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Save Output", "", "All Files (*)"
-        )
+        filename, _ = QFileDialog.getSaveFileName(self, "Save Output", "", "All Files (*)")
         if not filename:
             return
 
@@ -424,9 +410,7 @@ class OutputPanel(QWidget):
                 self._copy_db_button.setToolTip("Patch output bytes into IDB")
             elif not has_address:
                 self._copy_db_button.setEnabled(False)
-                self._copy_db_button.setToolTip(
-                    "Copy to IDB requires input source 'From Selection' or 'From Location'"
-                )
+                self._copy_db_button.setToolTip("Copy to IDB requires input source 'From Selection' or 'From Location'")
             else:
                 self._copy_db_button.setEnabled(False)
                 self._copy_db_button.setToolTip(

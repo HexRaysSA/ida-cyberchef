@@ -67,9 +67,7 @@ class OperationBrowserWidget(QWidget):
 
         # Operation list (left)
         self._operation_list = QListWidget()
-        self._operation_list.itemDoubleClicked.connect(
-            self._on_operation_double_clicked
-        )
+        self._operation_list.itemDoubleClicked.connect(self._on_operation_double_clicked)
         self._operation_list.currentItemChanged.connect(self._on_current_item_changed)
         self._operation_list.itemEntered.connect(self._on_item_hovered)
         self._operation_list.setMouseTracking(True)
@@ -104,12 +102,8 @@ class OperationBrowserWidget(QWidget):
         # All operations grouped by category
         from itertools import groupby
 
-        operations_sorted = sorted(
-            operations, key=lambda op: op.get("category", "Other")
-        )
-        for category, ops_iter in groupby(
-            operations_sorted, key=lambda op: op.get("category", "Other")
-        ):
+        operations_sorted = sorted(operations, key=lambda op: op.get("category", "Other"))
+        for category, ops_iter in groupby(operations_sorted, key=lambda op: op.get("category", "Other")):
             for op in ops_iter:
                 self._add_operation_item(op)
 
@@ -143,9 +137,7 @@ class OperationBrowserWidget(QWidget):
                 self._add_operation_item(op)
             self._operation_list.setCurrentRow(0)
 
-    def _on_current_item_changed(
-        self, current: QListWidgetItem, previous: QListWidgetItem
-    ):
+    def _on_current_item_changed(self, current: QListWidgetItem, previous: QListWidgetItem):
         """Handle current item changed (for keyboard navigation)."""
         if current and current.data(Qt.UserRole):
             self._update_documentation(current.data(Qt.UserRole))
@@ -180,9 +172,7 @@ class OperationBrowserWidget(QWidget):
         elif event.key() == Qt.Key_Escape:
             self._search_input.clear()
             self._search_input.setFocus()
-        elif event.key() == Qt.Key_Slash or (
-            event.key() == Qt.Key_F and event.modifiers() == Qt.ControlModifier
-        ):
+        elif event.key() == Qt.Key_Slash or (event.key() == Qt.Key_F and event.modifiers() == Qt.ControlModifier):
             self._search_input.setFocus()
             self._search_input.selectAll()
         else:
