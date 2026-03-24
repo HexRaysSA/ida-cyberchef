@@ -19,6 +19,7 @@ qt = [
 dev = [
     "pytest>=8.4.2",
     "pytest-qt>=4.0",
+    "pyside6>=6.10.0",
     "ruff",
     "ty",
     "mypy",
