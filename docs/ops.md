@@ -3,7 +3,7 @@
 This document lists all 443 available CyberChef operations.
 
 Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.
-See the Runtime support section in `readme.md` for the broader support policy. Operations missing from the CyberChef build entirely (not in the schema) do not appear below.
+See the Runtime support section in `readme.md` for the broader support policy.
 
 ## Operations
 
@@ -4827,6 +4827,8 @@ Decodes a JSON Web Token without checking whether the provided secret / private 
 
 **Module:** Crypto
 
+**Support:** Unsupported in the current STPyV8 runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
+
 Signs a JSON object as a JSON Web Token using a provided secret / private key.
 
 The key should be either the secret for HMAC algorithms or the PEM-encoded private key for RSA and ECDSA.
@@ -4849,6 +4851,8 @@ The key should be either the secret for HMAC algorithms or the PEM-encoded priva
 **Category:** `Encryption / Encoding`
 
 **Module:** Crypto
+
+**Support:** Unsupported in the current STPyV8 runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
 
 Verifies that a JSON Web Token is valid and has been signed with the provided secret / private key.
 

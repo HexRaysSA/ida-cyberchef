@@ -1,6 +1,6 @@
 """Widget for displaying and editing a single recipe step."""
 
-from typing import Any, Dict
+from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ida_cyberchef.core.schema_adapter import get_dependent_args
 from ida_cyberchef.core.hex_formatter import HexFormatter
 from ida_cyberchef.core.output_model import OutputKind, TypedOutput
 from ida_cyberchef.qt_models.schema_adapter import (
@@ -53,7 +54,8 @@ class OperationStepWidget(QFrame):
 
         self._index = index
         self._operation = normalise_operation_view_model(operation)
-        self._arg_widgets: Dict[str, QWidget] = {}
+        self._arg_widgets: dict[str, QWidget] = {}
+        self._arg_row_widgets: dict[str, list[QWidget]] = {}
         self._preview_visible = False
         self._error_visible = False
 
@@ -188,6 +190,7 @@ class OperationStepWidget(QFrame):
             # Boolean checkbox is self-labeled, no separate label needed
             if arg_type == "boolean":
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [widget]
 
             # ToggleString needs 3 columns: label | input | format dropdown
             elif arg_type == "toggleString":
@@ -197,6 +200,7 @@ class OperationStepWidget(QFrame):
                 label.setWordWrap(True)
                 label.setFixedWidth(80)
                 self._args_grid.addWidget(label, row, 1)
+                row_widgets = [label]
 
                 # Widget is container with value_input and format_combo
                 # We need to extract and place them separately
@@ -205,8 +209,10 @@ class OperationStepWidget(QFrame):
 
                 if value_input:
                     self._args_grid.addWidget(value_input, row, 2)
+                    row_widgets.append(value_input)
                 if format_combo:
                     self._args_grid.addWidget(format_combo, row, 3)
+                    row_widgets.append(format_combo)
 
             # Text/multiline: label | text edit spanning 2 columns
             elif arg_type in ("text", "binaryString"):
@@ -217,10 +223,12 @@ class OperationStepWidget(QFrame):
                 label.setFixedWidth(80)
                 self._args_grid.addWidget(label, row, 1)
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [label, widget]
 
             # Label type: no label, just display widget
             elif arg_type == "label":
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [widget]
 
             # All other types: label | widget spanning columns 2-3
             else:
@@ -231,8 +239,12 @@ class OperationStepWidget(QFrame):
                 label.setFixedWidth(80)
                 self._args_grid.addWidget(label, row, 1)
                 self._args_grid.addWidget(widget, row, 2, 1, 2)
+                row_widgets = [label, widget]
 
+            self._arg_row_widgets[arg_name] = row_widgets
             row += 1
+
+        self._update_all_arg_selector_visibility()
 
     def _set_combo_selection(self, widget: QComboBox, value: Any) -> None:
         """Select a combo box entry by runtime value, keeping readable labels."""
@@ -356,7 +368,9 @@ class OperationStepWidget(QFrame):
 
         # Arg selector (mode dropdown with conditional args)
         elif arg_type == "argSelector":
-            return self._create_option_widget(arg)
+            widget = self._create_option_widget(arg)
+            widget.currentTextChanged.connect(lambda _text: self._update_arg_selector_visibility())
+            return widget
 
         # Label (display-only)
         elif arg_type == "label":
@@ -404,13 +418,52 @@ class OperationStepWidget(QFrame):
         args = self.get_current_args()
         self.args_changed.emit(self._index, args)
 
+    def _set_row_visible(self, arg_name: str, visible: bool) -> None:
+        """Show or hide all widgets associated with an argument row."""
+        for widget in self._arg_row_widgets.get(arg_name, []):
+            widget.setVisible(visible)
+
+    def _update_all_arg_selector_visibility(self) -> None:
+        """Apply argSelector visibility rules across the operation."""
+        operation_args_view = self._operation.get("args", [])
+        operation_args = [arg.raw_argument for arg in operation_args_view]
+        visibility = {arg.name: True for arg in operation_args_view}
+
+        for arg in operation_args_view:
+            if arg.arg_type != "argSelector":
+                continue
+
+            widget = self._arg_widgets.get(arg.name)
+            if not isinstance(widget, QComboBox):
+                continue
+
+            selected_value = (
+                widget.currentData() if widget.currentIndex() >= 0 else widget.currentText()
+            )
+            visible_args, hidden_args = get_dependent_args(
+                operation_args,
+                arg.raw_argument,
+                selected_value,
+            )
+            for dependent_arg in visible_args:
+                visibility[dependent_arg] = True
+            for dependent_arg in hidden_args:
+                visibility[dependent_arg] = False
+
+        for arg_name, is_visible in visibility.items():
+            self._set_row_visible(arg_name, is_visible)
+
+    def _update_arg_selector_visibility(self) -> None:
+        """Refresh argSelector-driven row visibility when a selector changes."""
+        self._update_all_arg_selector_visibility()
+
     def _on_preview_clicked(self):
         """Handle preview button click."""
         self._preview_visible = not self._preview_visible
         self._preview_widget.setVisible(self._preview_visible)
         self.preview_toggled.emit(self._index, self._preview_visible)
 
-    def get_current_args(self) -> Dict[str, Any]:
+    def get_current_args(self) -> dict[str, Any]:
         """Get current argument values.
 
         Returns: Dict of argument name -> value
@@ -498,6 +551,10 @@ class OperationStepWidget(QFrame):
             text = str(value)
 
         self._preview_widget.setPlainText(text)
+
+    def clear_preview(self) -> None:
+        """Clear preview text without changing the expanded state."""
+        self._preview_widget.setPlainText("")
 
     def set_error(self, error: str):
         """Set error state and message.

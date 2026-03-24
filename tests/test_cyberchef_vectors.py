@@ -75,12 +75,22 @@ XFAIL_EXACT = {
     # parse". Same error scenario, different message from the msgpack library.
     "From MessagePack: no content": "V8 msgpack throws different error message than upstream test expects",
 
-    # --- Unicode combining character pipeline issue ---
-    # Unicode Text Format adds combining characters (U+0336 strikethrough, U+0332
-    # underline) to 'a', producing bytes b'a\xcc\xb6\xcc\xb2'. When this flows into
-    # Remove Diacritics as a second operation, the bytes are misinterpreted —
-    # likely a string-vs-bytes encoding issue in the inter-operation pipeline.
-    "Remove Diacritics: text formatting": "bytes-vs-string encoding issue in multi-op pipeline with combining chars",
+    # --- JWT operations broken in STPyV8 ---
+    # The jsonwebtoken library used by JWT Sign/Verify fails in the headless V8
+    # environment provided by STPyV8 — likely missing crypto primitives.
+    "JWT Sign: HS256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: HS256 with custom header": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: HS384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: HS512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: ES256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: ES384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: ES512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: RS256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: RS384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Sign: RS512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Verify: HS": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Verify: RS": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    "JWT Verify: ES": "jsonwebtoken library fails in STPyV8 headless V8 environment",
 }
 
 XFAIL_MATCH = {
@@ -114,14 +124,6 @@ XFAIL_MATCH = {
     # character 1" before it even reaches the constructor call.
     "JPath Expression: Script-based expression": "JPath library fails at parse stage in V8; browser fails at eval stage",
 
-    # --- Text encoding table differences ---
-    # Text Encoding Brute Force tries all available encodings. The test input is
-    # double-encoded Cyrillic that should round-trip through Windows-1251 to produce
-    # "Булкі праз ляніва сабаку." The encoding tables available in our V8 runtime
-    # differ from the browser's — the Windows-1251 encoding produces different output,
-    # likely because the input string's byte representation crosses the JS/Python
-    # boundary with different encoding assumptions.
-    "Text Encoding Brute Force - Encode": "encoding tables and string boundary handling differ between V8 and browser",
 }
 
 
@@ -229,12 +231,14 @@ def test_cyberchef_match(vector):
         if re.search(expected_match, error_msg):
             return
         raise
+    search_flags = 0
     if isinstance(result, bytes):
+        search_flags = re.DOTALL
         try:
             result = result.decode("utf-8")
         except UnicodeDecodeError:
             result = result.decode("latin-1")
-    assert re.search(expected_match, str(result)), (
+    assert re.search(expected_match, str(result), flags=search_flags), (
         f"[{vector['module']}/{vector['name']}] "
         f"pattern {expected_match!r:.200} not found in {str(result)!r:.200}"
     )

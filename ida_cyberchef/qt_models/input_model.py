@@ -102,6 +102,12 @@ class InputModel(QObject):
         self._external_address = address
         self.input_changed.emit()
 
+    def clear_external_data(self):
+        """Clear external input data (from cursor/selection)."""
+        self._external_data = None
+        self._external_address = None
+        self.input_changed.emit()
+
     def get_external_address(self) -> Optional[int]:
         """Get the address where external data came from.
 

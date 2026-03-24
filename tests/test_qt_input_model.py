@@ -35,6 +35,21 @@ def test_set_external_data():
     assert data == b"External"
 
 
+def test_clear_external_data(qtbot):
+    model = InputModel()
+    model.set_input_source(InputSource.FROM_SELECTION)
+    model.set_external_data(b"External", address=0x401000)
+
+    assert model.get_input_bytes() == b"External"
+    assert model.get_external_address() == 0x401000
+
+    with qtbot.waitSignal(model.input_changed):
+        model.clear_external_data()
+
+    assert model.get_input_bytes() is None
+    assert model.get_external_address() is None
+
+
 def test_input_changed_signal(qtbot):
     model = InputModel()
 

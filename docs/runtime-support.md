@@ -31,10 +31,15 @@ Reasons:
 ## Also unsupported in the current runtime
 
 These operations remain unsupported in the current runtime and should be documented that way rather than treated as active remediation targets:
+- JWT Sign
+- JWT Verify
 - Magic
 - YARA Rules
 - Argon2
 - Argon2 compare
+
+Reasons:
+- JWT Sign and JWT Verify depend on jsonwebtoken paths that expect Node crypto KeyObject APIs. The current STPyV8 runtime ships a crypto-browserify compatibility layer instead, so signing and verification fail at runtime. JWT Decode remains supported because it only parses the token.
 
 They may stay discoverable in internal metadata, but user-facing docs should describe them as unsupported.
 

@@ -53,7 +53,6 @@ def test_input_panel_set_location_source_updates_ui_and_model(input_panel_with_i
     assert panel._location_widget._address_edit.text() == "0x00401000"
     assert panel._location_widget._length_edit.text() == "128"
 
-
 def test_input_panel_marks_invalid_manual_input(qtbot):
     model = InputModel()
     panel = InputPanel(model)
@@ -74,3 +73,19 @@ def test_input_panel_marks_invalid_manual_input(qtbot):
 
     assert panel._validation_label.text() == ""
     assert "border" not in panel._text_area.styleSheet()
+
+
+def test_input_panel_clears_preview_when_selection_data_is_cleared(
+    input_panel_with_ida,
+):
+    panel, model = input_panel_with_ida
+    panel.show()
+
+    panel._selection_radio.setChecked(True)
+    panel._on_source_changed()
+
+    model.set_external_data(b"hello", address=0x401000)
+    assert panel._text_area.toPlainText()
+
+    model.clear_external_data()
+    assert panel._text_area.toPlainText() == ""
