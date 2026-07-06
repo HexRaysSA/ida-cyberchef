@@ -1,11 +1,14 @@
+import asyncio
+import inspect
 import json
 import os
 import re
+from collections.abc import Callable
 from enum import IntEnum
 from pathlib import Path
 from typing import Any, TypedDict
 
-import STPyV8
+import pythonmonkey as pm
 
 from ida_cyberchef.core.schema_adapter import (
     decode_escaped_string,
@@ -17,6 +20,15 @@ from ida_cyberchef.core.schema_adapter import (
 )
 
 _chef_instance = None
+
+_loop: asyncio.AbstractEventLoop | None = None
+
+_js_helpers: dict[str, Any] = {}
+
+# Upper bound on genuinely-asynchronous waiting for a JS promise to settle.
+# Synchronous compute inside an operation blocks before the await and is not
+# subject to this limit, matching the previous engine's drain-loop semantics.
+PROMISE_TIMEOUT_SECONDS = 10.0
 
 
 class DishType(IntEnum):
@@ -100,6 +112,61 @@ def _py_urandom_json(length: Any) -> str:
     if num_bytes < 0:
         raise ValueError("Random byte length must be non-negative")
     return json.dumps(list(os.urandom(num_bytes)))
+
+
+def get_event_loop() -> asyncio.AbstractEventLoop:
+    """Return the private event loop used to service the JS runtime.
+
+    PythonMonkey resolves JS promises and runs SpiderMonkey's job queue
+    through a running asyncio event loop, so every JS interaction that may
+    touch promises is driven through this loop via run_js().
+    """
+    global _loop
+    if _loop is None:
+        _loop = asyncio.new_event_loop()
+    return _loop
+
+
+def run_js(thunk: Callable[[], Any]) -> Any:
+    """Invoke a JS-touching callable inside the private event loop.
+
+    If the callable returns a promise/awaitable, it is resolved before
+    returning. This call is synchronous from the caller's perspective and
+    must only be used from the main thread.
+
+    Raises:
+        pythonmonkey.SpiderMonkeyError: If the JS code throws or the promise
+            rejects.
+        RuntimeError: If a promise does not settle within
+            PROMISE_TIMEOUT_SECONDS of asynchronous waiting.
+    """
+
+    async def invoke() -> Any:
+        result = thunk()
+        if inspect.isawaitable(result) or asyncio.isfuture(result):
+            try:
+                result = await asyncio.wait_for(result, timeout=PROMISE_TIMEOUT_SECONDS)
+            except (asyncio.TimeoutError, TimeoutError) as exc:
+                raise RuntimeError("Timed out waiting for CyberChef promise to settle") from exc
+        if result is pm.null:
+            return None
+        return result
+
+    return get_event_loop().run_until_complete(invoke())
+
+
+def eval_js(code: str) -> Any:
+    """Evaluate JS source inside the private event loop, resolving promises."""
+    return run_js(lambda: pm.eval(code))
+
+
+def _get_js_helper(name: str, source: str) -> Any:
+    """Return a cached compiled JS helper function."""
+    helper = _js_helpers.get(name)
+    if helper is None:
+        helper = pm.eval(source)
+        _js_helpers[name] = helper
+    return helper
 
 
 def get_operation_schema() -> dict[str, Any]:
@@ -203,10 +270,44 @@ def normalise_js_recipe(recipe: list[str | RecipeOperation]) -> list[str | Recip
     return [normalise_js_recipe_operation(operation) for operation in recipe]
 
 
-def get_chef():
+class Chef:
+    """Python-facing wrapper around CyberChef's module.exports.
+
+    Attribute access returns callables that execute the corresponding
+    CyberChef export inside the private event loop, resolving any returned
+    promise, so callers can use the API synchronously.
+    """
+
+    def __init__(self, exports: Any):
+        self.exports = exports
+
+    def operation_names(self) -> list[str]:
+        """Return the names of all exported attributes."""
+        keys = run_js(lambda: _get_js_helper("object_keys", "(o) => JSON.stringify(Object.keys(o))")(self.exports))
+        return list(json.loads(keys))
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("__"):
+            raise AttributeError(name)
+        try:
+            value = self.exports[name]
+        except (KeyError, TypeError) as exc:
+            raise AttributeError(name) from exc
+        if value is None:
+            raise AttributeError(name)
+        if callable(value):
+
+            def call(*args: Any) -> Any:
+                return run_js(lambda: value(*args))
+
+            return call
+        return value
+
+
+def get_chef() -> Chef:
     """Get or create a cached CyberChef instance.
 
-    Returns: CyberChef module exports object
+    Returns: Chef wrapper around the CyberChef module exports
     """
     global _chef_instance
     if _chef_instance is None:
@@ -214,9 +315,9 @@ def get_chef():
     return _chef_instance
 
 
-def install_bake_helper(ctx: STPyV8.JSContext) -> None:
-    """Install an async-aware recipe executor in the JS context."""
-    ctx.eval("""
+def install_bake_helper() -> None:
+    """Install an async-aware recipe executor in the JS runtime."""
+    pm.eval("""
     module.exports.__piBake = async function(input, recipeConfig) {
         const sanitise = function(value) {
             return value.replace(/ /g, "").toLowerCase();
@@ -280,96 +381,28 @@ def install_bake_helper(ctx: STPyV8.JSContext) -> None:
     """)
 
 
-def await_js_promise(ctx: STPyV8.JSContext, expression: str) -> Any:
-    """Resolve a promise or plain JS value inside the active context.
-
-    Raises:
-        RuntimeError: If the value does not settle within the polling limit.
-    """
-    ctx.eval(f"""
-    globalThis.__piPromisePending = true;
-    globalThis.__piPromiseResult = undefined;
-    globalThis.__piPromiseError = undefined;
-    Promise.resolve({expression}).then(
-        function(result) {{
-            globalThis.__piPromiseResult = result;
-            globalThis.__piPromisePending = false;
-        }},
-        function(error) {{
-            globalThis.__piPromiseError = error;
-            globalThis.__piPromisePending = false;
-        }}
-    );
-    """)
-
-    for _ in range(1000):
-        ctx.eval("globalThis.__piDrainTimers && globalThis.__piDrainTimers()")
-        if not ctx.eval("globalThis.__piPromisePending"):
-            break
-    else:
-        raise RuntimeError("Timed out waiting for CyberChef promise to settle")
-
-    return ctx.eval("""
-    (function() {
-        if (globalThis.__piPromiseError !== undefined) {
-            throw globalThis.__piPromiseError;
-        }
-        return globalThis.__piPromiseResult;
-    })
-    """)()
-
-
-def load_cyberchef(path: str | None = None):
-    """Load CyberChef bundle into V8 context and return exports.
+def load_cyberchef(path: str | None = None) -> Chef:
+    """Load the CyberChef bundle into the JS runtime and return a Chef.
 
     Args:
         path: Path to CyberChef.js bundle. If None, uses package data path.
 
-    Returns: CyberChef module exports object
+    Returns: Chef wrapper around the CyberChef module exports
     """
     if path is None:
         path = str(Path(__file__).parent / "data" / "CyberChef.js")
-    ctx = STPyV8.JSContext()
-    ctx.enter()
-    ctx.locals.py_urandom_json = _py_urandom_json
 
-    # Setup minimal global environment for CyberChef
-    ctx.eval("""
+    pm.globalThis.py_urandom_json = _py_urandom_json  # type: ignore[attr-defined]
+
+    # Setup minimal global environment for CyberChef. PythonMonkey already
+    # provides timers (setTimeout and friends), atob/btoa, and WebAssembly.
+    pm.eval("""
     globalThis.global = globalThis;
     globalThis.window = globalThis;
     globalThis.self = globalThis;
     globalThis.document = {};
     globalThis.app = {
         alert: function() {}
-    };
-
-    globalThis.__piNextTicks = [];
-    globalThis.__piTimers = [];
-    globalThis.__piTimerId = 1;
-    globalThis.__piSchedule = function(queue, fn, args) {
-        const id = globalThis.__piTimerId++;
-        queue.push({id: id, fn: fn, args: args});
-        return id;
-    };
-    globalThis.__piCancel = function(queue, id) {
-        for (let i = 0; i < queue.length; i++) {
-            if (queue[i].id === id) {
-                queue.splice(i, 1);
-                return;
-            }
-        }
-    };
-    globalThis.__piDrainTimers = function() {
-        while (globalThis.__piNextTicks.length || globalThis.__piTimers.length) {
-            const nextTicks = globalThis.__piNextTicks.splice(0, globalThis.__piNextTicks.length);
-            for (const entry of nextTicks) {
-                entry.fn.apply(globalThis, entry.args);
-            }
-            const timers = globalThis.__piTimers.splice(0, globalThis.__piTimers.length);
-            for (const entry of timers) {
-                entry.fn.apply(globalThis, entry.args);
-            }
-        }
     };
 
     // Minimal process polyfill
@@ -381,9 +414,23 @@ def load_cyberchef(path: str | None = None):
         versions: {node: 'v18.0.0'},
         nextTick: function(fn) {
             const args = Array.prototype.slice.call(arguments, 1);
-            return globalThis.__piSchedule(globalThis.__piNextTicks, fn, args);
+            Promise.resolve().then(function() {
+                fn.apply(globalThis, args);
+            });
         }
     };
+
+    if (typeof setImmediate === 'undefined') {
+        globalThis.setImmediate = function(fn) {
+            const args = Array.prototype.slice.call(arguments, 1);
+            return setTimeout(function() {
+                fn.apply(globalThis, args);
+            }, 0);
+        };
+        globalThis.clearImmediate = function(id) {
+            clearTimeout(id);
+        };
+    }
 
     // TextEncoder/TextDecoder polyfill
     if (typeof TextEncoder === 'undefined') {
@@ -473,89 +520,32 @@ def load_cyberchef(path: str | None = None):
         globalThis.__piLocaleComparePatched = true;
     }
 
-    if (typeof WebAssembly !== 'undefined') {
-        WebAssembly.compile = function(source) {
-            try {
-                return Promise.resolve(new WebAssembly.Module(source));
-            } catch (error) {
-                return Promise.reject(error);
-            }
-        };
-        WebAssembly.instantiate = function(source, imports) {
-            try {
-                if (source instanceof WebAssembly.Module) {
-                    return Promise.resolve(new WebAssembly.Instance(source, imports));
-                }
-                const module = new WebAssembly.Module(source);
-                return Promise.resolve({
-                    module: module,
-                    instance: new WebAssembly.Instance(module, imports),
-                });
-            } catch (error) {
-                return Promise.reject(error);
-            }
-        };
-    }
-
-    // Timer polyfills (minimal implementation for CyberChef)
-    globalThis.setTimeout = function(fn, ms) {
-        const args = Array.prototype.slice.call(arguments, 2);
-        return globalThis.__piSchedule(globalThis.__piTimers, fn, args);
-    };
-    globalThis.setInterval = function(fn, ms) {
-        const args = Array.prototype.slice.call(arguments, 2);
-        return globalThis.__piSchedule(globalThis.__piTimers, fn, args);
-    };
-    globalThis.setImmediate = function(fn) {
-        const args = Array.prototype.slice.call(arguments, 1);
-        return globalThis.__piSchedule(globalThis.__piNextTicks, fn, args);
-    };
-    globalThis.clearTimeout = function(id) {
-        globalThis.__piCancel(globalThis.__piTimers, id);
-    };
-    globalThis.clearInterval = function(id) {
-        globalThis.__piCancel(globalThis.__piTimers, id);
-    };
-    globalThis.clearImmediate = function(id) {
-        globalThis.__piCancel(globalThis.__piNextTicks, id);
-    };
+    // Setup minimal CommonJS environment
+    globalThis.module = { exports: {} };
     """)
 
-    # Setup minimal CommonJS environment
-    ctx.eval("const module = { exports: {} };")
-
-    # Load and execute CyberChef
+    # Load and execute CyberChef inside the event loop: the bundle schedules
+    # promise jobs at load time, which SpiderMonkey services through asyncio.
     with open(path, "rb") as f:
         source = f.read().decode("utf-8")
-    ctx.eval(source)
-    install_bake_helper(ctx)
+    eval_js(source)
+    install_bake_helper()
 
-    # Extract exports and attach context for later use
-    chef = ctx.eval("module.exports")
-    chef._stpyv8_context = ctx
-    return chef
+    exports = pm.eval("module.exports")
+    return Chef(exports)
 
 
-def convert_js_json_value(value: Any, chef: Any) -> Any:
+def convert_js_json_value(value: Any) -> Any:
     """Convert JSON-like JS values into native Python structures.
 
     Args:
         value: JS value returned by CyberChef.
-        chef: Loaded CyberChef module with an attached STPyV8 context.
 
     Returns:
-        A Python-native JSON value when a JS context is available.
+        A Python-native JSON value.
     """
-    if not chef or not hasattr(chef, "_stpyv8_context"):
-        return value
-
-    ctx = chef._stpyv8_context
-    ctx.locals.json_value = value
-    json_text = ctx.eval("""
-    (function() {
-        return JSON.stringify(json_value);
-    })
-    """)()
+    stringify = _get_js_helper("json_stringify", "(v) => JSON.stringify(v)")
+    json_text = run_js(lambda: stringify(value))
 
     if json_text is None:
         return None
@@ -563,23 +553,19 @@ def convert_js_json_value(value: Any, chef: Any) -> Any:
     return json.loads(json_text)
 
 
-def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberChefFile] | Any:
+def convert_js_file_value(value: Any) -> CyberChefFile | list[CyberChefFile] | Any:
     """Convert CyberChef File values into native Python structures.
 
     Args:
         value: JS File or File[] value returned by CyberChef.
-        chef: Loaded CyberChef module with an attached STPyV8 context.
 
     Returns:
-        A Python file dict or list of file dicts when a JS context is available.
+        A Python file dict or list of file dicts.
     """
-    if not chef or not hasattr(chef, "_stpyv8_context"):
-        return value
-
-    ctx = chef._stpyv8_context
-    ctx.locals.file_value = value
-    file_json = ctx.eval("""
-    (function() {
+    convert = _get_js_helper(
+        "convert_file",
+        """
+    (function(fileValue) {
         const convertFile = function(file) {
             return {
                 name: file && file.name ? String(file.name) : "",
@@ -588,13 +574,15 @@ def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberCh
             };
         };
 
-        if (Array.isArray(file_value)) {
-            return JSON.stringify(file_value.map(convertFile));
+        if (Array.isArray(fileValue)) {
+            return JSON.stringify(fileValue.map(convertFile));
         }
 
-        return JSON.stringify(convertFile(file_value));
+        return JSON.stringify(convertFile(fileValue));
     })
-    """)()
+    """,
+    )
+    file_json = run_js(lambda: convert(value))
     parsed = json.loads(file_json)
 
     if isinstance(parsed, list):
@@ -602,7 +590,7 @@ def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberCh
             {
                 "name": str(item.get("name", "")),
                 "type": str(item.get("type", "")),
-                "data": bytes(item.get("data", [])),
+                "data": bytes(int(b) for b in item.get("data", [])),
             }
             for item in parsed
         ]
@@ -610,8 +598,18 @@ def convert_js_file_value(value: Any, chef: Any) -> CyberChefFile | list[CyberCh
     return {
         "name": str(parsed.get("name", "")),
         "type": str(parsed.get("type", "")),
-        "data": bytes(parsed.get("data", [])),
+        "data": bytes(int(b) for b in parsed.get("data", [])),
     }
+
+
+def _convert_js_array_buffer(value: Any) -> bytes:
+    """Convert a JS ArrayBuffer or typed-array value to Python bytes."""
+    convert = _get_js_helper(
+        "array_buffer_to_json",
+        "(v) => JSON.stringify(Array.from(new Uint8Array(v)))",
+    )
+    array_json = run_js(lambda: convert(value))
+    return bytes(int(b) for b in json.loads(array_json))
 
 
 def _parse_dish_type(raw_type: Any) -> DishType | None:
@@ -632,7 +630,7 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
 
     Args:
         v: Either a Dish object or a native Python type
-        chef: Optional CyberChef module for creating proper Dish instances from bytes
+        chef: Optional Chef instance for creating proper Dish instances from bytes
 
     Returns: Native Python type if input is Dish, Dish dict/instance if input is Python type
     """
@@ -646,6 +644,8 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
         value = v["value"] if isinstance(v, dict) else v.value
 
         if dish_type == DishType.BYTE_ARRAY:
+            if isinstance(value, (bytes, bytearray, memoryview)):
+                return bytes(value)
             if isinstance(value, list) or hasattr(value, "__iter__"):
                 value_list = list(value) if not isinstance(value, list) else value
                 if value_list and isinstance(value_list[0], float):
@@ -664,47 +664,41 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
         elif dish_type == DishType.HTML:
             return str(value)
         elif dish_type == DishType.ARRAY_BUFFER:
-            if isinstance(value, STPyV8.JSObject):
-                if chef and hasattr(chef, "_stpyv8_context"):
-                    ctx = chef._stpyv8_context
-                    ctx.locals.array_buffer_value = value
-                    array_data = ctx.eval("""
-                    (function() {
-                        return Array.from(new Uint8Array(array_buffer_value));
-                    })
-                    """)()
-                    return bytes(list(array_data))
-                else:
-                    return value
-            elif isinstance(value, list) or hasattr(value, "__iter__"):
-                return bytes(list(value))
+            if isinstance(value, (bytes, bytearray, memoryview)):
+                return bytes(value)
+            if isinstance(value, list):
+                return bytes(int(b) for b in value)
+            if isinstance(value, dict) or hasattr(value, "__iter__"):
+                return _convert_js_array_buffer(value)
             return value
         elif dish_type == DishType.BIG_NUMBER:
+            if isinstance(value, (dict, list)):
+                to_string = _get_js_helper("to_string", "(v) => String(v)")
+                return str(run_js(lambda: to_string(value)))
             return str(value)
         elif dish_type == DishType.JSON:
-            if isinstance(value, STPyV8.JSObject):
-                return convert_js_json_value(value, chef)
+            if isinstance(value, (dict, list)):
+                return convert_js_json_value(value)
             return value
-        elif dish_type == DishType.FILE:
-            return convert_js_file_value(value, chef)
-        elif dish_type == DishType.LIST_FILE:
-            return convert_js_file_value(value, chef)
+        elif dish_type == DishType.FILE or dish_type == DishType.LIST_FILE:
+            return convert_js_file_value(value)
         else:
             return value
     else:
         if isinstance(v, bytes):
-            if chef is not None and hasattr(chef, "_stpyv8_context"):
-                byte_list = list(v)
-                byte_json = json.dumps(byte_list)
-                ctx = chef._stpyv8_context
-                dish = ctx.eval(f"""
-                (function() {{
-                    const byteArray = {byte_json};
+            if chef is not None:
+                byte_json = json.dumps(list(v))
+                make_dish = _get_js_helper(
+                    "make_array_buffer_dish",
+                    """
+                (function(bytesJson) {
+                    const byteArray = JSON.parse(bytesJson);
                     const uint8 = new Uint8Array(byteArray);
                     return new module.exports.Dish(uint8.buffer, module.exports.Dish.ARRAY_BUFFER);
-                }})
-                """)()
-                return dish
+                })
+                """,
+                )
+                return run_js(lambda: make_dish(byte_json))
             else:
                 return {"value": list(v), "type": DishType.ARRAY_BUFFER}
         elif isinstance(v, str):
@@ -769,18 +763,20 @@ def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation])
 
     """
     chef = get_chef()
-    ctx = chef._stpyv8_context
 
     if isinstance(input_data, bytes):
-        input_expression = "input_dish"
-        ctx.locals.input_dish = plate(input_data, chef)
+        input_value = plate(input_data, chef)
     else:
-        input_expression = json.dumps(input_data)
+        input_value = input_data
 
     normalised_recipe = normalise_js_recipe(recipe)
     recipe_json = json.dumps(normalised_recipe)
-    result = await_js_promise(ctx, f"module.exports.__piBake({input_expression}, {recipe_json})")
-    return plate(result, chef)  # type: ignore[return-value]
+    bake_fn = _get_js_helper(
+        "pi_bake",
+        "(input, recipeJson) => module.exports.__piBake(input, JSON.parse(recipeJson))",
+    )
+    result = run_js(lambda: bake_fn(input_value, recipe_json))
+    return plate(result, chef)
 
 
 def coerce_string_value(value: Any) -> str:

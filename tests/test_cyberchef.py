@@ -2,7 +2,7 @@ import hashlib
 import json
 import uuid
 
-from ida_cyberchef.cyberchef import DishType, bake, decode_escaped_string, get_chef, plate
+from ida_cyberchef.cyberchef import DishType, bake, decode_escaped_string, eval_js, get_chef, plate
 
 
 def rechef(dish_result, chef):
@@ -199,28 +199,17 @@ def test_bake_empty_recipe():
 
 
 def test_crypto_get_random_values_produces_distinct_random_bytes():
-    chef = get_chef()
-    ctx = chef._stpyv8_context
-    ctx.locals.random_size = 32
+    get_chef()
+    code = """
+    (function() {
+        const values = new Uint8Array(32);
+        crypto.getRandomValues(values);
+        return JSON.stringify(Array.from(values));
+    })()
+    """
 
-    first = json.loads(
-        ctx.eval("""
-        (function() {
-            const values = new Uint8Array(random_size);
-            crypto.getRandomValues(values);
-            return JSON.stringify(Array.from(values));
-        })()
-        """)
-    )
-    second = json.loads(
-        ctx.eval("""
-        (function() {
-            const values = new Uint8Array(random_size);
-            crypto.getRandomValues(values);
-            return JSON.stringify(Array.from(values));
-        })()
-        """)
-    )
+    first = json.loads(eval_js(code))
+    second = json.loads(eval_js(code))
 
     assert len(first) == 32
     assert len(second) == 32

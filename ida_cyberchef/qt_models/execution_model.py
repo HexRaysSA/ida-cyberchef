@@ -1,15 +1,15 @@
 """Qt model for coordinating recipe execution with debouncing.
 
-IMPORTANT: All execution happens in the main thread due to STPyV8 thread-safety
-limitations. STPyV8 (the JavaScript engine used by PythonMonkey to execute
-CyberChef operations) is not thread-safe and will segfault if called from a
-background thread.
+IMPORTANT: All execution happens in the main thread. PythonMonkey (the
+SpiderMonkey-based JavaScript engine used to execute CyberChef operations)
+offers no thread-safety guarantees, and the bridge drives promise resolution
+through a private asyncio event loop that must only be entered from one
+thread.
 
 If future versions migrate to a thread-safe JavaScript engine, background
 execution can be implemented using QThread workers.
 """
 
-from typing import Dict, List, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -22,7 +22,7 @@ from ida_cyberchef.qt_models.recipe_model import RecipeModel
 class ExecutionModel(QObject):
     """Coordinates pipeline execution with debouncing.
 
-    All CyberChef operations execute in the main thread due to STPyV8
+    All CyberChef operations execute in the main thread due to JS engine
     thread-safety constraints. Debouncing (default 100ms) prevents excessive
     executions when users rapidly change input or recipe.
     """
@@ -42,8 +42,8 @@ class ExecutionModel(QObject):
         self._recipe_model = recipe_model
         self._executor = RecipeExecutor()
 
-        self._results: List[StepResult] = []
-        self._preview_results: Dict[int, StepResult] = {}
+        self._results: list[StepResult] = []
+        self._preview_results: dict[int, StepResult] = {}
 
         self._debounce_timer = QTimer(self)
         self._debounce_timer.setSingleShot(True)
@@ -58,7 +58,7 @@ class ExecutionModel(QObject):
         self._debounce_timer.start()
 
     def _execute_pipeline(self):
-        """Execute pipeline (in main thread due to STPyV8 limitations)."""
+        """Execute pipeline (in main thread due to JS engine limitations)."""
         if self._input_model.get_parse_error() is not None:
             self._results = []
             self.execution_completed.emit()
@@ -86,10 +86,10 @@ class ExecutionModel(QObject):
 
         self.execution_completed.emit()
 
-    def get_results(self) -> List[StepResult]:
+    def get_results(self) -> list[StepResult]:
         """Get results from last execution."""
         return self._results.copy()
 
-    def get_final_result(self) -> Optional[StepResult]:
+    def get_final_result(self) -> StepResult | None:
         """Get final result (last successful step or first error)."""
         return self._results[-1] if self._results else None

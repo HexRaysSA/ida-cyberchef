@@ -35,10 +35,25 @@ BRAILLE_DOT6 = "⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔�
 UPSTREAM_BUG_XFAILS = {
     "mime_decoding_base64_encoded_word": ("UTF-8 encoded word decoded incorrectly after upstream update to v10.22.1"),
     "jwt_sign_hs256_fixed_iat_payload": (
-        "Unsupported in the current STPyV8 runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
+        "Unsupported in the current JS runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
     ),
     "jwt_verify_static_hs256_token": (
-        "Unsupported in the current STPyV8 runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
+        "Unsupported in the current JS runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
+    ),
+    # The upstream Alice test key's encryption subkey expired on 2026-05-27,
+    # so kbpgp discards it at import time and decryption/verification of the
+    # stored upstream ciphertexts fails ("We don't have a key for the
+    # requested PGP ops"). Fresh encrypt/decrypt roundtrips still pass because
+    # they fall back to the primary key on both sides. Verified engine-independent
+    # (fails identically under Node.js/V8 and SpiderMonkey).
+    "pgp_decrypt_upstream_ascii_ciphertext": (
+        "upstream PGP fixture key expired 2026-05-27; subkey discarded at import"
+    ),
+    "pgp_verify_upstream_ascii_signed_message": (
+        "upstream PGP fixture key expired 2026-05-27; subkey discarded at import"
+    ),
+    "pgp_decrypt_and_verify_upstream_utf8_message": (
+        "upstream PGP fixture key expired 2026-05-27; subkey discarded at import"
     ),
 }
 
@@ -1577,7 +1592,7 @@ def build_xxtea_encrypt_bytes(data: bytes, key: bytes) -> bytes:
     z_value = words[last_index]
     sum_value = 0
 
-    for _ in range((6 + (52 // word_count))):
+    for _ in range(6 + (52 // word_count)):
         sum_value = (sum_value + delta) & 0xFFFFFFFF
         e_value = (sum_value >> 2) & 3
 
@@ -6043,10 +6058,10 @@ EXTRACTOR_VECTORS = [
 
 FLOW_CONTROL_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="magic_raises_typeerror_under_stpyv8_runtime",
+        name="magic_raises_typeerror_under_pythonmonkey_runtime",
         input_data=b"hello",
         recipe=["Magic"],
-        error_message="TypeError: Cannot read properties of undefined (reading 'undefined')",
+        error_message='TypeError: can\'t access property "undefined", state.opList is undefined',
     ),
 ]
 
@@ -6275,7 +6290,7 @@ FORENSICS_VECTORS = [
 
 FORENSICS_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="yara_rules_simple_match_times_out_under_stpyv8",
+        name="yara_rules_simple_match_times_out_in_headless_runtime",
         input_data=b"foobar foobar",
         recipe=[
             {
@@ -6329,7 +6344,7 @@ MULTIMEDIA_BLOCKED_VECTORS = [
 
 HASH_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="argon2_default_hash_times_out_under_stpyv8",
+        name="argon2_default_hash_times_out_in_headless_runtime",
         input_data="argon2password",
         recipe=[
             {
@@ -6348,7 +6363,7 @@ HASH_BLOCKED_VECTORS = [
         error_message="Timed out waiting for CyberChef promise to settle",
     ),
     BlockedBakeVector(
-        name="argon2_compare_known_hash_times_out_under_stpyv8",
+        name="argon2_compare_known_hash_times_out_in_headless_runtime",
         input_data="argon2password",
         recipe=[
             {
@@ -6364,13 +6379,13 @@ HASH_BLOCKED_VECTORS = [
 
 NETWORK_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="dns_over_https_default_reference_error_under_stpyv8",
+        name="dns_over_https_requires_fetch_api",
         input_data="example.com",
         recipe=["DNS over HTTPS"],
-        error_message="ReferenceError: URL is not defined",
+        error_message="ReferenceError: fetch is not defined",
     ),
     BlockedBakeVector(
-        name="http_request_requires_xmlhttprequest_under_stpyv8",
+        name="http_request_requires_xmlhttprequest",
         input_data="body",
         recipe=[
             {
@@ -11307,14 +11322,14 @@ def assert_html_to_text_preserves_raw_parse_ipv4_markup(result: object) -> None:
 
 
 def extract_js_string_constant(source: str, name: str) -> str:
-    match = re.search(rf'export const {re.escape(name)} = "(.*?)";', source, re.S)
+    match = re.search(rf'export const {re.escape(name)} = "(.*?)";', source, re.DOTALL)
     if not match:
         raise ValueError(f"Could not find JS string constant {name}")
     return match.group(1)
 
 
 def extract_js_template_constant(source: str, name: str) -> str:
-    match = re.search(rf"const {re.escape(name)} = `(.*?)`;", source, re.S)
+    match = re.search(rf"const {re.escape(name)} = `(.*?)`;", source, re.DOTALL)
     if not match:
         raise ValueError(f"Could not find JS template constant {name}")
     return match.group(1)
@@ -11324,7 +11339,7 @@ def extract_pgp_case_input(source: str, case_name: str) -> str:
     match = re.search(
         rf'name: "{re.escape(case_name)}",\s*input: `(.*?)`,\s*expectedOutput:',
         source,
-        re.S,
+        re.DOTALL,
     )
     if not match:
         raise ValueError(f"Could not find PGP case input {case_name}")
@@ -11335,7 +11350,7 @@ def extract_pgp_case_expected_literal(source: str, case_name: str) -> str:
     match = re.search(
         rf'name: "{re.escape(case_name)}",\s*input: `.*?`,\s*expectedOutput: `(.*?)`,\s*recipeConfig:',
         source,
-        re.S,
+        re.DOTALL,
     )
     if not match:
         raise ValueError(f"Could not find literal expected output for PGP case {case_name}")
@@ -11464,7 +11479,7 @@ def assert_generated_pgp_key_pair(result: object) -> None:
     blocks = re.findall(
         r"-----BEGIN PGP (?:PRIVATE|PUBLIC) KEY BLOCK-----.*?-----END PGP (?:PRIVATE|PUBLIC) KEY BLOCK-----",
         result,
-        flags=re.S,
+        flags=re.DOTALL,
     )
     assert len(blocks) == 2
     private_key = next(block for block in blocks if "PRIVATE" in block)

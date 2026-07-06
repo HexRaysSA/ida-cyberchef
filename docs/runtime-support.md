@@ -1,6 +1,6 @@
 # Runtime support
 
-This project ships CyberChef through an STPyV8-backed runtime inside Python and Qt. Most offline operations work. Some classes of operations are intentionally unsupported in the current runtime, and some remain known gaps.
+This project ships CyberChef through a PythonMonkey (SpiderMonkey) runtime inside Python and Qt. Most offline operations work. Some classes of operations are intentionally unsupported in the current runtime, and some remain known gaps.
 
 ## Supported model
 
@@ -39,7 +39,7 @@ These operations remain unsupported in the current runtime and should be documen
 - Argon2 compare
 
 Reasons:
-- JWT Sign and JWT Verify depend on jsonwebtoken paths that expect Node crypto KeyObject APIs. The current STPyV8 runtime ships a crypto-browserify compatibility layer instead, so signing and verification fail at runtime. JWT Decode remains supported because it only parses the token.
+- JWT Sign and JWT Verify depend on jsonwebtoken paths that expect Node crypto KeyObject APIs. The current runtime ships a crypto-browserify compatibility layer instead, so signing and verification fail at runtime. JWT Decode remains supported because it only parses the token.
 
 They may stay discoverable in internal metadata, but user-facing docs should describe them as unsupported.
 

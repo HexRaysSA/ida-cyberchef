@@ -21,7 +21,7 @@ This project eliminates that workflow. It embeds CyberChef's data transforms dir
 
 ## How it works
 
-We use [STPyV8](https://github.com/area1/stpyv8) to run CyberChef's JavaScript code inside Python. The `ida_cyberchef.cyberchef` module loads CyberChef's bundle, sets up polyfills for browser/Node.js APIs it expects, and exposes a clean `bake()` function that takes binary data and a recipe.
+We use [PythonMonkey](https://github.com/Distributive-Network/PythonMonkey) (SpiderMonkey, Firefox's JS engine) to run CyberChef's JavaScript code inside Python. The `ida_cyberchef.cyberchef` module loads CyberChef's bundle, sets up polyfills for browser/Node.js APIs it expects, and exposes a clean `bake()` function that takes binary data and a recipe.
 
 Then, we have a PySide6 Qt widget that exposes the recipe composer with the input/output hex dumps. The UI updates reactively - change the input or tweak an operation argument, and after a brief debounce, the entire pipeline re-executes and updates the output.
 
@@ -71,7 +71,7 @@ ln -s (pwd) ~/.idapro/plugins/ida-cyberchef
 You'll also want to install the dependencies into your IDA Pro Python virtual environment, something like:
 
 ```
-~/.idapro/venv/bin/python -m pip install STPyV8 pydantic
+~/.idapro/venv/bin/python -m pip install pythonmonkey pydantic
 ```
 
 Also, you can run the standalone QApplication (outside of IDA Pro) like this:
@@ -82,9 +82,9 @@ uv run cyberchef-qt
 
 ## Future Work
 
-I'm not quite sure if this will survive or not - I started out to prove this could work, and then was surprised when things fell into place. The architecture is a little ugly: running V8 from Python inside IDA to load a huge blob from GCHQ. But, it works, and we benefit from the operations already supported by CyberChef. So, if you want to propose enhancements and bug fixes, go for it!
+I'm not quite sure if this will survive or not - I started out to prove this could work, and then was surprised when things fell into place. The architecture is a little ugly: running SpiderMonkey from Python inside IDA to load a huge blob from GCHQ. But, it works, and we benefit from the operations already supported by CyberChef. So, if you want to propose enhancements and bug fixes, go for it!
 
-There's some risk that the underlying Javascript engine (STPyV8, though I also worked with PythonMonkey) might become unmaintained or not build/work with future versions of Python or IDA Pro. That'll be a good time to re-evaluate the best parts of ida-cyberchef and perhaps rebuild them carefully.
+There's some risk that the underlying Javascript engine (PythonMonkey now; STPyV8 previously, until it was archived in 2026) might become unmaintained or not build/work with future versions of Python or IDA Pro. That'll be a good time to re-evaluate the best parts of ida-cyberchef and perhaps rebuild them carefully.
 
 ## License
 

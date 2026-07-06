@@ -243,7 +243,7 @@ e.g. `fe023da5`
 
 **Module:** Image
 
-**Support:** Unsupported in the current STPyV8 runtime. Requires browser-style asset loading that this project does not provide.
+**Support:** Unsupported in the current JS runtime. Requires browser-style asset loading that this project does not provide.
 
 Adds text onto an image.
 
@@ -380,7 +380,7 @@ Tries to determine information about a given hash and suggests which algorithm m
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current STPyV8 runtime.
+**Support:** Unsupported in the current JS runtime.
 
 Argon2 is a key derivation function that was selected as the winner of the Password Hashing Competition in July 2015. It was designed by Alex Biryukov, Daniel Dinu, and Dmitry Khovratovich from the University of Luxembourg.
 
@@ -409,7 +409,7 @@ Enter the password in the input to generate its hash.
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current STPyV8 runtime.
+**Support:** Unsupported in the current JS runtime.
 
 Tests whether the input matches the given Argon2 hash. To test multiple possible passwords, use the 'Fork' operation.
 
@@ -1757,7 +1757,7 @@ Padding: In CBC and ECB mode, PKCS#7 padding will be used.
 
 **Module:** Default
 
-**Support:** Unsupported in the current STPyV8 runtime. Requires browser-style request APIs and live network access.
+**Support:** Unsupported in the current JS runtime. Requires browser-style request APIs and live network access.
 
 Takes a single domain name and performs a DNS lookup using DNS over HTTPS.
 
@@ -4347,7 +4347,7 @@ Converts an HTML output from an operation to a readable string instead of being 
 
 **Module:** Default
 
-**Support:** Unsupported in the current STPyV8 runtime. Requires browser-style request APIs and live network access.
+**Support:** Unsupported in the current JS runtime. Requires browser-style request APIs and live network access.
 
 Makes an HTTP request and returns the response.
 
@@ -4827,7 +4827,7 @@ Decodes a JSON Web Token without checking whether the provided secret / private 
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current STPyV8 runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
+**Support:** Unsupported in the current JS runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
 
 Signs a JSON object as a JSON Web Token using a provided secret / private key.
 
@@ -4852,7 +4852,7 @@ The key should be either the secret for HMAC algorithms or the PEM-encoded priva
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current STPyV8 runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
+**Support:** Unsupported in the current JS runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
 
 Verifies that a JSON Web Token is valid and has been signed with the provided secret / private key.
 
@@ -4875,7 +4875,7 @@ The key should be either the secret for HMAC algorithms or the PEM-encoded publi
 
 **Module:** Code
 
-**Support:** Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.
+**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
 
 Parses and pretty prints valid JavaScript code. Also works with JavaScript Object Notation (JSON).
 
@@ -4897,7 +4897,7 @@ Parses and pretty prints valid JavaScript code. Also works with JavaScript Objec
 
 **Module:** Code
 
-**Support:** Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.
+**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
 
 Compresses JavaScript code.
 
@@ -4913,7 +4913,7 @@ Compresses JavaScript code.
 
 **Module:** Code
 
-**Support:** Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.
+**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
 
 Returns an Abstract Syntax Tree for valid JavaScript code.
 
@@ -5412,7 +5412,7 @@ Enables the decoding of MIME message header extensions for non-ASCII text
 
 **Module:** Default
 
-**Support:** Unsupported in the current STPyV8 runtime.
+**Support:** Unsupported in the current JS runtime.
 
 The Magic operation attempts to detect various properties of the input data and suggests which operations could help to make more sense of it.
 
@@ -5734,7 +5734,7 @@ Compares multiple inputs (separated by the specified delimiter) and highlights m
 
 **Module:** OCR
 
-**Support:** Unsupported in the current STPyV8 runtime. Requires browser workers and OCR assets that this project does not provide.
+**Support:** Unsupported in the current JS runtime. Requires browser workers and OCR assets that this project does not provide.
 
 Optical character recognition or optical character reader (OCR) is the mechanical or electronic conversion of images of typed, handwritten or printed text into machine-encoded text.
 
@@ -8173,7 +8173,7 @@ Calculates the symmetric difference of two sets.
 
 **Module:** Code
 
-**Support:** Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.
+**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
 
 Adds syntax highlighting to a range of source code languages. Note that this will not indent the code. Use one of the 'Beautify' operations for that.
 
@@ -9826,7 +9826,7 @@ Convert YAML to JSON
 
 **Module:** Yara
 
-**Support:** Unsupported in the current STPyV8 runtime.
+**Support:** Unsupported in the current JS runtime.
 
 YARA is a tool developed at VirusTotal, primarily aimed at helping malware researchers to identify and classify malware samples. It matches based on rules specified by the user containing textual or binary patterns and a boolean expression. For help on writing rules, see the YARA documentation.
 

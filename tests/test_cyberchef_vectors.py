@@ -29,8 +29,8 @@ MISSING_OPERATIONS = {
     "Public Key from Private Key",
 }
 
-# These tests are expected failures due to known limitations of the STPyV8-backed
-# runtime. Each entry documents why the test cannot pass in the current bridge.
+# These tests are expected failures due to known limitations of the current
+# JS-engine-backed runtime. Each entry documents why the test cannot pass in the current bridge.
 #
 # To check whether a failure is still expected, remove the entry and run the test.
 XFAIL_EXACT = {
@@ -69,22 +69,22 @@ XFAIL_EXACT = {
     # outside the bounds of the DataView" while the test expects "Error: Could not
     # parse". Same error scenario, different message from the msgpack library.
     "From MessagePack: no content": "V8 msgpack throws different error message than upstream test expects",
-    # --- JWT operations broken in STPyV8 ---
-    # The jsonwebtoken library used by JWT Sign/Verify fails in the headless V8
-    # environment provided by STPyV8 — likely missing crypto primitives.
-    "JWT Sign: HS256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: HS256 with custom header": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: HS384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: HS512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: ES256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: ES384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: ES512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: RS256": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: RS384": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Sign: RS512": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Verify: HS": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Verify: RS": "jsonwebtoken library fails in STPyV8 headless V8 environment",
-    "JWT Verify: ES": "jsonwebtoken library fails in STPyV8 headless V8 environment",
+    # --- JWT operations broken in the headless runtime ---
+    # The jsonwebtoken library used by JWT Sign/Verify fails in the headless JS
+    # environment — the crypto-browserify layer lacks Node crypto KeyObject APIs.
+    "JWT Sign: HS256": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: HS256 with custom header": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: HS384": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: HS512": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: ES256": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: ES384": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: ES512": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: RS256": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: RS384": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Sign: RS512": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Verify: HS": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Verify: RS": "jsonwebtoken library fails in the headless JS environment",
+    "JWT Verify: ES": "jsonwebtoken library fails in the headless JS environment",
 }
 
 XFAIL_MATCH = {

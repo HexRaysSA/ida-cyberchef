@@ -29,24 +29,7 @@ EXCLUDED_ATTRIBUTES = {
 }
 
 
-def extract_js_value(ctx: Any, js_expression: str) -> Any:
-    """Return a JS value as native Python data."""
-    js_type = ctx.eval(f"typeof ({js_expression})")
-
-    if js_type in {"string", "number", "boolean"}:
-        return ctx.eval(js_expression)
-    if js_type == "undefined" or ctx.eval(f"({js_expression}) === null"):
-        return None
-
-    try:
-        json_text = ctx.eval(f"JSON.stringify({js_expression})")
-    except Exception:
-        return None
-
-    return json.loads(json_text) if json_text else None
-
-
-def extract_operation_metadata(chef: Any, ctx: Any, op_attr_name: str) -> OperationMetadata | None:
+def extract_operation_metadata(chef: Any, op_attr_name: str) -> OperationMetadata | None:
     """Extract metadata for one operation attribute."""
     try:
         help_result = chef.help(op_attr_name)
@@ -60,51 +43,30 @@ def extract_operation_metadata(chef: Any, ctx: Any, op_attr_name: str) -> Operat
     if not help_result or len(help_result) == 0:
         return None
 
-    ctx.locals.help_result = help_result
-    ctx.locals.item_index = 0
+    item = cyberchef.convert_js_json_value(help_result[0])
+    if not item:
+        return None
 
-    args_length = ctx.eval("help_result[item_index].args ? help_result[item_index].args.length : 0")
     operation: OperationMetadata = {
-        "name": ctx.eval("help_result[item_index].name") or op_attr_name,
-        "module": ctx.eval("help_result[item_index].module") or "Unknown",
-        "description": ctx.eval("help_result[item_index].description") or "",
-        "infoURL": ctx.eval("help_result[item_index].infoURL") or None,
-        "inputType": ctx.eval("help_result[item_index].inputType") or "string",
-        "outputType": ctx.eval("help_result[item_index].outputType") or "string",
+        "name": item.get("name") or op_attr_name,
+        "module": item.get("module") or "Unknown",
+        "description": item.get("description") or "",
+        "infoURL": item.get("infoURL") or None,
+        "inputType": item.get("inputType") or "string",
+        "outputType": item.get("outputType") or "string",
         "args": [],
     }
 
-    for index in range(args_length):
-        ctx.locals.arg_index = index
+    for raw_arg in item.get("args") or []:
         arg: OperationMetadata = {
-            "name": ctx.eval("help_result[item_index].args[arg_index].name") or "",
-            "type": ctx.eval("help_result[item_index].args[arg_index].type") or "string",
-            "value": extract_js_value(ctx, "help_result[item_index].args[arg_index].value") or "",
+            "name": raw_arg.get("name") or "",
+            "type": raw_arg.get("type") or "string",
+            "value": raw_arg.get("value") if raw_arg.get("value") is not None else "",
         }
 
-        if ctx.eval("help_result[item_index].args[arg_index].toggleValues !== undefined"):
-            toggle_values = extract_js_value(
-                ctx,
-                "help_result[item_index].args[arg_index].toggleValues",
-            )
-            if toggle_values is not None:
-                arg["toggleValues"] = toggle_values
-
-        if ctx.eval("help_result[item_index].args[arg_index].defaultIndex !== undefined"):
-            default_index = extract_js_value(
-                ctx,
-                "help_result[item_index].args[arg_index].defaultIndex",
-            )
-            if default_index is not None:
-                arg["defaultIndex"] = default_index
-
-        if ctx.eval("help_result[item_index].args[arg_index].target !== undefined"):
-            target = extract_js_value(
-                ctx,
-                "help_result[item_index].args[arg_index].target",
-            )
-            if target is not None:
-                arg["target"] = target
+        for optional_field in ("toggleValues", "defaultIndex", "target"):
+            if raw_arg.get(optional_field) is not None:
+                arg[optional_field] = raw_arg[optional_field]
 
         operation["args"].append(arg)
 
@@ -167,9 +129,10 @@ def introspect_operations() -> dict[str, list[OperationMetadata]]:
     """Introspect CyberChef operations through the runtime API."""
     print("Loading CyberChef...", file=sys.stderr)
     chef = cyberchef.get_chef()
-    ctx = chef._stpyv8_context
 
-    operation_names = [name for name in dir(chef) if not name.startswith("_") and name not in EXCLUDED_ATTRIBUTES]
+    operation_names = [
+        name for name in chef.operation_names() if not name.startswith("_") and name not in EXCLUDED_ATTRIBUTES
+    ]
     print(f"Discovering {len(operation_names)} exported operation attributes...", file=sys.stderr)
 
     operations: list[OperationMetadata] = []
@@ -179,7 +142,7 @@ def introspect_operations() -> dict[str, list[OperationMetadata]]:
         if index % 50 == 0:
             print(f"  Progress: {index}/{len(operation_names)}", file=sys.stderr)
 
-        operation = extract_operation_metadata(chef, ctx, op_name)
+        operation = extract_operation_metadata(chef, op_name)
         if operation is None:
             failed_count += 1
             continue

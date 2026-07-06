@@ -9,7 +9,7 @@
     "categories": [
       "ui-ux-and-visualization"
     ],
-    "pythonDependencies": ["pydantic>=2", "STPyV8"],
+    "pythonDependencies": ["pydantic>=2", "pythonmonkey>=1.3.2"],
     "urls": {
       "repository": "https://github.com/HexRaysSA/ida-cyberchef"
     },

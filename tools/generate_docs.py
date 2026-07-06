@@ -13,20 +13,20 @@ ROOT = Path(__file__).parent.parent
 SCHEMA_PATH = ROOT / "ida_cyberchef" / "data" / "operation_schema.json"
 DOCS_PATH = ROOT / "docs" / "ops.md"
 UNSUPPORTED_OPERATION_NOTES = {
-    "JavaScript Beautify": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
-    "JavaScript Minify": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
-    "JavaScript Parser": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
-    "Syntax highlighter": "Unsupported in the current STPyV8 runtime. Excluded by the current Node-targeted bundle.",
-    "DNS over HTTPS": "Unsupported in the current STPyV8 runtime. Requires browser-style request APIs and live network access.",
-    "HTTP request": "Unsupported in the current STPyV8 runtime. Requires browser-style request APIs and live network access.",
-    "Optical Character Recognition": "Unsupported in the current STPyV8 runtime. Requires browser workers and OCR assets that this project does not provide.",
-    "Add Text To Image": "Unsupported in the current STPyV8 runtime. Requires browser-style asset loading that this project does not provide.",
-    "JWT Sign": "Unsupported in the current STPyV8 runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.",
-    "JWT Verify": "Unsupported in the current STPyV8 runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.",
-    "Magic": "Unsupported in the current STPyV8 runtime.",
-    "YARA Rules": "Unsupported in the current STPyV8 runtime.",
-    "Argon2": "Unsupported in the current STPyV8 runtime.",
-    "Argon2 compare": "Unsupported in the current STPyV8 runtime.",
+    "JavaScript Beautify": "Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.",
+    "JavaScript Minify": "Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.",
+    "JavaScript Parser": "Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.",
+    "Syntax highlighter": "Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.",
+    "DNS over HTTPS": "Unsupported in the current JS runtime. Requires browser-style request APIs and live network access.",
+    "HTTP request": "Unsupported in the current JS runtime. Requires browser-style request APIs and live network access.",
+    "Optical Character Recognition": "Unsupported in the current JS runtime. Requires browser workers and OCR assets that this project does not provide.",
+    "Add Text To Image": "Unsupported in the current JS runtime. Requires browser-style asset loading that this project does not provide.",
+    "JWT Sign": "Unsupported in the current JS runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.",
+    "JWT Verify": "Unsupported in the current JS runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.",
+    "Magic": "Unsupported in the current JS runtime.",
+    "YARA Rules": "Unsupported in the current JS runtime.",
+    "Argon2": "Unsupported in the current JS runtime.",
+    "Argon2 compare": "Unsupported in the current JS runtime.",
 }
 
 

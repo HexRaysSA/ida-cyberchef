@@ -12,7 +12,7 @@
 ### Runtime package
 
 - `ida_cyberchef/__init__.py`: package exports. Qt objects are imported lazily so non-Qt tests can run without GUI dependencies.
-- `ida_cyberchef/cyberchef.py`: STPyV8 integration and recipe execution entrypoints.
+- `ida_cyberchef/cyberchef.py`: PythonMonkey (SpiderMonkey) integration and recipe execution entrypoints.
 - `ida_cyberchef/cyberchef_widget.py`: top-level Qt widget wiring the whole UI together.
 - `ida_cyberchef/main.py`: standalone Qt app entrypoint.
 - `ida_cyberchef/plugin/__init__.py`: IDA plugin entrypoint.
@@ -44,7 +44,7 @@
 
 ### Data and generated artifacts
 
-- `ida_cyberchef/data/CyberChef.js`: built CyberChef bundle loaded by STPyV8.
+- `ida_cyberchef/data/CyberChef.js`: built CyberChef bundle loaded by PythonMonkey.
 - `ida_cyberchef/data/operation_schema.json`: generated operation metadata used by the UI and tests.
 - `docs/ops.md`: rendered operation reference.
 
@@ -80,7 +80,7 @@ Qt tests:
 
 - Qt tests are disabled by default in pytest config.
 - Use `IDA_CYBERCHEF_ENABLE_QT_TESTS=1 .venv/bin/python tools/run_pytest.py` to re-enable Qt collection and load `pytest-qt`.
-- Default non-Qt test runs exercise the real STPyV8-backed CyberChef engine.
+- Default non-Qt test runs exercise the real PythonMonkey-backed CyberChef engine.
 
 ## Practical workflow
 
@@ -97,5 +97,5 @@ Qt tests:
 - `docs/ops.md` uses upstream JS method names such as ``cartesianProduct()`` while the schema and recipes use user-facing names such as `Cartesian Product`. Search both styles when cross-referencing docs and source.
 - Do not trust default arguments blindly when verifying operations through `bake()`. Explicit recipe args were required to exercise `Cartesian Product` correctly with newline delimiters during test work.
 - Arithmetic operations like `Divide`, `Mean`, `Median`, and `Multiply` return CyberChef `BigNumber` objects internally. The Python bridge now converts `DishType.BIG_NUMBER` to `str`; if similar JS object leaks reappear, inspect `plate()` first.
-- When a result unexpectedly comes back as an STPyV8 object, first determine whether the issue is argument mapping, a missing `plate()` conversion, or a genuine upstream engine behavior.
+- When a result unexpectedly comes back as a JS proxy object, first determine whether the issue is argument mapping, a missing `plate()` conversion, or a genuine upstream engine behavior.
 - The `Median` upstream implementation in `deps/CyberChef/src/core/lib/Arithmetic.mjs` only sorts even-length inputs before taking the middle value. Treat odd-length median cases carefully until that behavior is confirmed or fixed.
