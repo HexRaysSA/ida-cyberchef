@@ -91,7 +91,7 @@ def deduplicate_operations(operations: list[OperationMetadata]) -> list[Operatio
 
 def extract_categories_and_favorites(categories_json_path: Path) -> dict[str, Any]:
     """Extract category and favourites data from CyberChef Categories.json."""
-    categories_data = json.loads(categories_json_path.read_text())
+    categories_data = json.loads(categories_json_path.read_text(encoding="utf-8"))
     categories: dict[str, str] = {}
     favorites: list[str] = []
 

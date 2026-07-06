@@ -176,9 +176,8 @@ class OperationStepWidget(QFrame):
 
     def _populate_args_grid(self):
         """Populate grid with argument widgets and labels."""
-        row = 0  # Start at row 0 (same row as operation name)
-
-        for arg in self._operation.get("args", []):
+        # row 0 is shared with the operation name
+        for row, arg in enumerate(self._operation.get("args", [])):
             arg_type = arg.arg_type
             arg_name = arg.name
 
@@ -240,7 +239,6 @@ class OperationStepWidget(QFrame):
                 row_widgets = [label, widget]
 
             self._arg_row_widgets[arg_name] = row_widgets
-            row += 1
 
         self._update_all_arg_selector_visibility()
 

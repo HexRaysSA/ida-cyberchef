@@ -2,7 +2,6 @@
 
 import logging
 from enum import IntEnum
-from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
 
@@ -42,12 +41,12 @@ class InputModel(QObject):
         self._source = InputSource.MANUAL
         self._format = InputFormat.TEXT_UTF8
         self._manual_text = ""
-        self._external_data: Optional[bytes] = None
-        self._external_address: Optional[int] = None
+        self._external_data: bytes | None = None
+        self._external_address: int | None = None
 
-        self._location_address: Optional[int] = None
-        self._location_length: Optional[int] = None
-        self._location_data: Optional[bytes] = None
+        self._location_address: int | None = None
+        self._location_length: int | None = None
+        self._location_data: bytes | None = None
 
         self._parser = InputParser()
         self._manual_parse_result = self._parser.parse(self._manual_text, self._format)
@@ -91,7 +90,7 @@ class InputModel(QObject):
         """Get current manual input text."""
         return self._manual_text
 
-    def set_external_data(self, data: bytes, address: Optional[int] = None):
+    def set_external_data(self, data: bytes, address: int | None = None):
         """Set external input data (from cursor/selection).
 
         Args:
@@ -108,7 +107,7 @@ class InputModel(QObject):
         self._external_address = None
         self.input_changed.emit()
 
-    def get_external_address(self) -> Optional[int]:
+    def get_external_address(self) -> int | None:
         """Get the address where external data came from.
 
         Returns: Address if set, None otherwise
@@ -117,7 +116,7 @@ class InputModel(QObject):
             return self._location_address
         return self._external_address
 
-    def get_input_bytes(self) -> Optional[bytes]:
+    def get_input_bytes(self) -> bytes | None:
         """Get current input as bytes based on source and format.
 
         Returns: Input bytes, or None if parsing fails
@@ -129,7 +128,7 @@ class InputModel(QObject):
         else:
             return self._external_data
 
-    def get_parse_error(self) -> Optional[str]:
+    def get_parse_error(self) -> str | None:
         """Get the current visible parse error for manual input, if any."""
         if self._source != InputSource.MANUAL:
             return None
@@ -160,11 +159,10 @@ class InputModel(QObject):
                     )
                     self._location_data = b""
             except Exception:
-                logger.error(
+                logger.exception(
                     "failed to read %d bytes at 0x%x",
                     length,
                     address,
-                    exc_info=True,
                 )
                 self._location_data = b""
         else:
@@ -173,15 +171,15 @@ class InputModel(QObject):
         self.location_params_changed.emit(address, length)
         self.input_changed.emit()
 
-    def get_location_address(self) -> Optional[int]:
+    def get_location_address(self) -> int | None:
         """Get location address (only valid when source == FROM_LOCATION)."""
         return self._location_address
 
-    def get_location_length(self) -> Optional[int]:
+    def get_location_length(self) -> int | None:
         """Get location length (only valid when source == FROM_LOCATION)."""
         return self._location_length
 
-    def _emit_parse_error_if_changed(self, previous_error: Optional[str]) -> None:
+    def _emit_parse_error_if_changed(self, previous_error: str | None) -> None:
         """Emit parse_error_changed when the visible parse error changes."""
         current_error = self.get_parse_error()
         if current_error != previous_error:

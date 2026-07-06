@@ -1,7 +1,5 @@
 """Recipe panel widget for managing recipe steps."""
 
-from typing import List
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 
@@ -55,7 +53,7 @@ class RecipePanel(QWidget):
         self._execution_model = execution_model
         self._registry = registry
 
-        self._step_widgets: List[OperationStepWidget] = []
+        self._step_widgets: list[OperationStepWidget] = []
 
         self._setup_ui()
         self._connect_signals()

@@ -98,7 +98,7 @@ def normalise_operation_view_model(
         operation_args.append(
             normalise_argument_view_model(
                 arg,
-                saved_args[arg["name"]] if arg["name"] in saved_args else _MISSING,
+                saved_args.get(arg["name"], _MISSING),
             )
         )
     operation_view["args"] = operation_args

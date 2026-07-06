@@ -11153,7 +11153,7 @@ def build_entropy_value(value: bytes) -> float:
         if count == 0:
             continue
         probability = count / len(value)
-        entropy -= probability * (math.log(probability, 2))
+        entropy -= probability * (math.log2(probability))
 
     return entropy
 

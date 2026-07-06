@@ -18,7 +18,7 @@ def input_panel_with_ida(qtbot, monkeypatch):
 
 
 def test_input_panel_has_from_location_radio(input_panel_with_ida):
-    panel, model = input_panel_with_ida
+    panel, _model = input_panel_with_ida
     assert panel._location_radio is not None
     assert panel._location_radio.text() == "From Location"
 
@@ -26,7 +26,7 @@ def test_input_panel_has_from_location_radio(input_panel_with_ida):
 def test_input_panel_shows_location_widget_when_from_location_selected(
     input_panel_with_ida,
 ):
-    panel, model = input_panel_with_ida
+    panel, _model = input_panel_with_ida
     assert panel._location_widget is not None
     assert not panel._location_widget.isVisible()
 

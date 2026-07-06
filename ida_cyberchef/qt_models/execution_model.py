@@ -10,7 +10,6 @@ If future versions migrate to a thread-safe JavaScript engine, background
 execution can be implemented using QThread workers.
 """
 
-
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from ida_cyberchef.core.output_model import typed_output_from_value

@@ -43,7 +43,10 @@ fix = true
 [tool.ruff.lint]
 preview = true
 extend-select = ["PLW1514"]  # unspecified-encoding
-ignore = ["UP012"]  # allow explicit str.encode("utf-8") for clarity
+ignore = [
+    "UP012",   # allow explicit str.encode("utf-8") for clarity
+    "BLE001",  # broad `except Exception` is intentional at parse/bake/file-IO boundaries
+]
 
 [tool.mypy]
 check_untyped_defs = true

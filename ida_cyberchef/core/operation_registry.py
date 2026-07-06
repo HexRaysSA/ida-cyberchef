@@ -3,13 +3,13 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class OperationRegistry:
     """Manages operation schema and provides search functionality."""
 
-    def __init__(self, schema_path: Optional[Path] = None):
+    def __init__(self, schema_path: Path | None = None):
         if schema_path is None:
             schema_path = Path(__file__).parent.parent / "data" / "operation_schema.json"
 
@@ -18,14 +18,14 @@ class OperationRegistry:
 
         self._operations = self._schema["operations"]
 
-    def get_all_operations(self) -> List[Dict[str, Any]]:
+    def get_all_operations(self) -> list[dict[str, Any]]:
         """Get all available operations.
 
         Returns: List of all operations with their metadata
         """
         return self._operations.copy()
 
-    def find_operation(self, name: str) -> Optional[Dict[str, Any]]:
+    def find_operation(self, name: str) -> dict[str, Any] | None:
         """Find operation by exact name.
 
         Args:
@@ -38,7 +38,7 @@ class OperationRegistry:
                 return op.copy()
         return None
 
-    def search_operations(self, query: str) -> List[Dict[str, Any]]:
+    def search_operations(self, query: str) -> list[dict[str, Any]]:
         """Fuzzy search operations by name.
 
         Args:
@@ -76,7 +76,7 @@ class OperationRegistry:
 
         return [op.copy() for _, op in results]
 
-    def _extract_words(self, name: str) -> List[str]:
+    def _extract_words(self, name: str) -> list[str]:
         """Extract words from operation name, splitting on spaces and case boundaries.
 
         Args:

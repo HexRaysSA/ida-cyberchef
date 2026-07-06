@@ -161,9 +161,7 @@ def _error_matches_expected(error_msg: str, expected: str) -> bool:
     if expected in error_msg:
         return True
     stripped = re.sub(r"^[A-Za-z0-9/ ]+ - ", "", expected)
-    if stripped != expected and stripped in error_msg:
-        return True
-    return False
+    return bool(stripped != expected and stripped in error_msg)
 
 
 @pytest.mark.parametrize(

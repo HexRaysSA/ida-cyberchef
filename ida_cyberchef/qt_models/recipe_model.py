@@ -1,6 +1,6 @@
 """Qt model for recipe step management."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 from PySide6.QtCore import QAbstractListModel, Qt, Signal
 
@@ -14,7 +14,7 @@ class RecipeModel(QAbstractListModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._steps: List[Dict[str, Any]] = []
+        self._steps: list[dict[str, Any]] = []
 
     def rowCount(self, parent=None):
         """Return number of steps in recipe."""
@@ -34,7 +34,7 @@ class RecipeModel(QAbstractListModel):
 
         return None
 
-    def add_operation(self, operation: str, args: Dict[str, Any], index: int = -1):
+    def add_operation(self, operation: str, args: dict[str, Any], index: int = -1):
         """Add operation to recipe.
 
         Args:
@@ -60,7 +60,7 @@ class RecipeModel(QAbstractListModel):
 
             self.recipe_changed.emit()
 
-    def update_operation_args(self, index: int, args: Dict[str, Any]):
+    def update_operation_args(self, index: int, args: dict[str, Any]):
         """Update arguments for operation at index."""
         if 0 <= index < len(self._steps):
             self._steps[index]["args"] = args.copy()
@@ -69,7 +69,7 @@ class RecipeModel(QAbstractListModel):
             self.dataChanged.emit(model_index, model_index)
             self.recipe_changed.emit()
 
-    def get_recipe_steps(self) -> List[Dict[str, Any]]:
+    def get_recipe_steps(self) -> list[dict[str, Any]]:
         """Get all recipe steps as list of dicts."""
         return [step.copy() for step in self._steps]
 

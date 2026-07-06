@@ -21,7 +21,7 @@ def pytest_ignore_collect(collection_path: Path, config) -> bool:
 
     name = collection_path.name
     is_qt_model_test = name.startswith("test_qt_")
-    is_gui_test = name.endswith("_panel.py") or name.endswith("_widget.py") or name in GUI_TEST_NAMES
+    is_gui_test = name.endswith(("_panel.py", "_widget.py")) or name in GUI_TEST_NAMES
 
     if is_qt_model_test:
         return not _tests_enabled(QT_TEST_ENV_VAR)

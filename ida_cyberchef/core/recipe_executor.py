@@ -1,7 +1,7 @@
 """Execute CyberChef recipes and return step-by-step results."""
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ida_cyberchef.core.output_model import TypedOutput, typed_output_from_value
 from ida_cyberchef.cyberchef import bake
@@ -12,14 +12,14 @@ class StepResult:
     """Result of executing a single recipe step."""
 
     success: bool
-    data: Optional[TypedOutput]
-    error: Optional[str]
+    data: TypedOutput | None
+    error: str | None
 
 
 class RecipeExecutor:
     """Executes CyberChef recipes and tracks results for each step."""
 
-    def execute_recipe(self, input_data: bytes, recipe: List[Dict[str, Any]]) -> List[StepResult]:
+    def execute_recipe(self, input_data: bytes, recipe: list[dict[str, Any]]) -> list[StepResult]:
         """Execute recipe and return results for each step.
 
         Args:

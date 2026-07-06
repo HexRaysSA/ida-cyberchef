@@ -1,7 +1,5 @@
 """Dialog for searching and selecting operations."""
 
-from typing import Optional
-
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog,
@@ -118,7 +116,7 @@ class OperationSearchDialog(QDialog):
             self._selected_operation = current_item.data(Qt.UserRole)
             self.accept()
 
-    def get_selected_operation(self) -> Optional[dict]:
+    def get_selected_operation(self) -> dict | None:
         """Get selected operation.
 
         Returns: Operation dict or None if cancelled
