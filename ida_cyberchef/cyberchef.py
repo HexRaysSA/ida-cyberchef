@@ -625,6 +625,14 @@ def _parse_dish_type(raw_type: Any) -> DishType | None:
         return None
 
 
+def _native_str(s: str) -> str:
+    # PythonMonkey on Linux returns broken string proxies from ICU-backed JS
+    # operations (normalize, toLowerCase, etc.): content is correct but __hash__
+    # and __eq__ are poisoned. Roundtripping through bytes produces a clean
+    # native Python str.
+    return s.encode("utf-8").decode("utf-8") if isinstance(s, str) else str(s)
+
+
 def plate(v: Dish | Any, chef=None) -> Dish | Any:
     """Convert between Python types and CyberChef Dish objects.
 
@@ -658,11 +666,11 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
 
             return value
         elif dish_type == DishType.STRING:
-            return str(value)
+            return _native_str(value)
         elif dish_type == DishType.NUMBER:
             return float(value)
         elif dish_type == DishType.HTML:
-            return str(value)
+            return _native_str(value)
         elif dish_type == DishType.ARRAY_BUFFER:
             if isinstance(value, (bytes, bytearray, memoryview)):
                 return bytes(value)
@@ -791,7 +799,7 @@ def coerce_string_value(value: Any) -> str:
     """
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
-    return str(value)
+    return _native_str(value)
 
 
 def find_label_index(recipe: list[str | RecipeOperation], label_name: str) -> int:
