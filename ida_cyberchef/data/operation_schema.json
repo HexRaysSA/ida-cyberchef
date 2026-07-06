@@ -525,12 +525,12 @@
         {
           "name": "X position",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Y position",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Size",
@@ -582,10 +582,21 @@
         {
           "name": "Offset",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Adler-32 Checksum",
+      "module": "Crypto",
+      "description": "Adler-32 is a checksum algorithm which was invented by Mark Adler in 1995, and is a modification of the Fletcher checksum. Compared to a cyclic redundancy check of the same length, it trades reliability for speed (preferring the latter).<br><br>Adler-32 is more reliable than Fletcher-16, and slightly less reliable than Fletcher-32.",
+      "infoURL": "https://wikipedia.org/wiki/Adler-32",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
       "is_favorite": false
     },
     {
@@ -604,7 +615,7 @@
         {
           "name": "b",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Encryption / Encoding",
@@ -626,7 +637,7 @@
         {
           "name": "b",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Encryption / Encoding",
@@ -930,7 +941,7 @@
         {
           "name": "Invert Translation",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Encryption / Encoding",
@@ -963,12 +974,12 @@
         {
           "name": "Keep extra characters",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Invert Translation",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Encryption / Encoding",
@@ -1428,7 +1439,7 @@
         {
           "name": "Crib offset",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Use checking machine",
@@ -1472,7 +1483,7 @@
         {
           "name": "Use low-memory, slower decompression algorithm",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Compression",
@@ -3517,7 +3528,7 @@
         {
           "name": "Preserve comments",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -3604,6 +3615,17 @@
       "is_favorite": false
     },
     {
+      "name": "Caret/M-decode",
+      "module": "Default",
+      "description": "Decodes caret or M-encoded strings, i.e. ^M turns into a newline, M-^] turns into 0x9d. Sources such as `cat -v`.\n\nPlease be aware that when using `cat -v` ^_ (caret-underscore) will not be encoded, but represents a valid encoding (namely that of 0x1f).",
+      "infoURL": "https://en.wikipedia.org/wiki/Caret_notation",
+      "inputType": "string",
+      "outputType": "byteArray",
+      "args": [],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
       "name": "Cartesian Product",
       "module": "Default",
       "description": "Calculates the cartesian product of multiple sets of data, returning all possible combinations.",
@@ -3681,7 +3703,7 @@
         {
           "name": "Counter",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Rounds",
@@ -4177,7 +4199,7 @@
         {
           "name": "R1-Negate",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "R1-Counter",
@@ -4289,7 +4311,7 @@
         {
           "name": "R2-Negate",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "R2-Counter",
@@ -4401,7 +4423,7 @@
         {
           "name": "R3-Negate",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "R3-Counter",
@@ -4418,7 +4440,7 @@
         {
           "name": "Negate All",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "K Rack: Addition",
@@ -4428,27 +4450,27 @@
         {
           "name": "Add-Q1",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Add-Q2",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Add-Q3",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Add-Q4",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Add-Q5",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Add-Equals",
@@ -4472,12 +4494,12 @@
         {
           "name": "Add-Counter1",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Add Negate All",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Total Motor",
@@ -4506,7 +4528,7 @@
         {
           "name": "Set Total",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Fast Step",
@@ -4687,7 +4709,7 @@
         {
           "name": "Invert match",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Label name",
@@ -4935,6 +4957,83 @@
             "Texas",
             "[/Comparisons]"
           ]
+        }
+      ],
+      "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Convert co-ordinate format",
+      "module": "Hashing",
+      "description": "Converts geographical coordinates between different formats.<br><br>Supported formats:<ul><li>Degrees Minutes Seconds (DMS)</li><li>Degrees Decimal Minutes (DDM)</li><li>Decimal Degrees (DD)</li><li>Geohash</li><li>Military Grid Reference System (MGRS)</li><li>Ordnance Survey National Grid (OSNG)</li><li>Universal Transverse Mercator (UTM)</li></ul><br>The operation can try to detect the input co-ordinate format and delimiter automatically, but this may not always work correctly.",
+      "infoURL": "https://wikipedia.org/wiki/Geographic_coordinate_conversion",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Input Format",
+          "type": "option",
+          "value": [
+            "Auto",
+            "Degrees Minutes Seconds",
+            "Degrees Decimal Minutes",
+            "Decimal Degrees",
+            "Geohash",
+            "Military Grid Reference System",
+            "Ordnance Survey National Grid",
+            "Universal Transverse Mercator"
+          ]
+        },
+        {
+          "name": "Input Delimiter",
+          "type": "option",
+          "value": [
+            "Auto",
+            "Direction Preceding",
+            "Direction Following",
+            "\\n",
+            "Comma",
+            "Semi-colon",
+            "Colon"
+          ]
+        },
+        {
+          "name": "Output Format",
+          "type": "option",
+          "value": [
+            "Degrees Minutes Seconds",
+            "Degrees Decimal Minutes",
+            "Decimal Degrees",
+            "Geohash",
+            "Military Grid Reference System",
+            "Ordnance Survey National Grid",
+            "Universal Transverse Mercator"
+          ]
+        },
+        {
+          "name": "Output Delimiter",
+          "type": "option",
+          "value": [
+            "Space",
+            "\\n",
+            "Comma",
+            "Semi-colon",
+            "Colon"
+          ]
+        },
+        {
+          "name": "Include Compass Directions",
+          "type": "option",
+          "value": [
+            "None",
+            "Before",
+            "After"
+          ]
+        },
+        {
+          "name": "Precision",
+          "type": "number",
+          "value": 3
         }
       ],
       "category": "Utils",
@@ -5520,12 +5619,12 @@
         {
           "name": "X Position",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Y Position",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Width",
@@ -5540,7 +5639,7 @@
         {
           "name": "Autocrop",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Autocrop tolerance (%)",
@@ -5555,12 +5654,12 @@
         {
           "name": "Symmetric autocrop",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Autocrop keep border (px)",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Multimedia",
@@ -5744,12 +5843,12 @@
         {
           "name": "Answer Data Only",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Disable DNSSEC validation",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
@@ -5814,22 +5913,22 @@
         {
           "name": "Days",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Hours",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Minutes",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Seconds",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Date / Time",
@@ -6367,15 +6466,68 @@
         {
           "name": "Show subtraction",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Ignore whitespace",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Disassemble ARM",
+      "module": "Shellcode",
+      "description": "Disassembles ARM machine code into assembly language.<br><br>Supports ARM (32-bit), Thumb, and ARM64 (AArch64) architectures using the Capstone disassembly framework.<br><br>Input should be in hexadecimal.",
+      "infoURL": "https://wikipedia.org/wiki/ARM_architecture_family",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Architecture",
+          "type": "option",
+          "value": [
+            "ARM (32-bit)",
+            "ARM64 (AArch64)"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "ARM",
+            "Thumb",
+            "Thumb + Cortex-M",
+            "ARMv8"
+          ]
+        },
+        {
+          "name": "Endianness",
+          "type": "option",
+          "value": [
+            "Little Endian",
+            "Big Endian"
+          ]
+        },
+        {
+          "name": "Starting address (hex)",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "name": "Show instruction hex",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Show instruction position",
+          "type": "boolean",
+          "value": true
+        }
+      ],
+      "category": "Other",
       "is_favorite": false
     },
     {
@@ -6416,7 +6568,7 @@
         {
           "name": "Offset (IP)",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Show instruction hex",
@@ -6478,7 +6630,7 @@
         {
           "name": "Start",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Length",
@@ -6488,7 +6640,7 @@
         {
           "name": "Apply to each line",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -6510,12 +6662,12 @@
         {
           "name": "Starting at",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Apply to each line",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -7338,7 +7490,7 @@
         {
           "name": "Encode all chars",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Padding",
@@ -7383,7 +7535,7 @@
         {
           "name": "JSON compatible",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "ES6 compatible",
@@ -7393,7 +7545,7 @@
         {
           "name": "Uppercase hex",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -7414,6 +7566,28 @@
         }
       ],
       "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Extract Audio Metadata",
+      "module": "Default",
+      "description": "Extract common audio metadata across MP3 (ID3v2/ID3v1/GEOB), WAV/BWF/BW64 (INFO/bext/iXML/axml), FLAC (Vorbis Comment/Picture), OGG (Vorbis/OpusTags), AAC (ADTS), AC3 (Dolby Digital), WMA (ASF), plus best-effort MP4/M4A and AIFF scanning. Outputs normalized JSON.",
+      "infoURL": "https://wikipedia.org/wiki/Audio_file_format",
+      "inputType": "ArrayBuffer",
+      "outputType": "html",
+      "args": [
+        {
+          "name": "Filename (optional)",
+          "type": "string",
+          "value": ""
+        },
+        {
+          "name": "Max embedded text bytes (iXML/axml/etc)",
+          "type": "number",
+          "value": 524288
+        }
+      ],
+      "category": "Extractors",
       "is_favorite": false
     },
     {
@@ -7468,7 +7642,7 @@
         {
           "name": "Miscellaneous",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Ignore failed extractions",
@@ -7511,27 +7685,27 @@
         {
           "name": "IPv6",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Remove local IPv4 addresses",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7599,7 +7773,7 @@
         {
           "name": "Bit",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Forensics",
@@ -7616,17 +7790,17 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7682,17 +7856,17 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7709,7 +7883,7 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Date / Time",
@@ -7726,22 +7900,22 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Underscore (DMARC, DKIM, etc)",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7758,17 +7932,17 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7795,17 +7969,17 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7827,12 +8001,12 @@
         {
           "name": "All hashes",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Display Total",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -7958,10 +8132,215 @@
         {
           "name": "Invert condition",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Find / Replace",
+      "module": "Regex",
+      "description": "Replaces all occurrences of the first string with the second.<br><br>Includes support for regular expressions (regex), simple strings and extended strings (which support \\n, \\r, \\t, \\b, \\f and escaped hex bytes using \\x notation, e.g. \\x00 for a null byte).",
+      "infoURL": "https://wikipedia.org/wiki/Regular_expression",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Find",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Regex",
+            "Extended (\\n, \\t, \\x...)",
+            "Simple string"
+          ]
+        },
+        {
+          "name": "Replace",
+          "type": "binaryString",
+          "value": ""
+        },
+        {
+          "name": "Global match",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Case insensitive",
+          "type": "boolean",
+          "value": false
+        },
+        {
+          "name": "Multiline matching",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Dot matches all",
+          "type": "boolean",
+          "value": false
+        }
+      ],
+      "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Flask Session Decode",
+      "module": "Crypto",
+      "description": "Decodes the payload of a Flask session cookie (itsdangerous) into JSON.",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "JSON",
+      "args": [
+        {
+          "name": "View TimeStamp",
+          "type": "boolean",
+          "value": false
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Flask Session Sign",
+      "module": "Crypto",
+      "description": "Signs a JSON payload to produce a Flask session cookie (itsdangerous HMAC).",
+      "infoURL": null,
+      "inputType": "JSON",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "Decimal",
+            "Binary",
+            "Base64",
+            "UTF8",
+            "Latin1"
+          ]
+        },
+        {
+          "name": "Salt",
+          "type": "toggleString",
+          "value": "cookie-session",
+          "toggleValues": [
+            "UTF8",
+            "Hex",
+            "Decimal",
+            "Binary",
+            "Base64",
+            "Latin1"
+          ]
+        },
+        {
+          "name": "Algorithm",
+          "type": "option",
+          "value": [
+            "sha1",
+            "sha256"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Flask Session Verify",
+      "module": "Crypto",
+      "description": "Verifies the HMAC signature of a Flask session cookie (itsdangerous) generated.",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "JSON",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "Decimal",
+            "Binary",
+            "Base64",
+            "UTF8",
+            "Latin1"
+          ]
+        },
+        {
+          "name": "Salt",
+          "type": "toggleString",
+          "value": "cookie-session",
+          "toggleValues": [
+            "UTF8",
+            "Hex",
+            "Decimal",
+            "Binary",
+            "Base64",
+            "Latin1"
+          ]
+        },
+        {
+          "name": "Algorithm",
+          "type": "option",
+          "value": [
+            "sha1",
+            "sha256"
+          ]
+        },
+        {
+          "name": "View TimeStamp",
+          "type": "boolean",
+          "value": true
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Fletcher-16 Checksum",
+      "module": "Crypto",
+      "description": "The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.<br><br>The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.",
+      "infoURL": "https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-16",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
+      "is_favorite": false
+    },
+    {
+      "name": "Fletcher-32 Checksum",
+      "module": "Crypto",
+      "description": "The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.<br><br>The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.",
+      "infoURL": "https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-32",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
+      "is_favorite": false
+    },
+    {
+      "name": "Fletcher-64 Checksum",
+      "module": "Crypto",
+      "description": "The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.<br><br>The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.",
+      "infoURL": "https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-64",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
+      "is_favorite": false
+    },
+    {
+      "name": "Fletcher-8 Checksum",
+      "module": "Crypto",
+      "description": "The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.<br><br>The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.",
+      "infoURL": "https://wikipedia.org/wiki/Fletcher%27s_checksum",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
       "is_favorite": false
     },
     {
@@ -8005,7 +8384,7 @@
         {
           "name": "Ignore errors",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Flow control",
@@ -8046,12 +8425,12 @@
         {
           "name": "Cisco style",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "IPv6 interface ID",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
@@ -8108,7 +8487,7 @@
         {
           "name": "Signed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Input format",
@@ -8331,7 +8710,7 @@
         {
           "name": "Strict mode",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -8385,6 +8764,38 @@
       "inputType": "string",
       "outputType": "byteArray",
       "args": [],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
+      "name": "From Bech32",
+      "module": "Default",
+      "description": "Bech32 is an encoding scheme primarily used for Bitcoin SegWit addresses (BIP-0173). It uses a 32-character alphabet that excludes easily confused characters (1, b, i, o) and includes a checksum for error detection.<br><br>Bech32m (BIP-0350) is an updated version used for Bitcoin Taproot addresses.<br><br>Auto-detect will attempt Bech32 first, then Bech32m if the checksum fails.<br><br>Output format options allow you to see the Human-Readable Part (HRP) along with the decoded data.",
+      "infoURL": "https://wikipedia.org/wiki/Bech32",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Encoding",
+          "type": "option",
+          "value": [
+            "Auto-detect",
+            "Bech32",
+            "Bech32m"
+          ]
+        },
+        {
+          "name": "Output Format",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex",
+            "Bitcoin scriptPubKey",
+            "HRP: Hex",
+            "JSON"
+          ]
+        }
+      ],
       "category": "Data format",
       "is_favorite": false
     },
@@ -8492,7 +8903,7 @@
         {
           "name": "Support signed values",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -8713,7 +9124,7 @@
         {
           "name": "Internationalised domain name",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -8722,7 +9133,7 @@
     {
       "name": "From Quoted Printable",
       "module": "Default",
-      "description": "Converts QP-encoded text back to standard text.<br><br>e.g. The quoted-printable encoded string <code>hello=20world</code> becomes <code>hello world</code>",
+      "description": "Converts QP-encoded text back to standard text. This format is a content transfer encoding common in email messages.<br><br>e.g. The quoted-printable encoded string <code>hello=20world</code> becomes <code>hello world</code>",
       "infoURL": "https://wikipedia.org/wiki/Quoted-printable",
       "inputType": "string",
       "outputType": "byteArray",
@@ -9563,7 +9974,7 @@
         {
           "name": "Counter",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Other",
@@ -9762,7 +10173,7 @@
         {
           "name": "Epoch offset (T0)",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Interval (T1)",
@@ -9951,7 +10362,7 @@
         {
           "name": "Only show the subnets",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
@@ -9998,10 +10409,27 @@
         {
           "name": "Include file checksum",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Compression",
+      "is_favorite": false
+    },
+    {
+      "name": "HAS-160",
+      "module": "Crypto",
+      "description": "HAS-160 is a cryptographic hash function designed for use with the Korean KCDSA digital signature algorithm. It is derived from SHA-1, with assorted changes intended to increase its security. It produces a 160-bit output.<br><br>HAS-160 is used in the same way as SHA-1. First it divides input in blocks of 512 bits each and pads the final block. A digest function updates the intermediate hash value by processing the input blocks in turn.<br><br>The message digest algorithm consists, by default, of 80 rounds.",
+      "infoURL": "https://wikipedia.org/wiki/HAS-160",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Rounds",
+          "type": "number",
+          "value": 80
+        }
+      ],
+      "category": "Hashing",
       "is_favorite": false
     },
     {
@@ -10169,7 +10597,7 @@
         {
           "name": "Show response metadata",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
@@ -10304,7 +10732,7 @@
         {
           "name": "Draw bin edges",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Min colour value",
@@ -10375,7 +10803,7 @@
         {
           "name": "Draw hexagon edges",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Min colour value",
@@ -10390,7 +10818,7 @@
         {
           "name": "Draw empty hexagons within data boundaries",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Multimedia",
@@ -10440,10 +10868,32 @@
         {
           "name": "Remove headers",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
+      "is_favorite": false
+    },
+    {
+      "name": "Image Brightness / Contrast",
+      "module": "Image",
+      "description": "Adjust the brightness or contrast of an image.",
+      "infoURL": null,
+      "inputType": "ArrayBuffer",
+      "outputType": "html",
+      "args": [
+        {
+          "name": "Brightness",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "name": "Contrast",
+          "type": "number",
+          "value": 0
+        }
+      ],
+      "category": "Multimedia",
       "is_favorite": false
     },
     {
@@ -10461,6 +10911,33 @@
             "Greyscale",
             "Sepia"
           ]
+        }
+      ],
+      "category": "Multimedia",
+      "is_favorite": false
+    },
+    {
+      "name": "Image Hue/Saturation/Lightness",
+      "module": "Image",
+      "description": "Adjusts the hue / saturation / lightness (HSL) values of an image.",
+      "infoURL": null,
+      "inputType": "ArrayBuffer",
+      "outputType": "html",
+      "args": [
+        {
+          "name": "Hue",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "name": "Saturation",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "name": "Lightness",
+          "type": "number",
+          "value": 0
         }
       ],
       "category": "Multimedia",
@@ -10665,7 +11142,7 @@
         {
           "name": "Sort Object Keys",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Formatted",
@@ -10855,27 +11332,27 @@
         {
           "name": "Location info",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Range info",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Include tokens array",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Include comments array",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Report errors and try to continue",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -10893,6 +11370,11 @@
           "name": "Query",
           "type": "string",
           "value": ""
+        },
+        {
+          "name": "Raw",
+          "type": "boolean",
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -11293,7 +11775,7 @@
         {
           "name": "KT-Schalter",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Mode",
@@ -11577,12 +12059,12 @@
         {
           "name": "Intensive mode",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Extensive language support",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Crib (known plaintext string or regex)",
@@ -11751,7 +12233,7 @@
         {
           "name": "Crib offset",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Use checking machine",
@@ -11797,12 +12279,12 @@
         {
           "name": "Seed",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Convert to Signed",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Hashing",
@@ -11952,6 +12434,17 @@
         }
       ],
       "category": "Multimedia",
+      "is_favorite": false
+    },
+    {
+      "name": "P-list Viewer",
+      "module": "Default",
+      "description": "In the macOS, iOS, NeXTSTEP, and GNUstep programming frameworks, property list files are files that store serialized objects. Property list files use the filename extension .plist, and thus are often referred to as p-list files.<br><br>This operation displays plist files in a human readable format.",
+      "infoURL": "https://wikipedia.org/wiki/Property_list",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Other",
       "is_favorite": false
     },
     {
@@ -12145,6 +12638,28 @@
       "is_favorite": false
     },
     {
+      "name": "Parse ASN.1 hex string",
+      "module": "PublicKey",
+      "description": "Abstract Syntax Notation One (ASN.1) is a standard and notation that describes rules and structures for representing, encoding, transmitting, and decoding data in telecommunications and computer networking.<br><br>This operation parses arbitrary ASN.1 data (encoded as an hex string: use the 'To Hex' operation if necessary) and presents the resulting tree.",
+      "infoURL": "https://wikipedia.org/wiki/Abstract_Syntax_Notation_One",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Starting index",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "name": "Truncate octet strings longer than",
+          "type": "number",
+          "value": 32
+        }
+      ],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
       "name": "Parse CSR",
       "module": "PublicKey",
       "description": "Parse Certificate Signing Request (CSR) for an X.509 certificate",
@@ -12315,6 +12830,7 @@
             "America/Coral_Harbour",
             "America/Cordoba",
             "America/Costa_Rica",
+            "America/Coyhaique",
             "America/Creston",
             "America/Cuiaba",
             "America/Curacao",
@@ -12819,6 +13335,35 @@
       "is_favorite": false
     },
     {
+      "name": "Parse Ethernet frame",
+      "module": "Default",
+      "description": "Parses an Ethernet frame and either shows the deduced values (Source and destination MAC, VLANs) or returns the packet data.<br /><br />Good for use in conjunction with the Parse IPv4, and Parse TCP/UDP recipes.",
+      "infoURL": "https://en.wikipedia.org/wiki/Ethernet_frame#Frame_%E2%80%93_data_link_layer",
+      "inputType": "string",
+      "outputType": "html",
+      "args": [
+        {
+          "name": "Input type",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Return type",
+          "type": "option",
+          "value": [
+            "Text output",
+            "Packet data",
+            "Packet data (hex)"
+          ]
+        }
+      ],
+      "category": "Networking",
+      "is_favorite": false
+    },
+    {
       "name": "Parse IP range",
       "module": "Default",
       "description": "Given a CIDR range (e.g. <code>10.0.0.0/24</code>), hyphenated range (e.g. <code>10.0.0.0 - 10.0.1.0</code>), or a list of IPs and/or CIDR ranges (separated by a new line), this operation provides network information and enumerates all IP addresses in the range.<br><br>IPv6 is supported but will not be enumerated.",
@@ -12839,7 +13384,7 @@
         {
           "name": "Allow large queries",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
@@ -12859,6 +13404,15 @@
           "value": [
             "Hex",
             "Raw"
+          ]
+        },
+        {
+          "name": "Output format",
+          "type": "option",
+          "value": [
+            "Table",
+            "Data (hex)",
+            "Data (raw)"
           ]
         }
       ],
@@ -12898,7 +13452,7 @@
         {
           "name": "Normalise image",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Other",
@@ -12977,7 +13531,7 @@
         {
           "name": "Use BER",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -13034,6 +13588,50 @@
       "outputType": "string",
       "args": [],
       "category": "Networking",
+      "is_favorite": false
+    },
+    {
+      "name": "Parse X.509 CRL",
+      "module": "PublicKey",
+      "description": "Parse Certificate Revocation List (CRL)",
+      "infoURL": "https://wikipedia.org/wiki/Certificate_revocation_list",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Input format",
+          "type": "option",
+          "value": [
+            "PEM",
+            "DER Hex",
+            "Base64",
+            "Raw"
+          ]
+        }
+      ],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
+      "name": "Parse X.509 certificate",
+      "module": "PublicKey",
+      "description": "X.509 is an ITU-T standard for a public key infrastructure (PKI) and Privilege Management Infrastructure (PMI). It is commonly involved with SSL/TLS security.<br><br>This operation displays the contents of a certificate in a human readable format, similar to the openssl command line tool.<br><br>Tags: X509, server hello, handshake",
+      "infoURL": "https://wikipedia.org/wiki/X.509",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Input format",
+          "type": "option",
+          "value": [
+            "PEM",
+            "DER Hex",
+            "Base64",
+            "Raw"
+          ]
+        }
+      ],
+      "category": "Public Key",
       "is_favorite": false
     },
     {
@@ -13101,12 +13699,12 @@
         {
           "name": "Show Unknown Fields",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Show Types",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Networking",
@@ -13127,6 +13725,81 @@
         }
       ],
       "category": "Networking",
+      "is_favorite": false
+    },
+    {
+      "name": "Pseudo-Random Integer Generator",
+      "module": "Ciphers",
+      "description": "A cryptographically-secure pseudo-random number generator (PRNG).<br><br>Generates random integers within a specified range using the browser's built-in <code>crypto.getRandomValues()</code> method if available.<br><br>The supported range of integers is from <code>-(2^53 - 1)</code> to <code>(2^53 - 1)</code>.",
+      "infoURL": "https://wikipedia.org/wiki/Pseudorandom_number_generator",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Number of Integers",
+          "type": "number",
+          "value": 1
+        },
+        {
+          "name": "Min Value",
+          "type": "number",
+          "value": 0
+        },
+        {
+          "name": "Max Value",
+          "type": "number",
+          "value": 99
+        },
+        {
+          "name": "Delimiter",
+          "type": "option",
+          "value": [
+            "Space",
+            "Comma",
+            "Semi-colon",
+            "Colon",
+            "Line feed",
+            "CRLF"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex",
+            "Decimal"
+          ]
+        }
+      ],
+      "category": "Other",
+      "is_favorite": false
+    },
+    {
+      "name": "Pseudo-Random Number Generator",
+      "module": "Ciphers",
+      "description": "A cryptographically-secure pseudo-random number generator (PRNG).<br><br>This operation uses the browser's built-in <code>crypto.getRandomValues()</code> method if available. If this cannot be found, it falls back to a Fortuna-based PRNG algorithm.",
+      "infoURL": "https://wikipedia.org/wiki/Pseudorandom_number_generator",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Number of bytes",
+          "type": "number",
+          "value": 32
+        },
+        {
+          "name": "Output as",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Integer",
+            "Byte array",
+            "Raw"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
       "is_favorite": false
     },
     {
@@ -13366,6 +14039,170 @@
       "is_favorite": false
     },
     {
+      "name": "RC6 Decrypt",
+      "module": "Ciphers",
+      "description": "RC6 is a symmetric key block cipher derived from RC5. It was designed by Ron Rivest, Matt Robshaw, Ray Sidney, and Yiqun Lisa Yin to meet the requirements of the AES competition, and was one of the five finalists.<br><br>RC6 is parameterised as RC6-w/r/b where w is word size in bits (any multiple of 8 from 8-256), r is the number of rounds (1-255), and b is the key length in bytes. The standard AES submission uses w=32, r=20. Common word sizes: 8, 16, 32 (standard), 64, 128.<br><br><b>IV:</b> The Initialisation Vector should be 4*w/8 bytes (e.g. 16 bytes for w=32). If not entered, it will default to null bytes.<br><br><b>Padding:</b> In CBC and ECB mode, the PKCS#7 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/RC6",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        },
+        {
+          "name": "Word Size",
+          "type": "number",
+          "value": 32
+        },
+        {
+          "name": "Rounds",
+          "type": "number",
+          "value": 20
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "RC6 Encrypt",
+      "module": "Ciphers",
+      "description": "RC6 is a symmetric key block cipher derived from RC5. It was designed by Ron Rivest, Matt Robshaw, Ray Sidney, and Yiqun Lisa Yin to meet the requirements of the AES competition, and was one of the five finalists.<br><br>RC6 is parameterised as RC6-w/r/b where w is word size in bits (any multiple of 8 from 8-256), r is the number of rounds (1-255), and b is the key length in bytes. The standard AES submission uses w=32, r=20. Common word sizes: 8, 16, 32 (standard), 64, 128.<br><br><b>IV:</b> The Initialisation Vector should be 4*w/8 bytes (e.g. 16 bytes for w=32). If not entered, it will default to null bytes.<br><br><b>Padding:</b> In CBC and ECB mode, the PKCS#7 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/RC6",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        },
+        {
+          "name": "Word Size",
+          "type": "number",
+          "value": 32
+        },
+        {
+          "name": "Rounds",
+          "type": "number",
+          "value": 20
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
       "name": "RIPEMD",
       "module": "Crypto",
       "description": "RIPEMD (RACE Integrity Primitives Evaluation Message Digest) is a family of cryptographic hash functions developed in Leuven, Belgium, by Hans Dobbertin, Antoon Bosselaers and Bart Preneel at the COSIC research group at the Katholieke Universiteit Leuven, and first published in 1996.<br><br>RIPEMD was based upon the design principles used in MD4, and is similar in performance to the more popular SHA-1.<br><br>",
@@ -13408,7 +14245,7 @@
         {
           "name": "Rotate numbers",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Amount",
@@ -13440,7 +14277,7 @@
         {
           "name": "Rotate numbers",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sample length",
@@ -13450,7 +14287,7 @@
         {
           "name": "Sample offset",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Print amount",
@@ -13499,7 +14336,7 @@
         {
           "name": "Sample offset",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Print amount",
@@ -13784,7 +14621,7 @@
         {
           "name": "Offset",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Encryption / Encoding",
@@ -13806,7 +14643,7 @@
         {
           "name": "Offset",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Encryption / Encoding",
@@ -13861,12 +14698,12 @@
         {
           "name": "Start index",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Initial output buffer size",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Buffer expansion type",
@@ -13879,12 +14716,12 @@
         {
           "name": "Resize buffer after decompression",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Verify result",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Compression",
@@ -13979,22 +14816,22 @@
         {
           "name": "Dot matches all",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unicode support",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Astral support",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Output format",
@@ -14090,7 +14927,7 @@
         {
           "name": "Full stops",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -14128,7 +14965,7 @@
         {
           "name": "Autoconvert URLs to links",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Enable syntax highlighting",
@@ -14168,7 +15005,7 @@
         {
           "name": "Maintain aspect ratio",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Resizing algorithm",
@@ -14295,7 +15132,7 @@
         {
           "name": "Carry through",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Arithmetic / Logic",
@@ -14317,7 +15154,7 @@
         {
           "name": "Carry through",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Arithmetic / Logic",
@@ -14518,7 +15355,7 @@
         {
           "name": "1st cipher rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "1st cipher rotor initial value",
@@ -14601,7 +15438,7 @@
         {
           "name": "2nd cipher rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "2nd cipher rotor initial value",
@@ -14684,7 +15521,7 @@
         {
           "name": "3rd cipher rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "3rd cipher rotor initial value",
@@ -14767,7 +15604,7 @@
         {
           "name": "4th cipher rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "4th cipher rotor initial value",
@@ -14850,7 +15687,7 @@
         {
           "name": "5th cipher rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "5th cipher rotor initial value",
@@ -14933,7 +15770,7 @@
         {
           "name": "1st control rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "1st control rotor initial value",
@@ -15016,7 +15853,7 @@
         {
           "name": "2nd control rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "2nd control rotor initial value",
@@ -15099,7 +15936,7 @@
         {
           "name": "3rd control rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "3rd control rotor initial value",
@@ -15182,7 +16019,7 @@
         {
           "name": "4th control rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "4th control rotor initial value",
@@ -15265,7 +16102,7 @@
         {
           "name": "5th control rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "5th control rotor initial value",
@@ -15834,7 +16671,7 @@
         {
           "name": "Counter",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Rounds",
@@ -15906,7 +16743,7 @@
         {
           "name": "Miscellaneous",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Forensics",
@@ -15967,7 +16804,7 @@
         {
           "name": "Use colour from third column",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Multimedia",
@@ -16346,7 +17183,7 @@
         {
           "name": "Reverse",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Order",
@@ -16539,17 +17376,17 @@
         {
           "name": "Display total",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Sort",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Unique",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Extractors",
@@ -16647,7 +17484,7 @@
         {
           "name": "Ignore errors",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Flow control",
@@ -16674,7 +17511,7 @@
         {
           "name": "Ignore case",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Encryption / Encoding",
@@ -17003,6 +17840,17 @@
       "is_favorite": false
     },
     {
+      "name": "TCP/IP Checksum",
+      "module": "Crypto",
+      "description": "Calculates the checksum for a TCP (Transport Control Protocol) or IP (Internet Protocol) header from an input of raw bytes.",
+      "infoURL": "https://wikipedia.org/wiki/IPv4_header_checksum",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
+      "is_favorite": false
+    },
+    {
       "name": "Tail",
       "module": "Default",
       "description": "Like the UNIX tail utility.<br>Gets the last n lines.<br>Optionally you can select all lines after line n by entering a negative value for n.<br>The delimiter can be changed so that instead of lines, fields (i.e. commas) are selected instead.",
@@ -17043,7 +17891,7 @@
         {
           "name": "Start",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Length",
@@ -17053,7 +17901,7 @@
         {
           "name": "Apply to each line",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -17075,12 +17923,12 @@
         {
           "name": "Starting at",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Apply to each line",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -17125,7 +17973,7 @@
       "module": "Encodings",
       "description": "Enumerates all supported text encodings for the input, allowing you to quickly spot the correct one.\n<br><br>\nSupported charsets are:\n<ul>\n<li>UTF-8 (65001)</li>\n<li>UTF-7 (65000)</li>\n<li>UTF-16LE (1200)</li>\n<li>UTF-16BE (1201)</li>\n<li>UTF-32LE (12000)</li>\n<li>UTF-32BE (12001)</li>\n<li>IBM EBCDIC International (500)</li>\n<li>IBM EBCDIC US-Canada (37)</li>\n<li>IBM EBCDIC Multilingual/ROECE (Latin 2) (870)</li>\n<li>IBM EBCDIC Greek Modern (875)</li>\n<li>IBM EBCDIC French (1010)</li>\n<li>IBM EBCDIC Turkish (Latin 5) (1026)</li>\n<li>IBM EBCDIC Latin 1/Open System (1047)</li>\n<li>IBM EBCDIC Lao (1132/1133/1341)</li>\n<li>IBM EBCDIC US-Canada (037 + Euro symbol) (1140)</li>\n<li>IBM EBCDIC Germany (20273 + Euro symbol) (1141)</li>\n<li>IBM EBCDIC Denmark-Norway (20277 + Euro symbol) (1142)</li>\n<li>IBM EBCDIC Finland-Sweden (20278 + Euro symbol) (1143)</li>\n<li>IBM EBCDIC Italy (20280 + Euro symbol) (1144)</li>\n<li>IBM EBCDIC Latin America-Spain (20284 + Euro symbol) (1145)</li>\n<li>IBM EBCDIC United Kingdom (20285 + Euro symbol) (1146)</li>\n<li>IBM EBCDIC France (20297 + Euro symbol) (1147)</li>\n<li>IBM EBCDIC International (500 + Euro symbol) (1148)</li>\n<li>IBM EBCDIC Icelandic (20871 + Euro symbol) (1149)</li>\n<li>IBM EBCDIC Germany (20273)</li>\n<li>IBM EBCDIC Denmark-Norway (20277)</li>\n<li>IBM EBCDIC Finland-Sweden (20278)</li>\n<li>IBM EBCDIC Italy (20280)</li>\n<li>IBM EBCDIC Latin America-Spain (20284)</li>\n<li>IBM EBCDIC United Kingdom (20285)</li>\n<li>IBM EBCDIC Japanese Katakana Extended (20290)</li>\n<li>IBM EBCDIC France (20297)</li>\n<li>IBM EBCDIC Arabic (20420)</li>\n<li>IBM EBCDIC Greek (20423)</li>\n<li>IBM EBCDIC Hebrew (20424)</li>\n<li>IBM EBCDIC Korean Extended (20833)</li>\n<li>IBM EBCDIC Thai (20838)</li>\n<li>IBM EBCDIC Icelandic (20871)</li>\n<li>IBM EBCDIC Cyrillic Russian (20880)</li>\n<li>IBM EBCDIC Turkish (20905)</li>\n<li>IBM EBCDIC Latin 1/Open System (1047 + Euro symbol) (20924)</li>\n<li>IBM EBCDIC Cyrillic Serbian-Bulgarian (21025)</li>\n<li>OEM United States (437)</li>\n<li>OEM Greek (formerly 437G); Greek (DOS) (737)</li>\n<li>OEM Baltic; Baltic (DOS) (775)</li>\n<li>OEM Russian; Cyrillic + Euro symbol (808)</li>\n<li>OEM Multilingual Latin 1; Western European (DOS) (850)</li>\n<li>OEM Latin 2; Central European (DOS) (852)</li>\n<li>OEM Cyrillic (primarily Russian) (855)</li>\n<li>OEM Turkish; Turkish (DOS) (857)</li>\n<li>OEM Multilingual Latin 1 + Euro symbol (858)</li>\n<li>OEM Portuguese; Portuguese (DOS) (860)</li>\n<li>OEM Icelandic; Icelandic (DOS) (861)</li>\n<li>OEM Hebrew; Hebrew (DOS) (862)</li>\n<li>OEM French Canadian; French Canadian (DOS) (863)</li>\n<li>OEM Arabic; Arabic (864) (864)</li>\n<li>OEM Nordic; Nordic (DOS) (865)</li>\n<li>OEM Russian; Cyrillic (DOS) (866)</li>\n<li>OEM Modern Greek; Greek, Modern (DOS) (869)</li>\n<li>OEM Cyrillic (primarily Russian) + Euro Symbol (872)</li>\n<li>Windows-874 Thai (874)</li>\n<li>Windows-1250 Central European (1250)</li>\n<li>Windows-1251 Cyrillic (1251)</li>\n<li>Windows-1252 Latin (1252)</li>\n<li>Windows-1253 Greek (1253)</li>\n<li>Windows-1254 Turkish (1254)</li>\n<li>Windows-1255 Hebrew (1255)</li>\n<li>Windows-1256 Arabic (1256)</li>\n<li>Windows-1257 Baltic (1257)</li>\n<li>Windows-1258 Vietnam (1258)</li>\n<li>ISO-8859-1 Latin 1 Western European (28591)</li>\n<li>ISO-8859-2 Latin 2 Central European (28592)</li>\n<li>ISO-8859-3 Latin 3 South European (28593)</li>\n<li>ISO-8859-4 Latin 4 North European (28594)</li>\n<li>ISO-8859-5 Latin/Cyrillic (28595)</li>\n<li>ISO-8859-6 Latin/Arabic (28596)</li>\n<li>ISO-8859-7 Latin/Greek (28597)</li>\n<li>ISO-8859-8 Latin/Hebrew (28598)</li>\n<li>ISO 8859-8 Hebrew (ISO-Logical) (38598)</li>\n<li>ISO-8859-9 Latin 5 Turkish (28599)</li>\n<li>ISO-8859-10 Latin 6 Nordic (28600)</li>\n<li>ISO-8859-11 Latin/Thai (28601)</li>\n<li>ISO-8859-13 Latin 7 Baltic Rim (28603)</li>\n<li>ISO-8859-14 Latin 8 Celtic (28604)</li>\n<li>ISO-8859-15 Latin 9 (28605)</li>\n<li>ISO-8859-16 Latin 10 (28606)</li>\n<li>ISO 2022 JIS Japanese with no halfwidth Katakana (50220)</li>\n<li>ISO 2022 JIS Japanese with halfwidth Katakana (50221)</li>\n<li>ISO 2022 Japanese JIS X 0201-1989 (1 byte Kana-SO/SI) (50222)</li>\n<li>ISO 2022 Korean (50225)</li>\n<li>ISO 2022 Simplified Chinese (50227)</li>\n<li>ISO 6937 Non-Spacing Accent (20269)</li>\n<li>EUC Japanese (51932)</li>\n<li>EUC Simplified Chinese (51936)</li>\n<li>EUC Korean (51949)</li>\n<li>ISCII Devanagari (57002)</li>\n<li>ISCII Bengali (57003)</li>\n<li>ISCII Tamil (57004)</li>\n<li>ISCII Telugu (57005)</li>\n<li>ISCII Assamese (57006)</li>\n<li>ISCII Oriya (57007)</li>\n<li>ISCII Kannada (57008)</li>\n<li>ISCII Malayalam (57009)</li>\n<li>ISCII Gujarati (57010)</li>\n<li>ISCII Punjabi (57011)</li>\n<li>Japanese Shift-JIS (932)</li>\n<li>Simplified Chinese GBK (936)</li>\n<li>Korean (949)</li>\n<li>Traditional Chinese Big5 (950)</li>\n<li>US-ASCII (7-bit) (20127)</li>\n<li>Simplified Chinese GB2312 (20936)</li>\n<li>KOI8-R Russian Cyrillic (20866)</li>\n<li>KOI8-U Ukrainian Cyrillic (21866)</li>\n<li>Mazovia (Polish) MS-DOS (620)</li>\n<li>Arabic (ASMO 708) (708)</li>\n<li>Arabic (Transparent ASMO); Arabic (DOS) (720)</li>\n<li>Kamenick\u00fd (Czech) MS-DOS (895)</li>\n<li>Korean (Johab) (1361)</li>\n<li>MAC Roman (10000)</li>\n<li>Japanese (Mac) (10001)</li>\n<li>MAC Traditional Chinese (Big5) (10002)</li>\n<li>Korean (Mac) (10003)</li>\n<li>Arabic (Mac) (10004)</li>\n<li>Hebrew (Mac) (10005)</li>\n<li>Greek (Mac) (10006)</li>\n<li>Cyrillic (Mac) (10007)</li>\n<li>MAC Simplified Chinese (GB 2312) (10008)</li>\n<li>Romanian (Mac) (10010)</li>\n<li>Ukrainian (Mac) (10017)</li>\n<li>Thai (Mac) (10021)</li>\n<li>MAC Latin 2 (Central European) (10029)</li>\n<li>Icelandic (Mac) (10079)</li>\n<li>Turkish (Mac) (10081)</li>\n<li>Croatian (Mac) (10082)</li>\n<li>CNS Taiwan (Chinese Traditional) (20000)</li>\n<li>TCA Taiwan (20001)</li>\n<li>ETEN Taiwan (Chinese Traditional) (20002)</li>\n<li>IBM5550 Taiwan (20003)</li>\n<li>TeleText Taiwan (20004)</li>\n<li>Wang Taiwan (20005)</li>\n<li>Western European IA5 (IRV International Alphabet 5) (20105)</li>\n<li>IA5 German (7-bit) (20106)</li>\n<li>IA5 Swedish (7-bit) (20107)</li>\n<li>IA5 Norwegian (7-bit) (20108)</li>\n<li>T.61 (20261)</li>\n<li>Japanese (JIS 0208-1990 and 0212-1990) (20932)</li>\n<li>Korean Wansung (20949)</li>\n<li>Extended/Ext Alpha Lowercase (21027)</li>\n<li>Europa 3 (29001)</li>\n<li>Atari ST/TT (47451)</li>\n<li>HZ-GB2312 Simplified Chinese (52936)</li>\n<li>Simplified Chinese GB18030 (54936)</li>\n</ul>",
       "infoURL": "https://wikipedia.org/wiki/Character_encoding",
-      "inputType": "string",
+      "inputType": "ArrayBuffer",
       "outputType": "html",
       "args": [
         {
@@ -17169,7 +18017,7 @@
         {
           "name": "Signed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Output format",
@@ -17400,9 +18248,9 @@
           ]
         },
         {
-          "name": "Include delimeter",
+          "name": "Include delimiter",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -17414,8 +18262,54 @@
       "description": "Base92 is a notation for encoding arbitrary byte data using a restricted set of symbols that can be conveniently used by humans and processed by computers.",
       "infoURL": "https://wikipedia.org/wiki/List_of_numeral_systems",
       "inputType": "string",
-      "outputType": "string",
+      "outputType": "byteArray",
       "args": [],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
+      "name": "To Bech32",
+      "module": "Default",
+      "description": "Bech32 is an encoding scheme primarily used for Bitcoin SegWit addresses (BIP-0173). It uses a 32-character alphabet that excludes easily confused characters (1, b, i, o) and includes a checksum for error detection.<br><br>Bech32m (BIP-0350) is an updated version that fixes a weakness in the original Bech32 checksum and is used for Bitcoin Taproot addresses.<br><br>The Human-Readable Part (HRP) identifies the network or purpose (e.g., 'bc' for Bitcoin mainnet, 'tb' for testnet, 'age' for AGE encryption keys).<br><br>Maximum output length is 90 characters as per specification.",
+      "infoURL": "https://wikipedia.org/wiki/Bech32",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Human-Readable Part (HRP)",
+          "type": "string",
+          "value": "bc"
+        },
+        {
+          "name": "Encoding",
+          "type": "option",
+          "value": [
+            "Bech32",
+            "Bech32m"
+          ]
+        },
+        {
+          "name": "Input Format",
+          "type": "option",
+          "value": [
+            "Raw bytes",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "Generic",
+            "Bitcoin SegWit"
+          ]
+        },
+        {
+          "name": "Witness Version",
+          "type": "number",
+          "value": 0
+        }
+      ],
       "category": "Data format",
       "is_favorite": false
     },
@@ -17471,7 +18365,7 @@
         {
           "name": "Attempt to be context aware",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -17540,7 +18434,7 @@
         {
           "name": "Support signed values",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -17597,7 +18491,7 @@
         {
           "name": "Convert all characters",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Convert to",
@@ -17640,7 +18534,7 @@
         {
           "name": "Bytes per line",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Data format",
@@ -17666,7 +18560,7 @@
         {
           "name": "Print spaces between bytes",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -17688,17 +18582,17 @@
         {
           "name": "Upper case hex",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Include final length",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "UNIX format",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -17715,7 +18609,7 @@
         {
           "name": "Attempt to be context aware",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -17768,7 +18662,7 @@
         {
           "name": "Bytes per line",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Data format",
@@ -17859,7 +18753,7 @@
         {
           "name": "Internationalised domain name",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -17868,7 +18762,7 @@
     {
       "name": "To Quoted Printable",
       "module": "Default",
-      "description": "Quoted-Printable, or QP encoding, is an encoding using printable ASCII characters (alphanumeric and the equals sign '=') to transmit 8-bit data over a 7-bit data path or, generally, over a medium which is not 8-bit clean. It is defined as a MIME content transfer encoding for use in e-mail.<br><br>QP works by using the equals sign '=' as an escape character. It also limits line length to 76, as some software has limits on line length.",
+      "description": "Quoted-Printable, or QP encoding, is an encoding using printable ASCII characters (alphanumeric and the equals sign '=') to transmit 8-bit data over a 7-bit data path or, generally, over a medium which is not 8-bit clean. It is defined as a MIME content transfer encoding for use in email.<br><br>QP works by using the equals sign '=' as an escape character. It also limits line length to 76, as some software has limits on line length.",
       "infoURL": "https://wikipedia.org/wiki/Quoted-printable",
       "inputType": "ArrayBuffer",
       "outputType": "string",
@@ -17887,7 +18781,7 @@
         {
           "name": "Attempt to be context aware",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -17914,7 +18808,7 @@
         {
           "name": "Make first row header",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Format",
@@ -18135,6 +19029,7 @@
             "America/Coral_Harbour",
             "America/Cordoba",
             "America/Costa_Rica",
+            "America/Coyhaique",
             "America/Creston",
             "America/Cuiaba",
             "America/Curacao",
@@ -18743,6 +19638,7 @@
             "America/Coral_Harbour",
             "America/Cordoba",
             "America/Costa_Rica",
+            "America/Coyhaique",
             "America/Creston",
             "America/Cuiaba",
             "America/Curacao",
@@ -19419,7 +20315,7 @@
         {
           "name": "1st rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "1st rotor ring setting",
@@ -19527,7 +20423,7 @@
         {
           "name": "2nd rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "2nd rotor ring setting",
@@ -19635,7 +20531,7 @@
         {
           "name": "3rd rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "3rd rotor ring setting",
@@ -19743,7 +20639,7 @@
         {
           "name": "4th rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "4th rotor ring setting",
@@ -19851,7 +20747,7 @@
         {
           "name": "5th rotor reversed",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "5th rotor ring setting",
@@ -20009,7 +20905,7 @@
         {
           "name": "Encode all special chars",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Data format",
@@ -20093,7 +20989,7 @@
         {
           "name": "Display count",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Utils",
@@ -20126,7 +21022,7 @@
         {
           "name": "Verify result",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Compression",
@@ -20175,7 +21071,7 @@
         {
           "name": "Bit",
           "type": "number",
-          "value": ""
+          "value": 0
         }
       ],
       "category": "Forensics",
@@ -20311,7 +21207,7 @@
         {
           "name": "Preserve comments",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Code tidy",
@@ -20351,7 +21247,7 @@
         {
           "name": "Null preserving",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Encryption / Encoding",
@@ -20378,7 +21274,7 @@
         {
           "name": "Sample offset",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Scheme",
@@ -20392,7 +21288,7 @@
         {
           "name": "Null preserving",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Print key",
@@ -20402,7 +21298,7 @@
         {
           "name": "Output as hex",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Crib (known plaintext string)",
@@ -20486,7 +21382,7 @@
         {
           "name": "Counter",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Rounds",
@@ -20590,17 +21486,17 @@
         {
           "name": "Show strings",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Show string lengths",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Show metadata",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Show counts",
@@ -20706,12 +21602,12 @@
         {
           "name": "Start index",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Initial output buffer size",
           "type": "number",
-          "value": ""
+          "value": 0
         },
         {
           "name": "Buffer expansion type",
@@ -20724,12 +21620,12 @@
         {
           "name": "Resize buffer after decompression",
           "type": "boolean",
-          "value": ""
+          "value": false
         },
         {
           "name": "Verify result",
           "type": "boolean",
-          "value": ""
+          "value": false
         }
       ],
       "category": "Compression",
