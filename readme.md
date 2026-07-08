@@ -46,6 +46,10 @@ Excluded operations: JavaScript Beautify/Minify/Parser, Syntax highlighter, DNS 
 
 Magic, YARA Rules, Argon2, and Argon2 compare are also excluded. Some operations (Caret/M-decode, Convert co-ordinate format, Fletcher-16/32/64 Checksum, HAS-160, Parse X.509 CRL, Public Key from Certificate, Public Key from Private Key) are missing from the CyberChef build entirely. Generated operation docs in `docs/ops.md` annotate these directly.
 
+## Supported Python versions
+
+PythonMonkey's prebuilt wheels reach into CPython internal structures, so the plugin is sensitive to the exact Python version that IDA Pro uses. PythonMonkey 1.3.2 works on Python 3.10-3.12 and 3.13.13+, but misreads those structures on 3.13.0-3.13.12 and 3.14.0, breaking all recipe execution. On an unsupported interpreter, the plugin logs a warning and disables itself at load time. The fix is to upgrade the Python installation that IDA uses (for example, to 3.13.13 or later).
+
 ## Building
 
 First, initialize the submodule if you haven't already:

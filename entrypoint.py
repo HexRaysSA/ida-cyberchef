@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import ida_kernwin
 
@@ -8,6 +9,23 @@ MIN_KERNEL_VERSION = (9, 2)
 
 
 cyberchef_ok = True
+
+# PythonMonkey 1.3.2 reads a CPython-internal thread-state struct at a
+# compile-time offset that only matches 3.10-3.12 and 3.13.13+.
+python_version = sys.version_info[:3]
+if (3, 13, 0) <= python_version < (3, 13, 13):
+    logger.warning(
+        "ida-cyberchef on Python %d.%d.%d is unsupported: PythonMonkey misreads CPython internal "
+        "structures on this version. Upgrade to Python 3.13.13+.",
+        *python_version,
+    )
+    cyberchef_ok = False
+elif python_version == (3, 14, 0):
+    logger.warning(
+        "ida-cyberchef on Python 3.14.0 is unsupported: PythonMonkey misreads CPython internal "
+        "structures on this version. Use Python 3.13.13+ or 3.10-3.12.",
+    )
+    cyberchef_ok = False
 
 try:
     from PySide6 import QtCore  # noqa: F401
