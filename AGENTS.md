@@ -12,7 +12,8 @@
 ### Runtime package
 
 - `ida_cyberchef/__init__.py`: package exports. Qt objects are imported lazily so non-Qt tests can run without GUI dependencies.
-- `ida_cyberchef/cyberchef.py`: PythonMonkey (SpiderMonkey) integration and recipe execution entrypoints.
+- `ida_cyberchef/cyberchef.py`: mini-racer (V8) integration and recipe execution entrypoints.
+- `ida_cyberchef/data/runtime.js`: browser/Node.js API polyfills and the `__pi*` helpers the bridge calls; evaluated before the bundle.
 - `ida_cyberchef/cyberchef_widget.py`: top-level Qt widget wiring the whole UI together.
 - `ida_cyberchef/main.py`: standalone Qt app entrypoint.
 - `ida_cyberchef/plugin/__init__.py`: IDA plugin entrypoint.
@@ -44,7 +45,7 @@
 
 ### Data and generated artifacts
 
-- `ida_cyberchef/data/CyberChef.js`: built CyberChef bundle loaded by PythonMonkey.
+- `ida_cyberchef/data/CyberChef.js`: built CyberChef bundle loaded into V8 by mini-racer.
 - `ida_cyberchef/data/operation_schema.json`: generated operation metadata used by the UI and tests.
 - `docs/ops.md`: rendered operation reference.
 
@@ -80,7 +81,7 @@ Qt tests:
 
 - Qt tests are disabled by default in pytest config.
 - Use `IDA_CYBERCHEF_ENABLE_QT_TESTS=1 .venv/bin/python tools/run_pytest.py` to re-enable Qt collection and load `pytest-qt`.
-- Default non-Qt test runs exercise the real PythonMonkey-backed CyberChef engine.
+- Default non-Qt test runs exercise the real mini-racer (V8) backed CyberChef engine.
 
 ## Practical workflow
 

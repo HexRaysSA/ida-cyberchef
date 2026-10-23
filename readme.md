@@ -21,7 +21,7 @@ This project eliminates that workflow. It embeds CyberChef's data transforms dir
 
 ## How it works
 
-We use [PythonMonkey](https://github.com/Distributive-Network/PythonMonkey) (SpiderMonkey, Firefox's JS engine) to run CyberChef's JavaScript code inside Python. The `ida_cyberchef.cyberchef` module loads CyberChef's bundle, sets up polyfills for browser/Node.js APIs it expects, and exposes a clean `bake()` function that takes binary data and a recipe.
+We use [mini-racer](https://github.com/bpcreech/PyMiniRacer) (V8, Chrome's JS engine) to run CyberChef's JavaScript code inside Python. The `ida_cyberchef.cyberchef` module loads CyberChef's bundle, sets up polyfills for the browser/Node.js APIs it expects (`ida_cyberchef/data/runtime.js`), and exposes a clean `bake()` function that takes binary data and a recipe.
 
 Then, we have a PySide6 Qt widget that exposes the recipe composer with the input/output hex dumps. The UI updates reactively - change the input or tweak an operation argument, and after a brief debounce, the entire pipeline re-executes and updates the output.
 
@@ -48,7 +48,16 @@ Magic, YARA Rules, Argon2, and Argon2 compare are also excluded. Some operations
 
 ## Supported Python versions
 
-PythonMonkey's prebuilt wheels reach into CPython internal structures, so the plugin is sensitive to the exact Python version that IDA Pro uses. PythonMonkey 1.3.2 works on Python 3.10-3.12 and 3.13.13+, but misreads those structures on 3.13.0-3.13.12 and 3.14.0, breaking all recipe execution. On an unsupported interpreter, the plugin logs a warning and disables itself at load time. The fix is to upgrade the Python installation that IDA uses (for example, to 3.13.13 or later).
+Python 3.10 through 3.15, on Windows x86_64, macOS arm64 and Linux x86_64.
+
+mini-racer loads V8 as a plain shared library through `ctypes` and does not use the CPython C API, so it ships one `py3-none` wheel per platform that works with every Python version. All runtime dependencies (`mini-racer`, `pydantic`) install from prebuilt wheels, with no compiler, Node.js or npm needed. To install offline, build a wheelhouse on a connected machine and copy it over:
+
+```
+python -m pip download --only-binary :all: --dest wheelhouse "mini-racer>=0.14.1" "pydantic>=2"
+python -m pip install --no-index --find-links wheelhouse "mini-racer>=0.14.1" "pydantic>=2"
+```
+
+To build a wheelhouse for other platforms or Python versions, add `--platform` (for example `win_amd64`, `macosx_11_0_arm64`, or `manylinux_2_27_x86_64 --platform manylinux_2_17_x86_64`) and `--python-version`. Linux needs glibc 2.27 or newer.
 
 ## Building
 
@@ -75,7 +84,7 @@ ln -s (pwd) ~/.idapro/plugins/ida-cyberchef
 You'll also want to install the dependencies into your IDA Pro Python virtual environment, something like:
 
 ```
-~/.idapro/venv/bin/python -m pip install pythonmonkey pydantic
+~/.idapro/venv/bin/python -m pip install mini-racer pydantic
 ```
 
 Also, you can run the standalone QApplication (outside of IDA Pro) like this:
@@ -86,9 +95,9 @@ uv run cyberchef-qt
 
 ## Future Work
 
-I'm not quite sure if this will survive or not - I started out to prove this could work, and then was surprised when things fell into place. The architecture is a little ugly: running SpiderMonkey from Python inside IDA to load a huge blob from GCHQ. But, it works, and we benefit from the operations already supported by CyberChef. So, if you want to propose enhancements and bug fixes, go for it!
+I'm not quite sure if this will survive or not - I started out to prove this could work, and then was surprised when things fell into place. The architecture is a little ugly: running V8 from Python inside IDA to load a huge blob from GCHQ. But, it works, and we benefit from the operations already supported by CyberChef. So, if you want to propose enhancements and bug fixes, go for it!
 
-There's some risk that the underlying Javascript engine (PythonMonkey now; STPyV8 previously, until it was archived in 2026) might become unmaintained or not build/work with future versions of Python or IDA Pro. That'll be a good time to re-evaluate the best parts of ida-cyberchef and perhaps rebuild them carefully.
+There's some risk that the underlying Javascript engine (mini-racer now; PythonMonkey before that, whose `pminit` dependency needed npm at install time; STPyV8 before that, until it was archived in 2026) might become unmaintained or not build/work with future versions of Python or IDA Pro. That'll be a good time to re-evaluate the best parts of ida-cyberchef and perhaps rebuild them carefully.
 
 ## License
 

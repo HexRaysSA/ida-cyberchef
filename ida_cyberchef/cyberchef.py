@@ -1,5 +1,4 @@
-import asyncio
-import inspect
+import atexit
 import json
 import os
 import re
@@ -8,7 +7,17 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any, TypedDict
 
-import pythonmonkey as pm
+from py_mini_racer import (
+    JSArray,
+    JSEvalException,
+    JSFunction,
+    JSObject,
+    JSPromise,
+    JSPromiseError,
+    JSTimeoutException,
+    JSUndefined,
+    MiniRacer,
+)
 
 from ida_cyberchef.core.schema_adapter import (
     decode_escaped_string,
@@ -21,14 +30,18 @@ from ida_cyberchef.core.schema_adapter import (
 
 _chef_instance = None
 
-_loop: asyncio.AbstractEventLoop | None = None
+_runtime: MiniRacer | None = None
 
 _js_helpers: dict[str, Any] = {}
 
 # Upper bound on genuinely-asynchronous waiting for a JS promise to settle.
 # Synchronous compute inside an operation blocks before the await and is not
-# subject to this limit, matching the previous engine's drain-loop semantics.
+# subject to this limit.
 PROMISE_TIMEOUT_SECONDS = 10.0
+
+
+class JavaScriptError(Exception):
+    """A CyberChef operation or other JS code threw an error."""
 
 
 class DishType(IntEnum):
@@ -106,67 +119,111 @@ _OPERATION_SCHEMA: dict[str, Any] | None = None
 _OPERATION_SCHEMA_BY_NAME: dict[str, list[dict[str, Any]]] | None = None
 
 
-def _py_urandom_json(length: Any) -> str:
-    """Return a JSON-encoded list of cryptographically random bytes."""
-    num_bytes = int(length)
-    if num_bytes < 0:
-        raise ValueError("Random byte length must be non-negative")
-    return json.dumps(list(os.urandom(num_bytes)))
+def _random_seed_hex() -> str:
+    """Return fresh OS entropy for the JS-side crypto.getRandomValues generator."""
+    return os.urandom(32).hex()
 
 
-def get_event_loop() -> asyncio.AbstractEventLoop:
-    """Return the private event loop used to service the JS runtime.
+def get_runtime() -> MiniRacer:
+    """Return the V8 isolate that hosts CyberChef.
 
-    PythonMonkey resolves JS promises and runs SpiderMonkey's job queue
-    through a running asyncio event loop, so every JS interaction that may
-    touch promises is driven through this loop via run_js().
+    mini-racer runs V8 on its own thread and serialises calls into it. The
+    bridge's own module-level state is unlocked, so callers should still use
+    it from one thread at a time.
     """
-    global _loop
-    if _loop is None:
-        _loop = asyncio.new_event_loop()
-    return _loop
+    global _runtime
+    if _runtime is None:
+        _runtime = MiniRacer()
+        # An unclosed isolate can stall interpreter shutdown.
+        atexit.register(close_runtime)
+    return _runtime
+
+
+def close_runtime() -> None:
+    """Dispose of the V8 isolate and everything loaded into it."""
+    global _runtime, _chef_instance
+    runtime = _runtime
+    _runtime = None
+    _chef_instance = None
+    _js_helpers.clear()
+    if runtime is not None:
+        runtime.close()
+
+
+def _js_error_message(exc: Exception) -> str:
+    """Return a concise message for an exception raised by mini-racer."""
+    if isinstance(exc, JSPromiseError):
+        return str(exc.reason).strip()
+
+    # Synchronous errors look like "<anonymous>:LINE: Name: message\n<source>\n   ^\n\n<stack>".
+    message = str(exc)
+    first_line = message.split("\n", 1)[0]
+    return re.sub(r"^<anonymous>:\d+: (Uncaught )?", "", first_line)
 
 
 def run_js(thunk: Callable[[], Any]) -> Any:
-    """Invoke a JS-touching callable inside the private event loop.
+    """Invoke a JS-touching callable and resolve any returned promise.
 
-    If the callable returns a promise/awaitable, it is resolved before
-    returning. This call is synchronous from the caller's perspective and
-    must only be used from the main thread.
+    This call is synchronous from the caller's perspective. JS `undefined`
+    and `null` are both returned as None.
 
     Raises:
-        pythonmonkey.SpiderMonkeyError: If the JS code throws or the promise
-            rejects.
+        JavaScriptError: If the JS code throws or the promise rejects.
         RuntimeError: If a promise does not settle within
             PROMISE_TIMEOUT_SECONDS of asynchronous waiting.
     """
-
-    async def invoke() -> Any:
+    try:
         result = thunk()
-        if inspect.isawaitable(result) or asyncio.isfuture(result):
-            try:
-                result = await asyncio.wait_for(result, timeout=PROMISE_TIMEOUT_SECONDS)
-            except (asyncio.TimeoutError, TimeoutError) as exc:
-                raise RuntimeError("Timed out waiting for CyberChef promise to settle") from exc
-        if result is pm.null:
-            return None
-        return result
+        if isinstance(result, JSPromise):
+            result = result.get(timeout=PROMISE_TIMEOUT_SECONDS)
+    except JSTimeoutException as exc:
+        raise RuntimeError("Timed out waiting for CyberChef promise to settle") from exc
+    except (JSEvalException, JSPromiseError) as exc:
+        raise JavaScriptError(_js_error_message(exc)) from exc
 
-    return get_event_loop().run_until_complete(invoke())
+    if result is JSUndefined:
+        return None
+    return result
 
 
 def eval_js(code: str) -> Any:
-    """Evaluate JS source inside the private event loop, resolving promises."""
-    return run_js(lambda: pm.eval(code))
+    """Evaluate JS source in the CyberChef runtime, resolving promises."""
+    return run_js(lambda: get_runtime().eval(code))
 
 
-def _get_js_helper(name: str, source: str) -> Any:
-    """Return a cached compiled JS helper function."""
+def _get_js_helper(name: str, source: str | None = None) -> Any:
+    """Return a cached compiled JS helper function.
+
+    Without `source`, `name` refers to a global defined by runtime.js.
+    """
     helper = _js_helpers.get(name)
     if helper is None:
-        helper = pm.eval(source)
+        helper = get_runtime().eval(source if source is not None else name)
         _js_helpers[name] = helper
     return helper
+
+
+def to_js(value: Any) -> Any:
+    """Convert a Python value into a value that can be passed to JS.
+
+    Primitives and JS object handles pass through unchanged; bytes become an
+    ArrayBuffer and other values are converted via JSON.
+    """
+    if value is None or isinstance(value, (bool, int, float, str, JSObject)):
+        return value
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return run_js(lambda: _get_js_helper("__piBytes")(bytes(value).decode("latin-1")))
+    return run_js(lambda: _get_js_helper("__piJson")(json.dumps(value)))
+
+
+def call_js(function: Any, *args: Any) -> Any:
+    """Call a JS function with Python arguments, resolving any returned promise.
+
+    Errors are reported as JavaScriptError with a "Name: message" text.
+    """
+    js_args = [to_js(arg) for arg in args]
+    invoke = _get_js_helper("__piCall")
+    return run_js(lambda: invoke(function, *js_args))
 
 
 def get_operation_schema() -> dict[str, Any]:
@@ -274,8 +331,8 @@ class Chef:
     """Python-facing wrapper around CyberChef's module.exports.
 
     Attribute access returns callables that execute the corresponding
-    CyberChef export inside the private event loop, resolving any returned
-    promise, so callers can use the API synchronously.
+    CyberChef export, resolving any returned promise, so callers can use the
+    API synchronously.
     """
 
     def __init__(self, exports: Any):
@@ -293,12 +350,12 @@ class Chef:
             value = self.exports[name]
         except (KeyError, TypeError) as exc:
             raise AttributeError(name) from exc
-        if value is None:
+        if value is None or value is JSUndefined:
             raise AttributeError(name)
-        if callable(value):
+        if isinstance(value, JSFunction):
 
             def call(*args: Any) -> Any:
-                return run_js(lambda: value(*args))
+                return call_js(value, *args)
 
             return call
         return value
@@ -315,72 +372,6 @@ def get_chef() -> Chef:
     return _chef_instance
 
 
-def install_bake_helper() -> None:
-    """Install an async-aware recipe executor in the JS runtime."""
-    pm.eval("""
-    module.exports.__piBake = async function(input, recipeConfig) {
-        const sanitise = function(value) {
-            return value.replace(/ /g, "").toLowerCase();
-        };
-
-        let current = input;
-
-        for (const ingredient of recipeConfig) {
-            let operationName;
-            let args = null;
-
-            if (typeof ingredient === "string") {
-                operationName = ingredient;
-            } else if (ingredient && typeof ingredient === "object" && ingredient.op) {
-                operationName = ingredient.op;
-                if (ingredient.args) {
-                    args = ingredient.args;
-                }
-            } else {
-                throw new TypeError("Recipe can only contain function names or functions");
-            }
-
-            const exportedOperationName = Object.keys(module.exports).find(function(candidateName) {
-                const candidate = module.exports[candidateName];
-                return typeof candidate === "function" &&
-                    ![
-                        "__piBake",
-                        "bake",
-                        "help",
-                        "register",
-                        "Dish",
-                        "DishError",
-                        "OperationError",
-                        "ExcludedOperationError",
-                    ].includes(candidateName) &&
-                    sanitise(candidateName) === sanitise(operationName);
-            });
-
-            if (exportedOperationName) {
-                const exportedOperation = module.exports[exportedOperationName];
-                current = args ? exportedOperation(current, args) : exportedOperation(current);
-            } else {
-                const operation = module.exports.operations.find(function(candidate) {
-                    return sanitise(candidate.opName) === sanitise(operationName);
-                });
-
-                if (!operation) {
-                    throw new TypeError("Couldn't find an operation with name '" + operationName + "'.");
-                }
-
-                current = args ? operation(current, args) : operation(current);
-            }
-
-            if (current && typeof current.then === "function") {
-                current = await current;
-            }
-        }
-
-        return current;
-    };
-    """)
-
-
 def load_cyberchef(path: str | None = None) -> Chef:
     """Load the CyberChef bundle into the JS runtime and return a Chef.
 
@@ -389,149 +380,17 @@ def load_cyberchef(path: str | None = None) -> Chef:
 
     Returns: Chef wrapper around the CyberChef module exports
     """
+    data_dir = Path(__file__).parent / "data"
     if path is None:
-        path = str(Path(__file__).parent / "data" / "CyberChef.js")
+        path = str(data_dir / "CyberChef.js")
 
-    pm.globalThis.py_urandom_json = _py_urandom_json  # type: ignore[attr-defined]
+    # Install browser/Node.js API polyfills and the bridge helpers, then
+    # load the bundle, which populates module.exports.
+    eval_js((data_dir / "runtime.js").read_text(encoding="utf-8"))
+    run_js(lambda: _get_js_helper("__piSeedRandom")(_random_seed_hex()))
+    eval_js(Path(path).read_text(encoding="utf-8"))
 
-    # Setup minimal global environment for CyberChef. PythonMonkey already
-    # provides timers (setTimeout and friends), atob/btoa, and WebAssembly.
-    pm.eval("""
-    globalThis.global = globalThis;
-    globalThis.window = globalThis;
-    globalThis.self = globalThis;
-    globalThis.document = {};
-    globalThis.app = {
-        alert: function() {}
-    };
-
-    // Minimal process polyfill
-    globalThis.process = {
-        platform: 'linux',
-        env: {},
-        cwd: () => '/',
-        version: 'v18.0.0',
-        versions: {node: 'v18.0.0'},
-        nextTick: function(fn) {
-            const args = Array.prototype.slice.call(arguments, 1);
-            Promise.resolve().then(function() {
-                fn.apply(globalThis, args);
-            });
-        }
-    };
-
-    if (typeof setImmediate === 'undefined') {
-        globalThis.setImmediate = function(fn) {
-            const args = Array.prototype.slice.call(arguments, 1);
-            return setTimeout(function() {
-                fn.apply(globalThis, args);
-            }, 0);
-        };
-        globalThis.clearImmediate = function(id) {
-            clearTimeout(id);
-        };
-    }
-
-    // TextEncoder/TextDecoder polyfill
-    if (typeof TextEncoder === 'undefined') {
-        globalThis.TextEncoder = class TextEncoder {
-            encode(str) {
-                const utf8 = unescape(encodeURIComponent(str));
-                const result = new Uint8Array(utf8.length);
-                for (let i = 0; i < utf8.length; i++) {
-                    result[i] = utf8.charCodeAt(i);
-                }
-                return result;
-            }
-        };
-    }
-
-    if (typeof TextDecoder === 'undefined') {
-        globalThis.TextDecoder = class TextDecoder {
-            decode(bytes) {
-                if (bytes instanceof ArrayBuffer) {
-                    bytes = new Uint8Array(bytes);
-                } else if (ArrayBuffer.isView(bytes)) {
-                    bytes = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-                } else if (!bytes) {
-                    bytes = [];
-                }
-                const utf8 = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
-                return decodeURIComponent(escape(utf8));
-            }
-        };
-    }
-
-    if (typeof Uint8Array !== 'undefined' && !Uint8Array.prototype.concat) {
-        Uint8Array.prototype.concat = function() {
-            const output = Array.from(this);
-            for (let index = 0; index < arguments.length; index++) {
-                const value = arguments[index];
-                if (ArrayBuffer.isView(value)) {
-                    output.push.apply(output, Array.from(value));
-                } else if (Array.isArray(value)) {
-                    output.push.apply(output, value);
-                } else {
-                    output.push(value);
-                }
-            }
-            return output;
-        };
-    }
-
-    // Crypto API polyfill. Only getRandomValues is bridged to Python's
-    // os.urandom; crypto.subtle remains unavailable in this runtime.
-    if (typeof crypto === 'undefined') {
-        globalThis.crypto = {};
-    }
-    if (!globalThis.crypto.getRandomValues) {
-        globalThis.crypto.getRandomValues = function(array) {
-            const randomValues = JSON.parse(py_urandom_json(array.length));
-            for (let i = 0; i < array.length; i++) {
-                array[i] = randomValues[i];
-            }
-            return array;
-        };
-    }
-
-    if (typeof performance === 'undefined') {
-        const timeOrigin = Date.now();
-        globalThis.performance = {
-            timeOrigin: timeOrigin,
-            now: function() {
-                return Date.now() - timeOrigin;
-            }
-        };
-    }
-
-    if (!globalThis.__piLocaleComparePatched && String.prototype.localeCompare) {
-        const originalLocaleCompare = String.prototype.localeCompare;
-        String.prototype.localeCompare = function(compareString) {
-            try {
-                return originalLocaleCompare.apply(this, arguments);
-            } catch (error) {
-                const left = String(this);
-                const right = String(compareString);
-                if (left < right) return -1;
-                if (left > right) return 1;
-                return 0;
-            }
-        };
-        globalThis.__piLocaleComparePatched = true;
-    }
-
-    // Setup minimal CommonJS environment
-    globalThis.module = { exports: {} };
-    """)
-
-    # Load and execute CyberChef inside the event loop: the bundle schedules
-    # promise jobs at load time, which SpiderMonkey services through asyncio.
-    with open(path, "rb") as f:
-        source = f.read().decode("utf-8")
-    eval_js(source)
-    install_bake_helper()
-
-    exports = pm.eval("module.exports")
+    exports = eval_js("module.exports")
     return Chef(exports)
 
 
@@ -544,6 +403,9 @@ def convert_js_json_value(value: Any) -> Any:
     Returns:
         A Python-native JSON value.
     """
+    if not isinstance(value, JSObject):
+        return value
+
     stringify = _get_js_helper("json_stringify", "(v) => JSON.stringify(v)")
     json_text = run_js(lambda: stringify(value))
 
@@ -553,63 +415,56 @@ def convert_js_json_value(value: Any) -> Any:
     return json.loads(json_text)
 
 
-def convert_js_file_value(value: Any) -> CyberChefFile | list[CyberChefFile] | Any:
-    """Convert CyberChef File values into native Python structures.
+def _convert_files(payload: Any) -> CyberChefFile | list[CyberChefFile]:
+    """Convert an exported File/File[] payload into native Python structures."""
+    meta = json.loads(payload[0])
+    data = bytes(payload[1])
 
-    Args:
-        value: JS File or File[] value returned by CyberChef.
+    files: list[CyberChefFile] = []
+    offset = 0
+    for item in meta["files"]:
+        length = int(item["length"])
+        files.append({"name": str(item["name"]), "type": str(item["type"]), "data": data[offset : offset + length]})
+        offset += length
 
-    Returns:
-        A Python file dict or list of file dicts.
-    """
-    convert = _get_js_helper(
-        "convert_file",
-        """
-    (function(fileValue) {
-        const convertFile = function(file) {
-            return {
-                name: file && file.name ? String(file.name) : "",
-                type: file && file.type ? String(file.type) : "",
-                data: file && file.data ? Array.from(file.data) : []
-            };
-        };
-
-        if (Array.isArray(fileValue)) {
-            return JSON.stringify(fileValue.map(convertFile));
-        }
-
-        return JSON.stringify(convertFile(fileValue));
-    })
-    """,
-    )
-    file_json = run_js(lambda: convert(value))
-    parsed = json.loads(file_json)
-
-    if isinstance(parsed, list):
-        return [
-            {
-                "name": str(item.get("name", "")),
-                "type": str(item.get("type", "")),
-                "data": bytes(int(b) for b in item.get("data", [])),
-            }
-            for item in parsed
-        ]
-
-    return {
-        "name": str(parsed.get("name", "")),
-        "type": str(parsed.get("type", "")),
-        "data": bytes(int(b) for b in parsed.get("data", [])),
-    }
+    if meta["list"]:
+        return files
+    return files[0]
 
 
-def _convert_js_array_buffer(value: Any) -> bytes:
-    """Convert a JS ArrayBuffer or typed-array value to Python bytes."""
-    convert = _get_js_helper(
-        "array_buffer_to_json",
-        "(v) => JSON.stringify(Array.from(new Uint8Array(v)))",
-    )
-    array_json = run_js(lambda: convert(value))
-    return bytes(int(b) for b in json.loads(array_json))
+def _plate_js_value(v: Any) -> Any:
+    """Convert a JS value (usually a Dish) into a native Python value."""
+    export = _get_js_helper("__piExport")
+    exported = run_js(lambda: export(v))
+    kind = exported[0]
+
+    if kind == "bytes":
+        return bytes(exported[1])
+    if kind == "json":
+        return plate(json.loads(exported[1]))
+    if kind == "string":
+        return plate(exported[1])
+
+    dish_type = DishType(int(exported[1]))
+    value = exported[2]
+
+    if dish_type in (DishType.BYTE_ARRAY, DishType.ARRAY_BUFFER):
+        if isinstance(value, memoryview):
+            return bytes(value)
+        if isinstance(value, JSArray):
+            # JS numbers are doubles; mini-racer returns int32-representable ones as int.
+            values = [float(b) if isinstance(b, int) and not isinstance(b, bool) else b for b in value]
+            return plate({"value": values, "type": dish_type})
+        return value
+    if dish_type in (DishType.STRING, DishType.HTML, DishType.BIG_NUMBER):
+        return value
+    if dish_type == DishType.NUMBER:
+        return float(value)
+    if dish_type == DishType.JSON:
+        return json.loads(value)
+    if dish_type in (DishType.FILE, DishType.LIST_FILE):
+        return _convert_files(value)
+    return value
 
 
 def _parse_dish_type(raw_type: Any) -> DishType | None:
@@ -625,14 +480,6 @@ def _parse_dish_type(raw_type: Any) -> DishType | None:
         return None
 
 
-def _native_str(s: str) -> str:
-    # PythonMonkey on Linux returns broken string proxies from ICU-backed JS
-    # operations (normalize, toLowerCase, etc.): content is correct but __hash__
-    # and __eq__ are poisoned. Roundtripping through bytes produces a clean
-    # native Python str.
-    return s.encode("utf-8").decode("utf-8") if isinstance(s, str) else str(s)
-
-
 def plate(v: Dish | Any, chef=None) -> Dish | Any:
     """Convert between Python types and CyberChef Dish objects.
 
@@ -642,14 +489,15 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
 
     Returns: Native Python type if input is Dish, Dish dict/instance if input is Python type
     """
+    if isinstance(v, JSObject):
+        return _plate_js_value(v)
+
     dish_type = None
     if isinstance(v, dict) and "value" in v and "type" in v:
         dish_type = _parse_dish_type(v["type"])
-    elif hasattr(v, "value") and hasattr(v, "type"):
-        dish_type = _parse_dish_type(v.type)
 
     if dish_type is not None:
-        value = v["value"] if isinstance(v, dict) else v.value
+        value = v["value"]
 
         if dish_type == DishType.BYTE_ARRAY:
             if isinstance(value, (bytes, bytearray, memoryview)):
@@ -666,47 +514,26 @@ def plate(v: Dish | Any, chef=None) -> Dish | Any:
 
             return value
         elif dish_type == DishType.STRING:
-            return _native_str(value)
+            return str(value)
         elif dish_type == DishType.NUMBER:
             return float(value)
         elif dish_type == DishType.HTML:
-            return _native_str(value)
+            return str(value)
         elif dish_type == DishType.ARRAY_BUFFER:
             if isinstance(value, (bytes, bytearray, memoryview)):
                 return bytes(value)
             if isinstance(value, list):
                 return bytes(int(b) for b in value)
-            if isinstance(value, dict) or hasattr(value, "__iter__"):
-                return _convert_js_array_buffer(value)
             return value
         elif dish_type == DishType.BIG_NUMBER:
-            if isinstance(value, (dict, list)):
-                to_string = _get_js_helper("to_string", "(v) => String(v)")
-                return str(run_js(lambda: to_string(value)))
             return str(value)
-        elif dish_type == DishType.JSON:
-            if isinstance(value, (dict, list)):
-                return convert_js_json_value(value)
-            return value
-        elif dish_type == DishType.FILE or dish_type == DishType.LIST_FILE:
-            return convert_js_file_value(value)
         else:
             return value
     else:
         if isinstance(v, bytes):
             if chef is not None:
-                byte_json = json.dumps(list(v))
-                make_dish = _get_js_helper(
-                    "make_array_buffer_dish",
-                    """
-                (function(bytesJson) {
-                    const byteArray = JSON.parse(bytesJson);
-                    const uint8 = new Uint8Array(byteArray);
-                    return new module.exports.Dish(uint8.buffer, module.exports.Dish.ARRAY_BUFFER);
-                })
-                """,
-                )
-                return run_js(lambda: make_dish(byte_json))
+                make_dish = _get_js_helper("__piMakeBytesDish")
+                return run_js(lambda: make_dish(v.decode("latin-1")))
             else:
                 return {"value": list(v), "type": DishType.ARRAY_BUFFER}
         elif isinstance(v, str):
@@ -779,11 +606,7 @@ def bake_js_recipe(input_data: bytes | str, recipe: list[str | RecipeOperation])
 
     normalised_recipe = normalise_js_recipe(recipe)
     recipe_json = json.dumps(normalised_recipe)
-    bake_fn = _get_js_helper(
-        "pi_bake",
-        "(input, recipeJson) => module.exports.__piBake(input, JSON.parse(recipeJson))",
-    )
-    result = run_js(lambda: bake_fn(input_value, recipe_json))
+    result = call_js(_get_js_helper("__piBake"), input_value, recipe_json, _random_seed_hex())
     return plate(result, chef)
 
 
@@ -799,7 +622,7 @@ def coerce_string_value(value: Any) -> str:
     """
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
-    return _native_str(value)
+    return str(value)
 
 
 def find_label_index(recipe: list[str | RecipeOperation], label_name: str) -> int:

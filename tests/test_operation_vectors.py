@@ -6058,10 +6058,10 @@ EXTRACTOR_VECTORS = [
 
 FLOW_CONTROL_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="magic_raises_typeerror_under_pythonmonkey_runtime",
+        name="magic_raises_typeerror_in_headless_runtime",
         input_data=b"hello",
         recipe=["Magic"],
-        error_message='TypeError: can\'t access property "undefined", state.opList is undefined',
+        error_message="TypeError: Cannot read properties of undefined (reading 'undefined')",
     ),
 ]
 
@@ -6379,10 +6379,10 @@ HASH_BLOCKED_VECTORS = [
 
 NETWORK_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="dns_over_https_requires_fetch_api",
+        name="dns_over_https_requires_url_and_fetch_apis",
         input_data="example.com",
         recipe=["DNS over HTTPS"],
-        error_message="ReferenceError: fetch is not defined",
+        error_message="ReferenceError: URL is not defined",
     ),
     BlockedBakeVector(
         name="http_request_requires_xmlhttprequest",

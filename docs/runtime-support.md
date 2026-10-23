@@ -1,6 +1,6 @@
 # Runtime support
 
-This project ships CyberChef through a PythonMonkey (SpiderMonkey) runtime inside Python and Qt. Most offline operations work. Some classes of operations are intentionally unsupported in the current runtime, and some remain known gaps.
+This project ships CyberChef through a mini-racer (V8) runtime inside Python and Qt. Most offline operations work. Some classes of operations are intentionally unsupported in the current runtime, and some remain known gaps.
 
 ## Supported model
 
@@ -39,6 +39,9 @@ These operations remain unsupported in the current runtime and should be documen
 - Argon2 compare
 
 Reasons:
+- Argon2 and Argon2 compare never settle: the bundle reports itself as Node.js, so argon2-browser takes its Node path and tries to read `argon2.wasm` from disk, which the bundle cannot do. This is a bundle issue, not an engine one; it reproduced under STPyV8, PythonMonkey and mini-racer.
+- YARA Rules also never settles under all three engines. Its WebAssembly is embedded in the bundle, so the cause differs from Argon2 and has not been diagnosed.
+- Magic fails with a TypeError inside the Node-targeted bundle under all three engines.
 - JWT Sign and JWT Verify depend on jsonwebtoken paths that expect Node crypto KeyObject APIs. The current runtime ships a crypto-browserify compatibility layer instead, so signing and verification fail at runtime. JWT Decode remains supported because it only parses the token.
 
 They may stay discoverable in internal metadata, but user-facing docs should describe them as unsupported.
