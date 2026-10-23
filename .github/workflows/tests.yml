@@ -70,7 +70,8 @@ jobs:
           allow-prereleases: true
 
       - name: Build wheelhouse
-        run: python -m pip download --only-binary :all: --dest wheelhouse "mini-racer>=0.14.1" "pydantic>=2"
+        run: |
+          python -m pip download --only-binary :all: --dest wheelhouse "mini-racer>=0.14.1" "pydantic>=2"
 
       - name: Install offline and run a recipe
         shell: bash
