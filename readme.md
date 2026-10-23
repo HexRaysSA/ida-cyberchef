@@ -97,7 +97,7 @@ uv run cyberchef-qt
 
 I'm not quite sure if this will survive or not - I started out to prove this could work, and then was surprised when things fell into place. The architecture is a little ugly: running V8 from Python inside IDA to load a huge blob from GCHQ. But, it works, and we benefit from the operations already supported by CyberChef. So, if you want to propose enhancements and bug fixes, go for it!
 
-There's some risk that the underlying Javascript engine (mini-racer now; PythonMonkey before that, whose `pminit` dependency needed npm at install time; STPyV8 before that, until it was archived in 2026) might become unmaintained or not build/work with future versions of Python or IDA Pro. That'll be a good time to re-evaluate the best parts of ida-cyberchef and perhaps rebuild them carefully.
+There's some risk that the underlying Javascript engine (mini-racer now; PythonMonkey before that, whose `pminit` dependency needed npm at install time; STPyV8 before that, until it was archived in 2026) might become unmaintained or not build/work with future versions of Python or IDA Pro. That'll be a good time to re-evaluate the best parts of ida-cyberchef and perhaps rebuild them carefully. [docs/js-engine.md](docs/js-engine.md) records the engines considered in the last evaluation.
 
 ## License
 
