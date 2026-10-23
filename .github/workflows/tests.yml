@@ -69,6 +69,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
+      - name: Install Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1
+
       - name: Build wheelhouse
         run: |
           python -m pip download --only-binary :all: --dest wheelhouse "mini-racer>=0.14.1" "pydantic>=2"

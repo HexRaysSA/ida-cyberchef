@@ -571,6 +571,20 @@ def build_png_chunk(chunk_type: bytes, data: bytes) -> bytes:
     )
 
 
+def build_stored_zlib_stream(data: bytes) -> bytes:
+    """Return a zlib stream of uncompressed DEFLATE blocks.
+
+    zlib.compress output depends on the zlib build (Windows CPython 3.14+ uses
+    zlib-ng), so fixtures that are compared byte-for-byte avoid it.
+    """
+    blocks = []
+    for offset in range(0, max(len(data), 1), 0xFFFF):
+        chunk = data[offset : offset + 0xFFFF]
+        final = 1 if offset + 0xFFFF >= len(data) else 0
+        blocks.append(struct.pack("<BHH", final, len(chunk), len(chunk) ^ 0xFFFF) + chunk)
+    return b"\x78\x01" + b"".join(blocks) + struct.pack(">I", zlib.adler32(data))
+
+
 def build_png_rgba_bytes(rows: list[list[tuple[int, int, int, int]]]) -> bytes:
     height = len(rows)
     width = len(rows[0]) if rows else 0
@@ -579,7 +593,7 @@ def build_png_rgba_bytes(rows: list[list[tuple[int, int, int, int]]]) -> bytes:
     return (
         b"\x89PNG\r\n\x1a\n"
         + build_png_chunk(b"IHDR", header)
-        + build_png_chunk(b"IDAT", zlib.compress(raw))
+        + build_png_chunk(b"IDAT", build_stored_zlib_stream(raw))
         + build_png_chunk(b"IEND", b"")
     )
 
@@ -2531,6 +2545,8 @@ def build_zip_archive(
     with zipfile.ZipFile(buffer, mode="w") as archive:
         info = zipfile.ZipInfo(filename)
         info.date_time = (1980, 1, 1, 0, 0, 0)
+        # ZipInfo defaults the "made by" host to 0 on Windows and 3 elsewhere.
+        info.create_system = 3
         info.compress_type = compression
         archive.writestr(info, data)
 
@@ -9983,7 +9999,7 @@ MULTIMEDIA_VECTORS = [
         input_data=MULTIMEDIA_SOURCE_PNG.hex(),
         recipe=[{"op": "Render Image", "args": {"Input format": "Hex"}}],
         expected=MULTIMEDIA_SOURCE_PNG,
-        expected_snapshot=b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02\x08\x06\x00\x00\x00r\xb6\r$\x00\x00\x00\x12IDATx\x9cc\xf8\xcf\xc0\xf0\x1f\x0c\x814\x18\x00\x00I\xc8\t\xf7\xf9\xab\xb6\r\x00\x00\x00\x00IEND\xaeB`\x82",
+        expected_snapshot=b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x02\x08\x06\x00\x00\x00r\xb6\r$\x00\x00\x00\x1dIDATx\x01\x01\x12\x00\xed\xff\x00\xff\x00\x00\xff\x00\xff\x00\xff\x00\x00\x00\xff\xff\xff\xff\xff\xffI\xc8\t\xf7\xad\xabV\x1b\x00\x00\x00\x00IEND\xaeB`\x82",
     ),
     BakeVector(
         name="resize_image_percent_nearest_neighbour_extract_rgba",
@@ -11359,8 +11375,12 @@ def extract_pgp_case_expected_literal(source: str, case_name: str) -> str:
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TEST_DATA_DIR = REPO_ROOT / "tests" / "data"
-UPSTREAM_PGP_TESTS_TEXT = (REPO_ROOT / "deps" / "CyberChef" / "tests" / "operations" / "tests" / "PGP.mjs").read_text()
-UPSTREAM_CIPHER_SAMPLES_TEXT = (REPO_ROOT / "deps" / "CyberChef" / "tests" / "samples" / "Ciphers.mjs").read_text()
+UPSTREAM_PGP_TESTS_TEXT = (REPO_ROOT / "deps" / "CyberChef" / "tests" / "operations" / "tests" / "PGP.mjs").read_text(
+    encoding="utf-8"
+)
+UPSTREAM_CIPHER_SAMPLES_TEXT = (REPO_ROOT / "deps" / "CyberChef" / "tests" / "samples" / "Ciphers.mjs").read_text(
+    encoding="utf-8"
+)
 PGP_ALICE_PRIVATE_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "ALICE_PRIVATE")
 PGP_ALICE_PUBLIC_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "ALICE_PUBLIC")
 PGP_BOB_PRIVATE_KEY = extract_js_template_constant(UPSTREAM_PGP_TESTS_TEXT, "BOB_PRIVATE")
@@ -11376,10 +11396,10 @@ PGP_DECRYPT_AND_VERIFY_INPUT = extract_pgp_case_input(
 PGP_DECRYPT_AND_VERIFY_EXPECTED = extract_pgp_case_expected_literal(
     UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt and Verify: UTF8, Alice -> Bob"
 ).replace("${UTF8_TEXT}", PGP_UTF8_TEXT)
-RSA_TEST_PRIVATE_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_private.pem").read_text()
-RSA_TEST_PUBLIC_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_public.pem").read_text()
-RSA_TEST_CSR_PEM = (TEST_DATA_DIR / "public_key_phase45_parse_csr.pem").read_text()
-SSH_RSA_HOST_KEY_PUBLIC = (TEST_DATA_DIR / "public_key_phase45_ssh_host_key.pub").read_text()
+RSA_TEST_PRIVATE_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_private.pem").read_text(encoding="utf-8")
+RSA_TEST_PUBLIC_KEY_PEM = (TEST_DATA_DIR / "public_key_phase45_rsa_public.pem").read_text(encoding="utf-8")
+RSA_TEST_CSR_PEM = (TEST_DATA_DIR / "public_key_phase45_parse_csr.pem").read_text(encoding="utf-8")
+SSH_RSA_HOST_KEY_PUBLIC = (TEST_DATA_DIR / "public_key_phase45_ssh_host_key.pub").read_text(encoding="utf-8")
 RSA_TEST_SHA256_SIGNATURE = bytes.fromhex(
     "38015b89cac4dc16ccedf3d7ffbeb81521af828f9298dfcf613d268d0ec673fac4b115f203a8c0ccb00800bbcd2af2c81f14a8ef5cf6d3251eba94828ba2b770a938f03230b490234d6c70da9d73a0a0c013195b20ffc7adc7e25d1717e3218f21b31361e023dca9426761c587ad8f044c91e9fecc96abfbbdbe5a028e51ec47"
 )
@@ -14481,11 +14501,13 @@ BITE_SIZED_BAKE_VECTORS = [
     *ARITHMETIC_LOGIC_VECTORS,
 ]
 
+# V8's Date.now() on Windows can trail Python's precise clock by a few
+# milliseconds, so allow 50 ms either way.
 GET_TIME_GRANULARITIES = [
     ("Seconds (s)", 1_000_000_000, 1),
-    ("Milliseconds (ms)", 1_000_000, 1),
-    ("Microseconds (μs)", 1_000, 1_000),
-    ("Nanoseconds (ns)", 1, 1_000_000),
+    ("Milliseconds (ms)", 1_000_000, 50),
+    ("Microseconds (μs)", 1_000, 50_000),
+    ("Nanoseconds (ns)", 1, 50_000_000),
 ]
 
 

@@ -12,7 +12,7 @@ import pytest
 
 from ida_cyberchef.cyberchef import bake
 
-_DATA = json.loads((Path(__file__).parent / "data" / "cyberchef_test_vectors.json").read_text())
+_DATA = json.loads((Path(__file__).parent / "data" / "cyberchef_test_vectors.json").read_text(encoding="utf-8"))
 
 EXACT_VECTORS = _DATA["exact_vectors"]
 MATCH_VECTORS = _DATA["match_vectors"]
