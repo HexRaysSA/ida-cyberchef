@@ -1,103 +1,71 @@
 import hashlib
-import json
 import uuid
 
-from ida_cyberchef.cyberchef import DishType, bake, decode_escaped_string, eval_js, get_chef, plate
+import pytest
 
-
-def rechef(dish_result, chef):
-    """Convert a CyberChef Dish result back to a proper Dish for the next operation.
-
-    This does a double-plate: Dish -> Python type -> Dish
-    Needed if Dish objects don't cross the Python/JS boundary cleanly.
-
-    Args:
-        dish_result: CyberChef Dish result from previous operation
-        chef: CyberChef module instance
-
-    Returns: Fresh Dish instance for next operation
-    """
-    return plate(plate(dish_result), chef)
+from ida_cyberchef.cyberchef import CyberChefError, bake
 
 
 def test_from_base64():
-    chef = get_chef()
-    test_input = "U28gbG9uZyBhbmQgdGhhbmtzIGZvciBhbGwgdGhlIGZpc2gu"
-    result = plate(chef.fromBase64(test_input))
-    assert result == b"So long and thanks for all the fish."
+    assert bake("U28gbG9uZyBhbmQgdGhhbmtzIGZvciBhbGwgdGhlIGZpc2gu", ["From Base64"]) == (
+        b"So long and thanks for all the fish."
+    )
 
 
 def test_to_hex():
-    chef = get_chef()
-    input_dish = plate(b"hello", chef)
-    result = plate(chef.toHex(input_dish))
-    assert result == "68 65 6c 6c 6f"
+    assert bake(b"hello", ["To Hex"]) == "68 65 6c 6c 6f"
 
 
 def test_md5():
-    chef = get_chef()
-    input_dish = plate(b"hello", chef)
-    result = plate(chef.MD5(input_dish))
-    assert result == "5d41402abc4b2a76b9719d911017c592"
-
-
-def test_chained_operations_with_rechef():
-    """Test chaining with rechef() if needed."""
-    chef = get_chef()
-
-    input_dish = plate(b"hello", chef)
-    step1 = chef.toHex(input_dish)
-    step2 = rechef(chef.fromHex(step1), chef)
-    step3 = chef.MD5(step2)
-    result = plate(step3)
-
-    expected = "5d41402abc4b2a76b9719d911017c592"
-    assert result == expected
+    assert bake(b"hello", ["MD5"]) == "5d41402abc4b2a76b9719d911017c592"
 
 
 def test_translate_datetime():
-    chef = get_chef()
-    result = plate(chef.translateDateTimeFormat("15/06/2015 20:45:00", {"outputTimezone": "Australia/Queensland"}))
+    result = bake(
+        "15/06/2015 20:45:00",
+        [{"op": "Translate DateTime Format", "args": {"Output timezone": "Australia/Queensland"}}],
+    )
     assert "2015" in result
 
 
 def test_parse_ipv6():
-    chef = get_chef()
-    result = plate(chef.parseIPv6Address("2001:0000:4136:e378:8000:63bf:3fff:fdd2"))
+    result = bake("2001:0000:4136:e378:8000:63bf:3fff:fdd2", ["Parse IPv6 address"])
     assert "2001:0:4136:e378:8000:63bf:3fff:fdd2" in result
 
 
-def test_sha256():
-    """Test SHA2-256 produces correct standard hash.
-
-    Note: size must be a string "256", not integer 256.
-    """
-
-    chef = get_chef()
-    input_dish = plate(b"hello", chef)
-    result = plate(chef.SHA2(input_dish, {"size": "256"}))
-    expected = hashlib.sha256(b"hello").hexdigest()
-    assert result == expected
-
-
 def test_url_encode():
-    chef = get_chef()
-    result = plate(chef.URLEncode("Hello World!"))
-    assert result == "Hello%20World!"
+    assert bake("Hello World!", ["URL Encode"]) == "Hello%20World!"
 
 
-def test_plate_does_not_misidentify_json_dict_as_dish():
-    payload = {"value": 1, "type": "integer"}
-    assert plate(payload) == {"value": payload, "type": DishType.JSON}
+def test_operation_names_and_arg_names_ignore_case_and_spaces():
+    assert bake(b"hello", [{"op": "sha2", "args": {"size": "256"}}]) == hashlib.sha256(b"hello").hexdigest()
+    assert bake(b"hello", ["toBase64"]) == "aGVsbG8="
 
 
-def test_plate_does_not_misidentify_out_of_range_type_as_dish():
-    payload = {"value": b"x", "type": 99}
-    assert plate(payload) == {"value": payload, "type": DishType.JSON}
+def test_positional_args_from_web_app_recipes():
+    assert bake("a,b", [{"op": "Split", "args": [",", "\\n"]}]) == "a\nb"
 
 
-def test_plate_still_handles_valid_dish_dict():
-    assert plate({"value": "hello", "type": DishType.STRING}) == "hello"
+def test_binary_string_args_decode_escapes_like_the_web_app():
+    assert bake("a,b", [{"op": "Split", "args": {"Split delimiter": ",", "Join delimiter": "\\t"}}]) == "a\tb"
+
+
+def test_editable_option_accepts_preset_label():
+    assert bake("a b", [{"op": "Split", "args": {"Split delimiter": "Space", "Join delimiter": "Comma"}}]) == "a,b"
+
+
+def test_unknown_operation_raises():
+    with pytest.raises(CyberChefError, match="Couldn't find an operation with name 'Nope'"):
+        bake("x", ["Nope"])
+
+
+def test_operation_error_raises_with_its_message():
+    with pytest.raises(CyberChefError, match="all numbers must be between 1 and 26"):
+        bake("99", ["A1Z26 Cipher Decode"])
+
+
+def test_flow_control_runs_in_cyberchef():
+    assert bake("a\nb", ["Fork", "To Upper case", "Merge"]) == "A\nB"
 
 
 def test_bake_simple():
@@ -198,23 +166,12 @@ def test_bake_empty_recipe():
     assert result == b"hello" or result == "hello"
 
 
-def test_crypto_get_random_values_produces_distinct_random_bytes():
-    get_chef()
-    code = """
-    (function() {
-        const values = new Uint8Array(32);
-        crypto.getRandomValues(values);
-        return JSON.stringify(Array.from(values));
-    })()
-    """
+def test_random_bytes_are_distinct():
+    recipe = [{"op": "Pseudo-Random Number Generator", "args": {"Number of bytes": 32, "Output as": "Hex"}}]
+    first = bake("", recipe)
+    second = bake("", recipe)
 
-    first = json.loads(eval_js(code))
-    second = json.loads(eval_js(code))
-
-    assert len(first) == 32
-    assert len(second) == 32
-    assert all(0 <= value <= 255 for value in first)
-    assert all(0 <= value <= 255 for value in second)
+    assert len(first) == 64
     assert first != second
 
 
@@ -228,25 +185,3 @@ def test_bake_generate_uuid_produces_distinct_v4_values():
     assert first_uuid.version == 4
     assert second_uuid.version == 4
     assert first != second
-
-
-def test_decode_escaped_string_standard_escapes():
-    assert decode_escaped_string("\\n") == "\n"
-    assert decode_escaped_string("\\t") == "\t"
-    assert decode_escaped_string("\\x0a") == "\n"
-
-
-def test_decode_escaped_string_non_ascii_passthrough():
-    assert decode_escaped_string("café") == "café"
-    assert decode_escaped_string("Ñ") == "Ñ"
-    assert decode_escaped_string("—") == "—"
-
-
-def test_decode_escaped_string_unicode_escape():
-    assert decode_escaped_string("\\u00e9") == "é"
-    assert decode_escaped_string("\\u00d1") == "Ñ"
-
-
-def test_decode_escaped_string_mixed():
-    assert decode_escaped_string("café\\n") == "café\n"
-    assert decode_escaped_string("\\t—\\t") == "\t—\t"

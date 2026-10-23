@@ -178,10 +178,8 @@ def test_cyberchef_exact(vector):
     expected = vector["expected"]
     try:
         result = bake(vector["input"], vector["recipe"])
-    except RuntimeError as exc:
-        if "Timed out" in str(exc):
-            pytest.xfail("timed out (slow crypto operation)")
-        raise
+    except TimeoutError:
+        pytest.xfail("timed out")
     except Exception as exc:
         error_msg = str(exc)
         if expected and _error_matches_expected(error_msg, expected):
@@ -208,10 +206,8 @@ def test_cyberchef_match(vector):
     expected_match = vector["expected_match"]
     try:
         result = bake(vector["input"], vector["recipe"])
-    except RuntimeError as exc:
-        if "Timed out" in str(exc):
-            pytest.xfail("timed out (slow crypto operation)")
-        raise
+    except TimeoutError:
+        pytest.xfail("timed out")
     except Exception as exc:
         error_msg = str(exc)
         if re.search(expected_match, error_msg):
