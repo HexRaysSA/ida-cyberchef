@@ -33,11 +33,13 @@ mini-racer does not use the CPython C API, so a wheel works with every CPython v
 
 ## How the bridge works
 
+`just build` bundles CyberChef's core (all operations) with `js/polyfills.mjs` and `js/bridge.mjs` into `ida_cyberchef/data/CyberChef.js`. CyberChef runs in its browser (Web Worker) mode, as in the web app, and recipes run through its own `Recipe` class, so flow control, argument defaults and escape handling are upstream's.
+
 mini-racer runs V8 on its own thread. From Python to JS it passes only primitives and handles to JS objects. From JS to Python it returns ArrayBuffers as zero-copy `memoryview`s. Therefore:
 
-- `ida_cyberchef/data/runtime.js` adds the browser and Node.js APIs that bare V8 lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder` and `crypto.getRandomValues`. It also defines the `__pi*` helpers that the bridge calls.
-- Bytes go into JS as latin-1 strings and come out as ArrayBuffers. Dicts and lists go in as JSON.
-- JS cannot call Python synchronously. `crypto.getRandomValues` is a ChaCha20 stream, keyed with `os.urandom` when the bundle loads and before every bake.
+- `js/polyfills.mjs` adds the Web APIs that bare V8 lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder`, `crypto.getRandomValues` and `Blob`/`File`/`FileReader`.
+- Bytes go into JS as latin-1 strings and come out as ArrayBuffers. The recipe goes in as JSON text.
+- JS cannot call Python synchronously. `crypto.getRandomValues` is a ChaCha20 stream, keyed with `os.urandom` before every bake.
 
 ## Known caveats
 

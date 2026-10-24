@@ -13803,6 +13803,28 @@
       "is_favorite": false
     },
     {
+      "name": "Public Key from Certificate",
+      "module": "PublicKey",
+      "description": "Extracts the Public Key from a Certificate.",
+      "infoURL": "https://en.wikipedia.org/wiki/X.509",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
+      "name": "Public Key from Private Key",
+      "module": "PublicKey",
+      "description": "Extracts the Public Key from a Private Key.",
+      "infoURL": "https://en.wikipedia.org/wiki/PKCS_8",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
       "name": "RAKE",
       "module": "Default",
       "description": "Rapid Keyword Extraction (RAKE)\n<br><br>\nRAKE is a domain-independent keyword extraction algorithm in Natural Language Processing.\n<br><br>\nThe list of stop words are from the NLTK python package",
@@ -14725,6 +14747,38 @@
         }
       ],
       "category": "Compression",
+      "is_favorite": false
+    },
+    {
+      "name": "Register",
+      "module": "Regex",
+      "description": "Extract data from the input and store it in registers which can then be passed into subsequent operations as arguments. Regular expression capture groups are used to select the data to extract.<br><br>To use registers in arguments, refer to them using the notation <code>$Rn</code> where n is the register number, starting at 0.<br><br>For example:<br>Input: <code>Test</code><br>Extractor: <code>(.*)</code><br>Argument: <code>$R0</code> becomes <code>Test</code><br><br>Registers can be escaped in arguments using a backslash. e.g. <code>\\$R0</code> would become <code>$R0</code> rather than <code>Test</code>.",
+      "infoURL": "https://wikipedia.org/wiki/Regular_expression#Syntax",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Extractor",
+          "type": "binaryString",
+          "value": "([\\s\\S]*)"
+        },
+        {
+          "name": "Case insensitive",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Multiline matching",
+          "type": "boolean",
+          "value": false
+        },
+        {
+          "name": "Dot matches all",
+          "type": "boolean",
+          "value": false
+        }
+      ],
+      "category": "Flow control",
       "is_favorite": false
     },
     {
@@ -17982,6 +18036,27 @@
           "value": [
             "Encode",
             "Decode"
+          ]
+        }
+      ],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
+      "name": "Text-Integer Conversion",
+      "module": "Default",
+      "description": "Converts between text strings and large integers (decimal or hexadecimal).<br><br>Text is interpreted as a big-endian sequence of character codes. For example:<br>ABC is 0x414243 (hex) is 4276803 (decimal)<br><b>Input format detection:</b><br>Decimal: digits 0-9 only<br>Hexadecimal: 0x... prefix<br>Quoted or unquoted text: treated as string<br><br><b>Character limitations:</b><br>Text input may only contain ASCII and Latin-1 characters (code point < 256).<br>Multi-byte Unicode characters will generate an error.<br><br>.",
+      "infoURL": "https://wikipedia.org/wiki/Endianness",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Output format",
+          "type": "option",
+          "value": [
+            "String",
+            "Decimal",
+            "Hexadecimal"
           ]
         }
       ],

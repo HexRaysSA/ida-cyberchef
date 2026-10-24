@@ -101,7 +101,7 @@ def bake(input_data: bytes | str, recipe: Recipe) -> Any:
         return input_data
 
     is_bytes = not isinstance(input_data, str)
-    payload = bytes(input_data).decode("latin-1") if is_bytes else input_data
+    payload = input_data if isinstance(input_data, str) else bytes(input_data).decode("latin-1")
     try:
         promise = _get_bake()(payload, is_bytes, json.dumps(recipe), os.urandom(32).hex())
         dish_type, value = promise.get(timeout=TIMEOUT_SECONDS)

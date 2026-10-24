@@ -3321,30 +3321,41 @@ WHERE id = 1 AND name = "x"''',
     ),
 ]
 
-CODE_TIDY_BLOCKED_VECTORS = [
-    BlockedBakeVector(
-        name="javascript_beautify_excluded_from_node_bundle",
+
+def assert_javascript_parser_declares_answer(result: object) -> None:
+    assert isinstance(result, str)
+    program = json.loads(result)
+    assert program["type"] == "Program"
+    assert program["body"][0]["declarations"][0]["id"]["name"] == "answer"
+
+
+JAVASCRIPT_TOOL_VECTORS = [
+    BakeVector(
+        name="javascript_beautify_spaces_operators",
         input_data="const answer=42;",
         recipe=["JavaScript Beautify"],
-        error_message=("Sorry, the JavaScriptBeautify operation is not available in the Node.js version of CyberChef."),
+        expected="const answer = 42;",
     ),
-    BlockedBakeVector(
-        name="javascript_minify_excluded_from_node_bundle",
+    BakeVector(
+        name="javascript_minify_removes_whitespace",
         input_data="const answer = 42;",
         recipe=["JavaScript Minify"],
-        error_message=("Sorry, the JavaScriptMinify operation is not available in the Node.js version of CyberChef."),
+        expected="const answer=42;",
     ),
-    BlockedBakeVector(
-        name="javascript_parser_excluded_from_node_bundle",
+    BakeVector(
+        name="javascript_parser_emits_estree_json",
         input_data="const answer = 42;",
         recipe=["JavaScript Parser"],
-        error_message=("Sorry, the JavaScriptParser operation is not available in the Node.js version of CyberChef."),
+        expected=assert_javascript_parser_declares_answer,
     ),
-    BlockedBakeVector(
-        name="syntax_highlighter_excluded_from_node_bundle",
+    BakeVector(
+        name="syntax_highlighter_marks_tokens",
         input_data="const answer = 42;",
         recipe=["Syntax highlighter"],
-        error_message=("Sorry, the SyntaxHighlighter operation is not available in the Node.js version of CyberChef."),
+        expected=(
+            'const answer <span class="hljs-operator">=</span> <span class="hljs-number">42</span>'
+            '<span class="hljs-comment">;</span>'
+        ),
     ),
 ]
 
@@ -5162,7 +5173,6 @@ DATA_FORMAT_VECTORS = [
     ),
 ]
 
-COMPRESSION_BLOCKED_VECTORS = []
 
 COMPRESSION_VECTORS = [
     BakeVector(
@@ -6072,12 +6082,20 @@ EXTRACTOR_VECTORS = [
     ),
 ]
 
-FLOW_CONTROL_BLOCKED_VECTORS = [
-    BlockedBakeVector(
-        name="magic_raises_typeerror_in_headless_runtime",
-        input_data=b"hello",
+
+def assert_magic_suggests_from_base64(result: object) -> None:
+    assert isinstance(result, list)
+    best = result[0]
+    assert [step["op"] for step in best["recipe"]] == ["From Base64"]
+    assert best["data"] == "hello world"
+
+
+MAGIC_VECTORS = [
+    BakeVector(
+        name="magic_suggests_from_base64",
+        input_data="aGVsbG8gd29ybGQ=",
         recipe=["Magic"],
-        error_message="TypeError: Cannot read properties of undefined (reading 'undefined')",
+        expected=assert_magic_suggests_from_base64,
     ),
 ]
 
@@ -6304,9 +6322,9 @@ FORENSICS_VECTORS = [
     ),
 ]
 
-FORENSICS_BLOCKED_VECTORS = [
-    BlockedBakeVector(
-        name="yara_rules_simple_match_times_out_in_headless_runtime",
+YARA_VECTORS = [
+    BakeVector(
+        name="yara_rules_simple_match",
         input_data=b"foobar foobar",
         recipe=[
             {
@@ -6322,7 +6340,11 @@ FORENSICS_BLOCKED_VECTORS = [
                 },
             }
         ],
-        error_message="Timed out waiting for CyberChef promise to settle",
+        expected=(
+            'Rule "foo" matches (2 times):\n'
+            'Pos 0, length 3, identifier $re1, data: "foo"\n'
+            'Pos 7, length 3, identifier $re1, data: "foo"\n'
+        ),
     ),
 ]
 
@@ -6354,13 +6376,13 @@ MULTIMEDIA_BLOCKED_VECTORS = [
         name="optical_character_recognition_requires_browser_worker_runtime",
         input_data=MULTIMEDIA_SOURCE_PNG,
         recipe=["Optical Character Recognition"],
-        error_message="Error: This operation only works in a browser",
+        error_message="This operation only works in a browser",
     ),
 ]
 
-HASH_BLOCKED_VECTORS = [
-    BlockedBakeVector(
-        name="argon2_default_hash_times_out_in_headless_runtime",
+ARGON2_VECTORS = [
+    BakeVector(
+        name="argon2_default_hash",
         input_data="argon2password",
         recipe=[
             {
@@ -6376,10 +6398,10 @@ HASH_BLOCKED_VECTORS = [
                 },
             }
         ],
-        error_message="Timed out waiting for CyberChef promise to settle",
+        expected="$argon2i$v=19$m=4096,t=3,p=1$c29tZXNhbHQ$s43my9eBljQADuF/LWCG8vGqwAJzOorKQ0Yog8jFvbw",
     ),
-    BlockedBakeVector(
-        name="argon2_compare_known_hash_times_out_in_headless_runtime",
+    BakeVector(
+        name="argon2_compare_known_hash",
         input_data="argon2password",
         recipe=[
             {
@@ -6389,7 +6411,7 @@ HASH_BLOCKED_VECTORS = [
                 },
             }
         ],
-        error_message="Timed out waiting for CyberChef promise to settle",
+        expected="Match: argon2password",
     ),
 ]
 
@@ -6420,12 +6442,7 @@ NETWORK_BLOCKED_VECTORS = [
 ]
 
 BLOCKED_BAKE_VECTORS = [
-    *CODE_TIDY_BLOCKED_VECTORS,
-    *COMPRESSION_BLOCKED_VECTORS,
-    *FLOW_CONTROL_BLOCKED_VECTORS,
-    *FORENSICS_BLOCKED_VECTORS,
     *MULTIMEDIA_BLOCKED_VECTORS,
-    *HASH_BLOCKED_VECTORS,
     *NETWORK_BLOCKED_VECTORS,
 ]
 
@@ -14482,6 +14499,10 @@ ARITHMETIC_LOGIC_VECTORS = [
 
 BITE_SIZED_BAKE_VECTORS = [
     *CODE_TIDY_VECTORS,
+    *JAVASCRIPT_TOOL_VECTORS,
+    *MAGIC_VECTORS,
+    *YARA_VECTORS,
+    *ARGON2_VECTORS,
     *DATA_FORMAT_VECTORS,
     *COMPRESSION_VECTORS,
     *DATE_TIME_VECTORS,

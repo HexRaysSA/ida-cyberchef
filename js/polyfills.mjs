@@ -10,6 +10,10 @@
 // object is `self`.
 globalThis.self = globalThis;
 
+globalThis.queueMicrotask = (fn) => {
+    Promise.resolve().then(fn);
+};
+
 // Timers. mini-racer's setTimeout throws for a zero delay, where
 // Atomics.waitAsync settles synchronously and returns no promise, so replace
 // it. Callbacks run from V8's task queue, which mini-racer pumps.
@@ -57,6 +61,12 @@ globalThis.clearInterval = function(id) {
 
 globalThis.setImmediate = (fn, ...args) => setTimeout(fn, 0, ...args);
 globalThis.clearImmediate = clearTimeout;
+
+// Parse IPv4 header calls concat() on a Uint8Array when its input is raw
+// bytes (an upstream bug); this matches what that code expects.
+Uint8Array.prototype.concat ??= function(...values) {
+    return Array.from(this).concat(...values.map((value) => (ArrayBuffer.isView(value) ? Array.from(value) : value)));
+};
 
 globalThis.DOMException ??= class DOMException extends Error {
     constructor(message = "", name = "Error") {

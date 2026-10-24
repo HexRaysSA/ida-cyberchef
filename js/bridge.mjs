@@ -14,6 +14,7 @@
 import {seedRandom} from "./polyfills.mjs";
 import Dish from "../deps/CyberChef/src/core/Dish.mjs";
 import Recipe from "../deps/CyberChef/src/core/Recipe.mjs";
+import {detectFileType} from "../deps/CyberChef/src/core/lib/FileType.mjs";
 import OperationConfig from "../deps/CyberChef/src/core/config/OperationConfig.json" with {type: "json"};
 
 const sanitise = (name) => String(name).replace(/ /g, "").toLowerCase();
@@ -22,6 +23,8 @@ const isSubheading = (label) => /^\[\/?[a-z0-9 \-()^]+\]$/i.test(label);
 const OPERATION_NAMES = new Map(Object.keys(OperationConfig).map((name) => [sanitise(name), name]));
 
 const optionLabel = (option) => (typeof option === "string" ? option : option.name);
+// A few editableOption presets are plain strings rather than {name, value}.
+const optionValue = (option) => (typeof option === "string" ? option : option.value);
 
 /**
  * The selectable entries of an option-like argument, without subheadings.
@@ -29,6 +32,8 @@ const optionLabel = (option) => (typeof option === "string" ? option : option.na
 const choices = (arg) => arg.value.filter((option) => !isSubheading(optionLabel(option)));
 
 const findChoice = (arg, label) => choices(arg).find((option) => sanitise(optionLabel(option)) === sanitise(label));
+
+const toBoolean = (value) => (typeof value === "string" ? value.trim().toLowerCase() === "true" : Boolean(value));
 
 /**
  * The value the web app's recipe editor uses for an argument the user did not set.
@@ -44,9 +49,12 @@ function defaultValue(arg) {
         }
         case "editableOption":
         case "editableOptionShort":
-            return arg.value[arg.defaultIndex ?? 0].value;
+            return optionValue(arg.value[arg.defaultIndex ?? 0]);
         case "toggleString":
             return {string: arg.value, option: arg.toggleValues[0]};
+        case "boolean":
+            // Some configs give "false" as a string, which would be truthy.
+            return toBoolean(arg.value);
         default:
             return arg.value;
     }
@@ -69,7 +77,7 @@ function givenValue(arg, value) {
         case "editableOptionShort": {
             // Accept a preset's label ("Line feed") as well as its value ("\\n").
             const choice = typeof value === "string" && findChoice(arg, value);
-            return choice ? choice.value : value;
+            return choice ? optionValue(choice) : value;
         }
         case "toggleString":
             if (value !== null && typeof value === "object") {
@@ -77,7 +85,7 @@ function givenValue(arg, value) {
             }
             return {string: String(value), option: arg.toggleValues[0]};
         case "boolean":
-            return typeof value === "string" ? value.trim().toLowerCase() === "true" : Boolean(value);
+            return toBoolean(value);
         default:
             return value;
     }
@@ -114,7 +122,7 @@ function toIngredient(entry) {
             return;
         }
         const targets = arg.type === "populateMultiOption" ? arg.target : [arg.target];
-        const presets = arg.type === "populateMultiOption" ? choice.value : [choice.value];
+        const presets = arg.type === "populateMultiOption" ? optionValue(choice) : [optionValue(choice)];
         targets.forEach((target, i) => {
             if (!given.has(sanitise(argConfig[target].name)) && !(arg.type === "populateOption" && presets[i] === "")) {
                 values[target] = presets[i];
@@ -161,7 +169,8 @@ function exportDish(dish) {
         case Dish.LIST_FILE: {
             const files = (type === Dish.FILE ? [value] : value).map((file) => ({
                 name: String(file.name ?? ""),
-                type: String(file.type ?? ""),
+                // Most operations leave the type empty; report the detected one.
+                type: file.type || detectFileType(file._bytes)[0]?.mime || "application/unknown",
                 data: file._bytes,
             }));
             const data = new Uint8Array(files.reduce((total, file) => total + file.data.length, 0));

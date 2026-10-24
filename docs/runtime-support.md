@@ -1,6 +1,6 @@
 # Runtime support
 
-This project ships CyberChef through a mini-racer (V8) runtime inside Python and Qt. Most offline operations work. Some classes of operations are intentionally unsupported in the current runtime, and some remain known gaps.
+ida-cyberchef runs CyberChef's own core, with all of its operations, in an embedded V8 engine ([mini-racer](https://github.com/bpcreech/PyMiniRacer)). Recipes run through CyberChef's `Recipe` class, as in the web app, so flow control (Fork, Merge, Subsection, Jump, Conditional Jump, Register, Return), argument defaults and escape handling (`\n`, `\x00` in binary-string arguments) behave as in the web app.
 
 ## Supported model
 
@@ -9,65 +9,33 @@ The supported path is:
 - no browser tab, DOM, worker, or network dependency
 - no external asset fetch at runtime
 
-The bridge applies local compatibility fixes for CyberChef's Node-targeted bundle, including argument normalization and runtime polyfills.
+CyberChef runs in its browser (Web Worker) mode. `js/polyfills.mjs` provides the Web APIs that a bare V8 engine lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder`, `crypto.getRandomValues`, and `Blob`/`File`/`FileReader`.
 
-## Unsupported in the current runtime
+## Unsupported operations
 
-These operations are intentionally unsupported unless the runtime model changes:
-- JavaScript Beautify
-- JavaScript Minify
-- JavaScript Parser
-- Syntax highlighter
 - DNS over HTTPS
 - HTTP request
 - Optical Character Recognition
 - Add Text To Image
-
-Reasons:
-- the JavaScript formatting/highlighting operations are excluded by the current Node-targeted CyberChef bundle
-- the network operations require browser-style request APIs and live network policy decisions
-- the OCR and image-text operations require browser-style workers, assets, or XHR-style loading that this project does not provide
-
-## Also unsupported in the current runtime
-
-These operations remain unsupported in the current runtime and should be documented that way rather than treated as active remediation targets:
 - JWT Sign
 - JWT Verify
-- Magic
-- YARA Rules
-- Argon2
-- Argon2 compare
 
 Reasons:
-- Argon2 and Argon2 compare never settle: the bundle reports itself as Node.js, so argon2-browser takes its Node path and tries to read `argon2.wasm` from disk, which the bundle cannot do. This is a bundle issue, not an engine one; it reproduced under STPyV8, PythonMonkey and mini-racer.
-- YARA Rules also never settles under all three engines. Its WebAssembly is embedded in the bundle, so the cause differs from Argon2 and has not been diagnosed.
-- Magic fails with a TypeError inside the Node-targeted bundle under all three engines.
-- JWT Sign and JWT Verify depend on jsonwebtoken paths that expect Node crypto KeyObject APIs. The current runtime ships a crypto-browserify compatibility layer instead, so signing and verification fail at runtime. JWT Decode remains supported because it only parses the token.
+- The network operations need the browser's `fetch` API and network access, which the runtime deliberately does not provide.
+- Optical Character Recognition needs browser workers and OCR assets that this project does not ship.
+- Add Text To Image loads its bitmap fonts with `fetch`.
+- JWT Sign and JWT Verify use jsonwebtoken, which needs Node's `crypto.KeyObject`. Browser builds of CyberChef use crypto-browserify, which does not provide it. JWT Decode works because it only parses the token.
 
-They may stay discoverable in internal metadata, but user-facing docs should describe them as unsupported.
+These operations stay in the operation schema, and `docs/ops.md` marks them as unsupported. A recipe that uses one fails with the operation's error message.
 
-## Missing from the CyberChef build
+## Known differences from the web app
 
-These operations exist in upstream CyberChef but are absent from the Node-targeted bundle shipped with this project. They are not in the operation schema and cannot be called at runtime:
-- Caret/M-decode
-- Convert co-ordinate format
-- Fletcher-16 Checksum
-- Fletcher-32 Checksum
-- Fletcher-64 Checksum
-- HAS-160
-- Parse X.509 CRL
-- Public Key from Certificate
-- Public Key from Private Key
-
-These were discovered by importing upstream test vectors (see `tests/test_cyberchef_vectors.py`). Adding them requires rebuilding the CyberChef bundle with the corresponding operation modules included.
-
-## Known degraded behaviors still shipped
-
-No additional degraded behaviors are currently tracked in `remaining.md` for the supported runtime.
+- Operations that render HTML for the web app's output pane (Bombe, Multiple Bombe, Index of Coincidence, Play Media) return their underlying data instead: JSON, a number, or bytes.
+- `crypto.subtle` is not available.
 
 ## Support policy for docs and tests
 
 - unsupported operations stay discoverable in internal metadata when they exist upstream
 - unsupported operations should be called out explicitly in user-facing docs
-- blocked regression tests should remain in place for unsupported operations and major runtime gaps
+- blocked regression tests should remain in place for unsupported operations
 - deterministic offline behavior takes priority over browser parity

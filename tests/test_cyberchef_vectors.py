@@ -14,20 +14,19 @@ from ida_cyberchef.cyberchef import bake
 
 _DATA = json.loads((Path(__file__).parent / "data" / "cyberchef_test_vectors.json").read_text(encoding="utf-8"))
 
-EXACT_VECTORS = _DATA["exact_vectors"]
-MATCH_VECTORS = _DATA["match_vectors"]
 
-MISSING_OPERATIONS = {
-    "Caret/M-decode",
-    "Convert co-ordinate format",
-    "Fletcher-16 Checksum",
-    "Fletcher-32 Checksum",
-    "Fletcher-64 Checksum",
-    "HAS-160",
-    "Parse X.509 CRL",
-    "Public Key from Certificate",
-    "Public Key from Private Key",
-}
+def _positional_args(vectors: list[dict]) -> list[dict]:
+    """Turn {"_arg0": a, "_arg1": b} (upstream recipes with unnamed args) into [a, b]."""
+    for vector in vectors:
+        for step in vector["recipe"]:
+            args = step.get("args") if isinstance(step, dict) else None
+            if args and all(key.startswith("_arg") for key in args):
+                step["args"] = [args[f"_arg{index}"] for index in range(len(args))]
+    return vectors
+
+
+EXACT_VECTORS = _positional_args(_DATA["exact_vectors"])
+MATCH_VECTORS = _positional_args(_DATA["match_vectors"])
 
 # These tests are expected failures due to known limitations of the current
 # JS-engine-backed runtime. Each entry documents why the test cannot pass in the current bridge.
@@ -45,17 +44,6 @@ XFAIL_EXACT = {
     "Play Media: raw wav": "bridge returns raw bytes; JS test expects <audio> HTML tag from present()",
     "Play Media: hex ogg": "bridge returns raw bytes; JS test expects <audio> HTML tag from present()",
     "Play Media: base64 webm": "bridge returns raw bytes; JS test expects <video> HTML tag from present()",
-    # Split Colour Channels: run() returns raw image bytes, present() wraps them in
-    # HTML. Additionally, the JS image processing library (jimp) may not function
-    # fully in our minimal V8 environment — the operation returns empty output.
-    "Split Colour Channels: Default (JPEG)": "bridge returns raw bytes; JS image processing may not work in headless V8",
-    # --- Register flow control not implemented ---
-    # The Register operation captures regex groups from the input (e.g. extracting a
-    # key from a URL) and makes them available as $R0, $R1, etc. in downstream
-    # operation arguments. This requires threading a register context through recipe
-    # execution, which the Python flow-control emulation does not yet support.
-    "Register: RC4 key": "Register flow control op not implemented — needs context threading for $R0 substitution",
-    "Register: AES key": "Register flow control op not implemented — needs context threading for $R0 substitution",
     # --- CBOR Decode JSON string quoting ---
     # CBOR Decode has outputType "JSON". When CyberChef's JS test harness coerces
     # a JSON string value to a display string, it preserves the JSON quotes:
@@ -69,22 +57,30 @@ XFAIL_EXACT = {
     # outside the bounds of the DataView" while the test expects "Error: Could not
     # parse". Same error scenario, different message from the msgpack library.
     "From MessagePack: no content": "V8 msgpack throws different error message than upstream test expects",
-    # --- JWT operations broken in the headless runtime ---
-    # The jsonwebtoken library used by JWT Sign/Verify fails in the headless JS
-    # environment — the crypto-browserify layer lacks Node crypto KeyObject APIs.
-    "JWT Sign: HS256": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: HS256 with custom header": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: HS384": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: HS512": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: ES256": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: ES384": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: ES512": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: RS256": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: RS384": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Sign: RS512": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Verify: HS": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Verify: RS": "jsonwebtoken library fails in the headless JS environment",
-    "JWT Verify: ES": "jsonwebtoken library fails in the headless JS environment",
+    # --- Parse X.509 CRL ---
+    # Upstream's expected text for these two CRLs (tab indentation, "Unsupported
+    # CRL extension") does not match what this revision of the operation prints:
+    # it now decodes the Issuer Alternative Name, as the third CRL vector expects.
+    "Parse X.509 CRL: Example PEM encoded CRL with RSA signature": "upstream expectation predates this revision's output",
+    "Parse X.509 CRL: Example PEM encoded CRL with RSA signature, CRL Reason and Invalidity Date": (
+        "upstream expectation predates this revision's output"
+    ),
+    # --- JWT Sign/Verify ---
+    # jsonwebtoken needs Node's crypto.KeyObject, which crypto-browserify (the
+    # crypto module in browser builds of CyberChef) does not provide.
+    "JWT Sign: HS256": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: HS256 with custom header": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: HS384": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: HS512": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: ES256": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: ES384": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: ES512": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: RS256": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: RS384": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Sign: RS512": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Verify: HS": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Verify: RS": "jsonwebtoken needs Node crypto.KeyObject",
+    "JWT Verify: ES": "jsonwebtoken needs Node crypto.KeyObject",
 }
 
 XFAIL_MATCH = {
@@ -116,14 +112,6 @@ XFAIL_MATCH = {
     # character 1" before it even reaches the constructor call.
     "JPath Expression: Script-based expression": "JPath library fails at parse stage in V8; browser fails at eval stage",
 }
-
-
-def _uses_missing_operation(recipe: list) -> bool:
-    for step in recipe:
-        op = step if isinstance(step, str) else step.get("op", "")
-        if op in MISSING_OPERATIONS:
-            return True
-    return False
 
 
 def _coerce_result(result, expected):
@@ -170,8 +158,6 @@ def _error_matches_expected(error_msg: str, expected: str) -> bool:
     ids=[v["name"] for v in EXACT_VECTORS],
 )
 def test_cyberchef_exact(vector):
-    if _uses_missing_operation(vector["recipe"]):
-        pytest.xfail("operation not available in this CyberChef build")
     if vector["name"] in XFAIL_EXACT:
         pytest.xfail(XFAIL_EXACT[vector["name"]])
 
@@ -198,8 +184,6 @@ def test_cyberchef_exact(vector):
     ids=[v["name"] for v in MATCH_VECTORS],
 )
 def test_cyberchef_match(vector):
-    if _uses_missing_operation(vector["recipe"]):
-        pytest.xfail("operation not available in this CyberChef build")
     if vector["name"] in XFAIL_MATCH:
         pytest.xfail(XFAIL_MATCH[vector["name"]])
 

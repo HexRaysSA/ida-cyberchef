@@ -54,8 +54,8 @@ const config = {
             {
                 // CyberChef's sources default-import packages that only have
                 // named exports (es6-promisify, flat, d3) and rely on Babel's
-                // CommonJS interop for that. Only the module syntax is
-                // converted; V8 runs everything else as written.
+                // CommonJS interop for that. Only module syntax and block
+                // scoping are converted; V8 runs everything else as written.
                 test: /\.m?js$/,
                 exclude: /node_modules\/(?!crypto-api)/,
                 type: "javascript/auto",
@@ -68,6 +68,9 @@ const config = {
                     plugins: [
                         fromCyberChef("@babel/plugin-syntax-import-attributes"),
                         fromCyberChef("@babel/plugin-transform-modules-commonjs"),
+                        // Upstream ships let/const as var, and some code (FuzzyMatch)
+                        // only works without the temporal dead zone.
+                        fromCyberChef("@babel/plugin-transform-block-scoping"),
                     ],
                     generatorOpts: {importAttributesKeyword: "with"},
                 },

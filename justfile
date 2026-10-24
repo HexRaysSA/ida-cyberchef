@@ -1,14 +1,23 @@
+cyberchef := "deps/CyberChef"
+
+# Install CyberChef's npm dependencies (build time only; the plugin needs no npm).
 install-npm:
-    cd deps/CyberChef && npm install
+    cd {{ cyberchef }} && npm ci --no-audit --no-fund
 
+# Generate CyberChef's OperationConfig.json and operation module index.
+config: install-npm
+    cd {{ cyberchef }} && echo '[]' > src/core/config/OperationConfig.json
+    cd {{ cyberchef }} && node --no-warnings src/core/config/scripts/generateOpsIndex.mjs
+    cd {{ cyberchef }} && node --no-warnings src/core/config/scripts/generateConfig.mjs
 
-build: install-npm
-    cd deps/CyberChef && npm run node
-    cp deps/CyberChef/build/node/CyberChef.js ida_cyberchef/data/CyberChef.js
-
+# Build ida_cyberchef/data/CyberChef.js and regenerate the operation schema and docs.
+build: config
+    node js/build.cjs
+    python tools/generate_operation_schema.py
+    python tools/generate_docs.py
 
 clean:
-    rm -rf deps/CyberChef/build ida_cyberchef/data/CyberChef.js
+    rm -rf {{ cyberchef }}/node_modules ida_cyberchef/data/CyberChef.js
 
 test:
     pytest tests/

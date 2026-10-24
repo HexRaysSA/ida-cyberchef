@@ -12,7 +12,7 @@ def test_render_method_name_normalizes_unicode_and_punctuation():
 
 
 def test_get_support_annotation_marks_explicitly_unsupported_operation():
-    note = get_support_annotation("Argon2")
+    note = get_support_annotation("HTTP request")
 
     assert note is not None
     assert "unsupported" in note.lower()
@@ -20,9 +20,9 @@ def test_get_support_annotation_marks_explicitly_unsupported_operation():
 
 def test_generate_operation_doc_includes_support_note():
     operation = {
-        "name": "Magic",
+        "name": "HTTP request",
         "module": "Default",
-        "description": "Browser-backed file magic detection.",
+        "description": "Makes an HTTP request.",
         "infoURL": None,
         "inputType": "ArrayBuffer",
         "outputType": "string",
@@ -33,7 +33,7 @@ def test_generate_operation_doc_includes_support_note():
 
     doc = generate_operation_doc(operation)
 
-    assert "### `Magic()`" in doc
+    assert "### `HTTPRequest()`" in doc
     assert "Support:" in doc
     assert "unsupported" in doc.lower()
 
