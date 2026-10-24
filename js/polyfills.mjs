@@ -6,6 +6,13 @@
  * before any CyberChef module is evaluated.
  */
 
+// URL and URLSearchParams (WHATWG), from core-js, a CyberChef dependency.
+// cbor2 registers an encoder for the URL class when it loads.
+import "core-js/stable/url/index.js";
+import "core-js/stable/url-search-params/index.js";
+import {sha1} from "@noble/hashes/legacy.js";
+import {sha256, sha384, sha512} from "@noble/hashes/sha2.js";
+
 // CyberChef's operations run in a Web Worker in the web app, where the global
 // object is `self`.
 globalThis.self = globalThis;
@@ -61,12 +68,6 @@ globalThis.clearInterval = function(id) {
 
 globalThis.setImmediate = (fn, ...args) => setTimeout(fn, 0, ...args);
 globalThis.clearImmediate = clearTimeout;
-
-// Parse IPv4 header calls concat() on a Uint8Array when its input is raw
-// bytes (an upstream bug); this matches what that code expects.
-Uint8Array.prototype.concat ??= function(...values) {
-    return Array.from(this).concat(...values.map((value) => (ArrayBuffer.isView(value) ? Array.from(value) : value)));
-};
 
 globalThis.DOMException ??= class DOMException extends Error {
     constructor(message = "", name = "Error") {
@@ -299,7 +300,6 @@ globalThis.TextDecoder = class TextDecoder {
 // crypto.getRandomValues, backed by a ChaCha20 stream (RFC 8439 block
 // function). JS cannot call into Python synchronously, so the Python side
 // supplies a fresh OS-entropy key via seedRandom() before each bake.
-// crypto.subtle is not provided.
 const key = new Uint32Array(8);
 const state = new Uint32Array(16);
 const block = new Uint32Array(16);
@@ -353,7 +353,28 @@ export function seedRandom(seedHex) {
     seeded = true;
 }
 
+// crypto.subtle with only digest(). openpgp (Parse PGP Key) requires a
+// SubtleCrypto object when it loads and hashes key fingerprints with it.
+// Other methods are left out: libraries such as node-forge check for each
+// method and use their pure-JS implementations when it is missing.
+const DIGESTS = {"SHA-1": sha1, "SHA-256": sha256, "SHA-384": sha384, "SHA-512": sha512};
+
+const subtle = {
+    async digest(algorithm, data) {
+        const name = String(typeof algorithm === "string" ? algorithm : algorithm.name).toUpperCase();
+        const hash = DIGESTS[name];
+        if (!hash) {
+            throw new DOMException(`Unsupported digest algorithm: ${name}`, "NotSupportedError");
+        }
+        const bytes = ArrayBuffer.isView(data) ?
+            new Uint8Array(data.buffer, data.byteOffset, data.byteLength) :
+            new Uint8Array(data);
+        return hash(bytes).buffer;
+    },
+};
+
 globalThis.crypto = {
+    subtle,
     getRandomValues(array) {
         if (!seeded) {
             throw new Error("crypto.getRandomValues used before the random generator was seeded");

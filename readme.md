@@ -40,7 +40,7 @@ There's also a standalone (non-IDA Pro) Qt application for running CyberChef on 
 
 ## Runtime support
 
-The runtime supports local, deterministic operation execution. It has no browser tab, DOM, worker, or network dependency, and does not fetch external assets at runtime. All 475 CyberChef operations are included. Six are known not to work:
+The runtime supports local, deterministic operation execution. It has no browser tab, DOM, worker, or network dependency, and does not fetch external assets at runtime. All 506 CyberChef operations are included. Six are known not to work:
 
 Unsupported operations: DNS over HTTPS and HTTP request (they need network access), Optical Character Recognition and Add Text To Image (they load assets with browser APIs), and JWT Sign and JWT Verify (they need Node's `crypto.KeyObject`). `docs/runtime-support.md` has the details, and `docs/ops.md` marks these operations.
 
@@ -71,7 +71,7 @@ Then build CyberChef's JavaScript bundle (you'll need Node.js and npm for this, 
 just build
 ```
 
-This installs npm dependencies in the CyberChef submodule, generates CyberChef's operation config, bundles `js/bridge.mjs` with CyberChef's core into `ida_cyberchef/data/CyberChef.js` (about 20 seconds; a ~33MB file), and regenerates `operation_schema.json` and `docs/ops.md`. The build is reproducible, and CI checks that the committed bundle matches its sources.
+This installs npm dependencies in the CyberChef submodule, generates CyberChef's operation config, bundles `js/bridge.mjs` with CyberChef's core into `ida_cyberchef/data/CyberChef.js` (about 20 seconds; a ~34MB file), and regenerates `operation_schema.json`, `docs/ops.md` and the test vectors extracted from CyberChef's own test suite. The build is reproducible, and CI checks that the committed bundle matches its sources.
 
 To run the plugin in IDA, symlink the development directory into `$IDAUSR/plugins/ida-cyberchef`:
 

@@ -185,3 +185,8 @@ def test_bake_generate_uuid_produces_distinct_v4_values():
     assert first_uuid.version == 4
     assert second_uuid.version == 4
     assert first != second
+
+
+def test_present_returns_the_web_app_rendering():
+    assert isinstance(bake("hello", ["Index of Coincidence"]), float)
+    assert bake("hello", ["Index of Coincidence"], present=True).startswith("Index of Coincidence: ")

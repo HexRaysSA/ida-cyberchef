@@ -1,6 +1,6 @@
 # CyberChef Operations Reference
 
-This document lists all 475 available CyberChef operations.
+This document lists all 506 available CyberChef operations.
 
 Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.
 See the Runtime support section in `readme.md` for the broader support policy.
@@ -91,11 +91,13 @@ GCM Tag: This field is ignored unless 'GCM' mode is used.
 **Arguments:**
   - **Key** (toggleString): default ``
   - **IV** (toggleString): default ``
+  - **IV Length** (number): default `16`
   - **Mode** (argSelector): `CBC`, `CFB`, `OFB` (+5 more)
   - **Input** (option): `Hex`, `Raw`
   - **Output** (option): `Raw`, `Hex`
   - **GCM Tag** (toggleString): default ``
   - **Additional Authenticated Data** (toggleString): default ``
+  - **IV from input** (argSelector): `Off`, `From start`, `From end`
 
 ---
 
@@ -126,6 +128,7 @@ Padding: In CBC and ECB mode, PKCS#7 padding will be used.
   - **Input** (option): `Raw`, `Hex`
   - **Output** (option): `Hex`, `Raw`
   - **Additional Authenticated Data** (toggleString): default ``
+  - **Include IV in output** (option): `Off`, `Prepend`, `Append`
 
 ---
 
@@ -366,11 +369,14 @@ Alternating caps, also known as studly caps, sticky caps, or spongecase is a for
 
 **Module:** Crypto
 
-Tries to determine information about a given UUID and suggests which version may have been used to generate it
+Operation for extracting metadata and detecting the version of a given UUID.
 
 [More info](https://wikipedia.org/wiki/Universally_unique_identifier)
 
 **Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Include Metadata** (boolean): default `true`
 
 ---
 
@@ -436,6 +442,105 @@ Tests whether the input matches the given Argon2 hash. To test multiple possible
 
 ---
 
+### `AsconDecrypt()`
+
+**Operation:** `Ascon Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Ascon-AEAD128 authenticated decryption as standardised in NIST SP 800-232. Decrypts ciphertext and verifies the authentication tag. Decryption will fail if the ciphertext or associated data has been tampered with.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+Nonce: Must be exactly 16 bytes (128 bits). Must match the nonce used during encryption.
+
+Associated Data: Must match the associated data used during encryption. Any mismatch will cause authentication failure.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Nonce** (toggleString): default ``
+  - **Associated Data** (toggleString): default ``
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+
+---
+
+### `AsconEncrypt()`
+
+**Operation:** `Ascon Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Ascon-AEAD128 authenticated encryption as standardised in NIST SP 800-232. Ascon is a family of lightweight authenticated encryption algorithms designed for constrained devices such as IoT sensors and embedded systems.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+Nonce: Must be exactly 16 bytes (128 bits). Should be unique for each encryption with the same key. Never reuse a nonce with the same key.
+
+Associated Data: Optional additional data that is authenticated but not encrypted. Useful for including metadata like headers or timestamps.
+
+The output includes both the ciphertext and a 128-bit authentication tag.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Nonce** (toggleString): default ``
+  - **Associated Data** (toggleString): default ``
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+
+---
+
+### `AsconHash()`
+
+**Operation:** `Ascon Hash`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Ascon-Hash256 produces a fixed 256-bit (32-byte) cryptographic hash as standardised in NIST SP 800-232. Ascon is a family of lightweight authenticated encryption and hashing algorithms designed for constrained devices such as IoT sensors and embedded systems.
+
+The algorithm was selected by NIST in 2023 as the new standard for lightweight cryptography after a multi-year competition.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `AsconMAC()`
+
+**Operation:** `Ascon MAC`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Ascon-Mac produces a 128-bit (16-byte) message authentication code as part of the Ascon family standardised by NIST in SP 800-232. It provides authentication for messages using a secret key, ensuring both data integrity and authenticity.
+
+Ascon is designed for lightweight cryptography on constrained devices such as IoT sensors and embedded systems.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+
+---
+
 ### `AtbashCipher()`
 
 **Operation:** `Atbash Cipher`
@@ -449,6 +554,29 @@ Atbash is a mono-alphabetic substitution cipher originally used to encode the He
 [More info](https://wikipedia.org/wiki/Atbash)
 
 **Input:** `string` → **Output:** `string`
+
+---
+
+### `AutomatedValidationTestOp()`
+
+**Operation:** `Automated Validation Test Op`
+
+**Category:** `Other`
+
+**Module:** Default
+
+Operation used specifically to test automated parameter validation.
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Integer Number** (number): default `5`
+  - **Real Number** (number): default `1.5`
+  - **Non Empty String** (string): default `hello`
+  - **Empty Allowed String** (string): default ``
+  - **Non Empty Toggle String** (toggleString): default `{'option': 'Option A', 'string': 'test'}`
+  - **Option Ingredient** (option): `[Group 1]`, `Option 1`, `Option 2` (+4 more)
+  - **Arg Selector Ingredient** (argSelector): `Option 1`, `Option 2`
 
 ---
 
@@ -540,7 +668,7 @@ Hashes the input using BLAKE3 (UTF-8 encoded), with an optional key (also UTF-8)
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Size (bytes)** (number): default ``
+  - **Size (bytes)** (number): default `16`
   - **Key** (string): default ``
 
 ---
@@ -2293,8 +2421,8 @@ Input should be in hexadecimal.
 **Arguments:**
   - **Bit mode** (option): `64`, `32`, `16`
   - **Compatibility** (option): `Full x86 architecture`, `Knights Corner`, `Larrabee` (+4 more)
-  - **Code Segment (CS)** (number): default `16`
-  - **Offset (IP)** (number): default `0`
+  - **Code Segment (CS)** (string): default `16`
+  - **Offset (IP)** (string): default `0`
   - **Show instruction hex** (boolean): default `true`
   - **Show instruction position** (boolean): default `true`
 
@@ -2710,6 +2838,27 @@ Shannon Entropy, in the context of information theory, is a measure of the rate 
 
 ---
 
+### `EscapeSmartCharacters()`
+
+**Operation:** `Escape Smart Characters`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Converts smart (typographic) Unicode characters — e.g. smart quotes, em/en dashes, ellipses, ©, ®, ™, arrows — into their plain ASCII equivalents.
+
+Characters with no ASCII mapping (e.g. `☣`) are handled according to the 'Unmappable characters' option.
+
+e.g. `“Hello” — world…` becomes `"Hello" -- world...`
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Unmappable characters** (option): `Include`, `Remove`, `Replace with '.'`
+
+---
+
 ### `EscapeUnicodeCharacters()`
 
 **Operation:** `Escape Unicode Characters`
@@ -2773,6 +2922,33 @@ e.g. `a-z` becomes `abcdefghijklmnopqrstuvwxyz`.
 
 **Arguments:**
   - **Delimiter** (binaryString): default ``
+
+---
+
+### `ExtendedGCD()`
+
+**Operation:** `Extended GCD`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Crypto
+
+Computes the Extended Euclidean Algorithm for integers a and b.
+
+Finds integers x and y (Bezout coefficients) such that:
+a*x + b*y = gcd(a, b)
+
+This is fundamental to many number theory algorithms including modular inverse, solving linear Diophantine equations, and cryptographic operations.
+
+Input handling: If either a or b is left blank, its value is taken from the Input field.
+
+[More info](https://wikipedia.org/wiki/Extended_Euclidean_algorithm)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Value a** (string): default ``
+  - **Value b** (string): default ``
 
 ---
 
@@ -3675,6 +3851,22 @@ Converts six-dot braille symbols to text.
 
 ---
 
+### `FromCOBS()`
+
+**Operation:** `From COBS`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Decodes COBS encoded bytes
+
+[More info](https://wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+---
+
 ### `FromCaseInsensitiveRegex()`
 
 **Operation:** `From Case Insensitive Regex`
@@ -3730,7 +3922,7 @@ e.g. `72 101 108 108 111` becomes `Hello`
 **Input:** `string` → **Output:** `byteArray`
 
 **Arguments:**
-  - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+3 more)
+  - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+4 more)
   - **Support signed values** (boolean): default `false`
 
 ---
@@ -4229,14 +4421,14 @@ WARNING: Cryptographic operations in CyberChef should not be relied upon to prov
 
 The HMAC-based One-Time Password algorithm (HOTP) is an algorithm that computes a one-time password from a shared secret key and an incrementing counter. It has been adopted as Internet Engineering Task Force standard RFC 4226, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems.
 
-Enter the secret as the input or leave it blank for a random secret to be generated.
+Enter the secret as the input or leave it blank for a random secret to be generated. The secret must be a valid base32 string (characters A–Z and 2–7).
 
 [More info](https://wikipedia.org/wiki/HMAC-based_One-time_Password_algorithm)
 
 **Input:** `ArrayBuffer` → **Output:** `string`
 
 **Arguments:**
-  - **Name** (string): default ``
+  - **Name** (string): default `Account`
   - **Code length** (number): default `6`
   - **Counter** (number): default `0`
 
@@ -4361,14 +4553,14 @@ WARNING: Cryptographic operations in CyberChef should not be relied upon to prov
 
 The Time-based One-Time Password algorithm (TOTP) is an algorithm that computes a one-time password from a shared secret key and the current time. It has been adopted as Internet Engineering Task Force standard RFC 6238, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems. A TOTP is an HOTP where the counter is the current time.
 
-Enter the secret as the input or leave it blank for a random secret to be generated. T0 and T1 are in seconds.
+Enter the secret as the input or leave it blank for a random secret to be generated. The secret must be a valid base32 string (characters A–Z and 2–7). T0 and T1 are in seconds.
 
 [More info](https://wikipedia.org/wiki/Time-based_One-time_Password_algorithm)
 
 **Input:** `ArrayBuffer` → **Output:** `string`
 
 **Arguments:**
-  - **Name** (string): default ``
+  - **Name** (string): default `Account`
   - **Code length** (number): default `6`
   - **Epoch offset (T0)** (number): default `0`
   - **Interval (T1)** (number): default `30`
@@ -5746,6 +5938,26 @@ Enables the decoding of MIME message header extensions for non-ASCII text
 
 ---
 
+### `MOD()`
+
+**Operation:** `MOD`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Default
+
+Computes the modulo of each number in a list with a given modulus value. Numbers are extracted from the input based on the delimiter, and non-numeric values are ignored.
+
+e.g. `15 4 7` with modulus `3` becomes `0 1 1`
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Modulus** (number): default `2`
+  - **Delimiter** (option): `Line feed`, `Space`, `Comma` (+3 more)
+
+---
+
 ### `Magic()`
 
 **Operation:** `Magic`
@@ -5859,6 +6071,55 @@ VScript.Echo(my_msg);`
 [More info](https://wikipedia.org/wiki/JScript.Encode)
 
 **Input:** `string` → **Output:** `string`
+
+---
+
+### `ModularExponentiation()`
+
+**Operation:** `Modular Exponentiation`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Crypto
+
+Performs modular exponentiation, as used in Diffie-Hellman and RSA.
+
+Computes Base ^ Exponent mod Modulus.
+
+Input handling: If either Base or Exponent is left blank, its value is taken from the Input field.
+
+[More info](https://wikipedia.org/wiki/Modular_exponentiation)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Base** (string): default ``
+  - **Modulus** (string): default `1`
+  - **Exponent** (string): default ``
+
+---
+
+### `ModularInverse()`
+
+**Operation:** `Modular Inverse`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Crypto
+
+Computes the modular multiplicative inverse of a modulo m.
+
+Finds x such that a*x = 1 (mod m).
+
+Input handling: If either a or m is left blank, its value is taken from the Input field.
+
+[More info](https://wikipedia.org/wiki/Modular_multiplicative_inverse)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Value (a)** (string): default ``
+  - **Modulus (m)** (string): default ``
 
 ---
 
@@ -6138,6 +6399,9 @@ Converts Keys in PEM format to a JSON Web Key format.
 
 **Input:** `string` → **Output:** `string`
 
+**Arguments:**
+  - **Set key ID (kid) to RFC 7638 thumbprint** (boolean): default ``
+
 ---
 
 ### `PGPDecrypt()`
@@ -6252,6 +6516,32 @@ This function uses the Keybase implementation of PGP.
 
 ---
 
+### `PGPSign()`
+
+**Operation:** `PGP Sign`
+
+**Category:** `Public Key`
+
+**Module:** PGP
+
+Input: the message you want to sign
+
+Arguments: the ASCII-armoured PGP private key of the sender.
+
+Pretty Good Privacy is an encryption standard (OpenPGP) used for encrypting, decrypting, and signing messages.
+
+This function uses the Keybase implementation of PGP.
+
+[More info](https://wikipedia.org/wiki/Pretty_Good_Privacy)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Private key of signer** (text)
+  - **Private key passphrase (optional)** (string): default ``
+
+---
+
 ### `PGPVerify()`
 
 **Operation:** `PGP Verify`
@@ -6332,6 +6622,58 @@ a:3:{i:0;i:5;i:1;s:3:"abc";i:2;b:1;}
 
 ---
 
+### `PRESENTDecrypt()`
+
+**Operation:** `PRESENT Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+PRESENT is an ultra-lightweight block cipher designed for constrained environments such as RFID tags and sensor networks. It operates on 64-bit blocks and supports 80-bit or 128-bit keys with 31 rounds. Standardised in ISO/IEC 29192-2:2019.
+
+When using CBC mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/PRESENT_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `ECB`
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
+### `PRESENTEncrypt()`
+
+**Operation:** `PRESENT Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+PRESENT is an ultra-lightweight block cipher designed for constrained environments such as RFID tags and sensor networks. It operates on 64-bit blocks and supports 80-bit or 128-bit keys with 31 rounds. Standardised in ISO/IEC 29192-2:2019.
+
+When using CBC mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/PRESENT_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `ECB`
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
 ### `PadLines()`
 
 **Operation:** `Pad lines`
@@ -6348,6 +6690,30 @@ Add the specified number of the specified character to the beginning or end of e
   - **Position** (option): `Start`, `End`
   - **Length** (number): default `5`
   - **Character** (binaryShortString): default ` `
+
+---
+
+### `ParityBit()`
+
+**Operation:** `Parity Bit`
+
+**Category:** `Hashing`
+
+**Module:** Default
+
+A parity bit, or check bit, is the simplest form of error detection. It is a bit which is added to a string of bits and represents if the number of 1's in the binary string is an even number or odd number.
+
+If a delimiter is specified, the parity bit calculation will be performed on each 'block' of the input data, where the blocks are created by slicing the input at each occurrence of the delimiter character
+
+[More info](https://wikipedia.org/wiki/Parity_bit)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Mode** (option): `Even Parity`, `Odd Parity`
+  - **Postion** (option): `Start`, `End`
+  - **Encode or Decode** (option): `Encode`, `Decode`
+  - **Delimiter** (shortString)
 
 ---
 
@@ -6505,6 +6871,22 @@ Recognises all reserved ranges and parses encapsulated or tunnelled addresses in
 Parse timestamp from MongoDB/BSON ObjectID hex string.
 
 [More info](https://docs.mongodb.com/manual/reference/method/ObjectId.getTimestamp/)
+
+**Input:** `string` → **Output:** `string`
+
+---
+
+### `ParsePGPKey()`
+
+**Operation:** `Parse PGP Key`
+
+**Category:** `Public Key`
+
+**Module:** PGP
+
+Parse the contents of a PGP (v4 or v6) Key
+
+[More info](https://wikipedia.org/wiki/Pretty_Good_Privacy)
 
 **Input:** `string` → **Output:** `string`
 
@@ -6721,6 +7103,22 @@ Tags: X509, server hello, handshake
 
 ---
 
+### `ParseX509CertificateBundles()`
+
+**Operation:** `Parse X.509 certificate bundles`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+Parses a PEM file containing one or more X.509 certificates and displays the validity, issuer, subject, extensions and other details of each certificate in order.
+
+[More info](https://wikipedia.org/wiki/X.509)
+
+**Input:** `string` → **Output:** `string`
+
+---
+
 ### `ParseColourCode()`
 
 **Operation:** `Parse colour code`
@@ -6871,6 +7269,35 @@ This operation uses the browser's built-in `crypto.getRandomValues()` method if 
 **Arguments:**
   - **Number of bytes** (number): default `32`
   - **Output as** (option): `Hex`, `Integer`, `Byte array` (+1 more)
+
+---
+
+### `PseudoRandomPrimeGenerator()`
+
+**Operation:** `Pseudo-Random Prime Generator`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Generates a random probable prime number of specified bit length using the Miller-Rabin primality test.
+
+Primality guarantee:
+For numbers . 3,317, the result is guaranteed prime (deterministic test).
+For larger numbers, uses probabilistic testing:
+- Standard (7 rounds): Probability of composite approx 1 in 16,000)
+
+- Crypto grade (40 rounds): Probability of composite(approx 1 in 10^24)
+Crypto grade is recommended for cryptographic applications (RSA, Diffie-Hellman, etc.).
+
+[More info](https://wikipedia.org/wiki/Miller-Rabin_primality_test)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Bit length** (number): default `512`
+  - **Crypto grade** (boolean): default `false`
+  - **Output format** (option): `Decimal`, `Hexadecimal`
 
 ---
 
@@ -7112,6 +7539,20 @@ RIPEMD was based upon the design principles used in MD4, and is similar in perfo
 
 **Arguments:**
   - **Size** (option): `320`, `256`, `160` (+1 more)
+
+---
+
+### `ROR13()`
+
+**Operation:** `ROR13`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Default
+
+Computes a ROR13 hash used in API hashing techniques.
+
+**Input:** `byteArray` → **Output:** `string`
 
 ---
 
@@ -7486,7 +7927,7 @@ Supports extended regex syntax including the 'dot matches all' flag, named captu
 **Input:** `string` → **Output:** `html`
 
 **Arguments:**
-  - **Built in regexes** (populateOption): default `[{'name': 'User defined', 'value': ''}, {'name': 'IPv4 address', 'value': '(?:(?:\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d|\\d)(?:\\/\\d{1,2})?'}, {'name': 'IPv6 address', 'value': '((?=.*::)(?!.*::.+::)(::)?([\\dA-Fa-f]{1,4}:(:|\\b)|){5}|([\\dA-Fa-f]{1,4}:){6})((([\\dA-Fa-f]{1,4}((?!\\3)::|:\\b|(?![\\dA-Fa-f])))|(?!\\2\\3)){2}|(((2[0-4]|1\\d|[1-9])?\\d|25[0-5])\\.?\\b){4})'}, {'name': 'Email address', 'value': '(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\\.[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*")@(?:(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFF-a-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?\\.)+[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}\\])'}, {'name': 'URL', 'value': '([A-Za-z]+://)([-\\w]+(?:\\.\\w[-\\w]*)+)(:\\d+)?(/[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]*(?:[.!,?]+[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]+)*)?'}, {'name': 'Domain', 'value': '\\b((?=[a-z0-9-]{1,63}\\.)(xn--)?[a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,63}\\b'}, {'name': 'Windows file path', 'value': '([A-Za-z]):\\\\((?:[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)~]{0,61}\\\\?)*[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)]{0,61})(\\.[A-Za-z\\d]{1,6})?'}, {'name': 'UNIX file path', 'value': '(?:/[A-Za-z\\d.][A-Za-z\\d\\-.]{0,61})+'}, {'name': 'MAC address', 'value': '[A-Fa-f\\d]{2}(?:[:-][A-Fa-f\\d]{2}){5}'}, {'name': 'UUID', 'value': '[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}'}, {'name': 'Date (yyyy-mm-dd)', 'value': '((?:19|20)\\d\\d)[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])'}, {'name': 'Date (dd/mm/yyyy)', 'value': '(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Date (mm/dd/yyyy)', 'value': '(0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Strings', 'value': '[A-Za-z\\d/\\-:.,_$%\\x27"()<>= !\\[\\]{}@]{4,}'}]`
+  - **Built in regexes** (populateOption): default `[{'name': 'User defined', 'value': ''}, {'name': 'IPv4 address', 'value': '(?:(?:\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d|\\d)(?:\\/\\d{1,2})?'}, {'name': 'IPv6 address', 'value': '((?=.*::)(?!.*::.+::)(::)?([\\dA-Fa-f]{1,4}:(:|\\b)|){5}|([\\dA-Fa-f]{1,4}:){6})((([\\dA-Fa-f]{1,4}((?!\\3)::|:\\b|(?![\\dA-Fa-f])))|(?!\\2\\3)){2}|(((2[0-4]|1\\d|[1-9])?\\d|25[0-5])\\.?\\b){4})'}, {'name': 'Email address', 'value': '(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\\.[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*")@(?:(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?\\.)+[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\])'}, {'name': 'URL', 'value': '([A-Za-z]+://)([-\\w]+(?:\\.\\w[-\\w]*)+)(:\\d+)?(/[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]*(?:[.!,?]+[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]+)*)?'}, {'name': 'Domain', 'value': '\\b((?=[a-z0-9-]{1,63}\\.)(xn--)?[a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,63}\\b'}, {'name': 'Windows file path', 'value': '([A-Za-z]):\\\\((?:[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)~]{0,61}\\\\?)*[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)]{0,61})(\\.[A-Za-z\\d]{1,6})?'}, {'name': 'UNIX file path', 'value': '(?:/[A-Za-z\\d.][A-Za-z\\d\\-.]{0,61})+'}, {'name': 'MAC address', 'value': '[A-Fa-f\\d]{2}(?:[:-][A-Fa-f\\d]{2}){5}'}, {'name': 'UUID', 'value': '[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}'}, {'name': 'Date (yyyy-mm-dd)', 'value': '((?:19|20)\\d\\d)[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])'}, {'name': 'Date (dd/mm/yyyy)', 'value': '(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Date (mm/dd/yyyy)', 'value': '(0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Strings', 'value': '[A-Za-z\\d/\\-:.,_$%\\x27"()<>= !\\[\\]{}@]{4,}'}]`
   - **Regex** (text)
   - **Case insensitive** (boolean): default `true`
   - **^ and $ match at newlines** (boolean): default `true`
@@ -7495,6 +7936,22 @@ Supports extended regex syntax including the 'dot matches all' flag, named captu
   - **Astral support** (boolean): default `false`
   - **Display total** (boolean): default `false`
   - **Output format** (option): `Highlight matches`, `List matches`, `List capture groups` (+1 more)
+
+---
+
+### `RemoveANSIEscapeCodes()`
+
+**Operation:** `Remove ANSI Escape Codes`
+
+**Category:** `Utils`
+
+**Module:** Default
+
+Removes ANSI Escape Codes.
+
+[More info](https://wikipedia.org/wiki/ANSI_escape_code)
+
+**Input:** `string` → **Output:** `string`
 
 ---
 
@@ -7620,6 +8077,24 @@ Renders input Markdown as HTML. HTML rendering is disabled to avoid XSS.
 **Arguments:**
   - **Autoconvert URLs to links** (boolean): default `false`
   - **Enable syntax highlighting** (boolean): default `true`
+  - **Open links in new tab.** (boolean): default `false`
+
+---
+
+### `RenderPDF()`
+
+**Operation:** `Render PDF`
+
+**Category:** `Multimedia`
+
+**Module:** File
+
+Displays the input as a PDF preview. Supports Raw and Base64 input formats.
+
+**Input:** `string` → **Output:** `html`
+
+**Arguments:**
+  - **Input format** (option): `Base64`, `Raw`
 
 ---
 
@@ -7822,7 +8297,7 @@ However, SHA-1's collision resistance has been weakening as new attacks are disc
 
 The SHA-2 (Secure Hash Algorithm 2) hash functions were designed by the NSA. SHA-2 includes significant changes from its predecessor, SHA-1. The SHA-2 family consists of hash functions with digests (hash values) that are 224, 256, 384 or 512 bits: SHA224, SHA256, SHA384, SHA512.
 
-SHA-512 operates on 64-bit words.SHA-256 operates on 32-bit words.SHA-384 is largely identical to SHA-512 but is truncated to 384 bytes.SHA-224 is largely identical to SHA-256 but is truncated to 224 bytes.SHA-512/224 and SHA-512/256 are truncated versions of SHA-512, but the initial values are generated using the method described in Federal Information Processing Standards (FIPS) PUB 180-4. The message digest algorithm for SHA256 variants consists, by default, of 64 rounds, and for SHA512 variants, it is, by default, 160.
+SHA-512 operates on 64-bit words.SHA-256 operates on 32-bit words.SHA-384 is largely identical to SHA-512 but is truncated to 384 bits.SHA-224 is largely identical to SHA-256 but is truncated to 224 bits.SHA-512/224 and SHA-512/256 are truncated versions of SHA-512, but the initial values are generated using the method described in Federal Information Processing Standards (FIPS) PUB 180-4. The message digest algorithm for SHA256 variants consists, by default, of 64 rounds, and for SHA512 variants, it is, by default, 160.
 
 [More info](https://wikipedia.org/wiki/SHA-2)
 
@@ -8020,7 +8495,7 @@ SM4 is a 128-bit block cipher, currently established as a national standard (GB/
 **Arguments:**
   - **Key** (toggleString): default ``
   - **IV** (toggleString): default ``
-  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+4 more)
   - **Input** (option): `Raw`, `Hex`
   - **Output** (option): `Hex`, `Raw`
 
@@ -8799,7 +9274,7 @@ Adds syntax highlighting to a range of source code languages. Note that this wil
 **Input:** `string` → **Output:** `html`
 
 **Arguments:**
-  - **Language** (option): `auto detect`, `1c`, `abnf` (+190 more)
+  - **Language** (option): `auto detect`, `1c`, `abnf` (+191 more)
 
 ---
 
@@ -8816,6 +9291,70 @@ Calculates the checksum for a TCP (Transport Control Protocol) or IP (Internet P
 [More info](https://wikipedia.org/wiki/IPv4_header_checksum)
 
 **Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `TEADecrypt()`
+
+**Operation:** `TEA Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+TEA (Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1994. It operates on 64-bit blocks using a 128-bit key and performs 32 cycles (64 Feistel rounds) with the DELTA constant 0x9E3779B9 derived from the golden ratio.
+
+TEA is notable for its simplicity and compact implementation, making it frequently encountered in malware analysis and CTF challenges. Despite its elegance, TEA has known weaknesses including equivalent keys and susceptibility to related-key attacks, leading to successors XTEA and XXTEA.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Tiny_Encryption_Algorithm)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
+### `TEAEncrypt()`
+
+**Operation:** `TEA Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+TEA (Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1994. It operates on 64-bit blocks using a 128-bit key and performs 32 cycles (64 Feistel rounds) with the DELTA constant 0x9E3779B9 derived from the golden ratio.
+
+TEA is notable for its simplicity and compact implementation, making it frequently encountered in malware analysis and CTF challenges. Despite its elegance, TEA has known weaknesses including equivalent keys and susceptibility to related-key attacks, leading to successors XTEA and XXTEA.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Tiny_Encryption_Algorithm)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
 
 ---
 
@@ -9385,6 +9924,22 @@ Converts text to six-dot braille symbols.
 
 ---
 
+### `ToCOBS()`
+
+**Operation:** `To COBS`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Encodes bytes in COBS format
+
+[More info](https://wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+---
+
 ### `ToCamelCase()`
 
 **Operation:** `To Camel case`
@@ -9919,6 +10474,58 @@ Padding: In CBC and ECB mode, PKCS#7 padding will be used.
 
 ---
 
+### `TwofishDecrypt()`
+
+**Operation:** `Twofish Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Twofish is a symmetric key block cipher designed by Bruce Schneier. It was one of the five AES finalists. Twofish operates on 128-bit blocks and supports key sizes of 128, 192, or 256 bits with 16 rounds of a Feistel network.
+
+When using CBC or ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Twofish)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
+### `TwofishEncrypt()`
+
+**Operation:** `Twofish Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Twofish is a symmetric key block cipher designed by Bruce Schneier. It was one of the five AES finalists. Twofish operates on 128-bit blocks and supports key sizes of 128, 192, or 256 bits with 16 rounds of a Feistel network.
+
+When using CBC or ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Twofish)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
 ### `Typex()`
 
 **Operation:** `Typex`
@@ -10028,7 +10635,7 @@ e.g. `=` becomes `%3d`
 
 [More info](https://wikipedia.org/wiki/Percent-encoding)
 
-**Input:** `string` → **Output:** `string`
+**Input:** `byteArray` → **Output:** `string`
 
 **Arguments:**
   - **Encode all special chars** (boolean): default `false`
@@ -10284,6 +10891,23 @@ This operation also supports UNIX timestamps in milliseconds, microseconds and n
 
 ---
 
+### `Wrap()`
+
+**Operation:** `Wrap`
+
+**Category:** `Utils`
+
+**Module:** Default
+
+Wraps the input text at a specified number of characters per line.
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Line Width** (number): default `64`
+
+---
+
 ### `XKCDRandomNumber()`
 
 **Operation:** `XKCD Random Number`
@@ -10408,6 +11032,45 @@ XOR Checksum splits the input into blocks of a configurable size and performs th
 
 ---
 
+### `XPRESSDecompress()`
+
+**Operation:** `XPRESS Decompress`
+
+**Category:** `Compression`
+
+**Module:** Compression
+
+Decompresses data using the XPRESS plain LZ77 algorithm (MS-XCA section 2.1).
+
+Similar to the Windows API `RtlDecompressBuffer` with `COMPRESSION_FORMAT_XPRESS`.
+
+[More info](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/5655f4a3-6ba4-489b-959f-e1f407c52f15)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+---
+
+### `XPRESSLZ77HuffmanDecompress()`
+
+**Operation:** `XPRESS LZ77+Huffman Decompress`
+
+**Category:** `Compression`
+
+**Module:** Compression
+
+Decompresses data using the XPRESS LZ77+Huffman algorithm (MS-XCA section 2.2).
+
+The uncompressed size must be known in advance, as it is from the WOF chunk table or WIM header, so it is taken as an argument.
+
+[More info](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/5655f4a3-6ba4-489b-959f-e1f407c52f15)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+**Arguments:**
+  - **Decompressed size** (number): default `4096`
+
+---
+
 ### `XPathExpression()`
 
 **Operation:** `XPath expression`
@@ -10455,6 +11118,76 @@ Counter: XSalsa uses a counter of 8 bytes (64 bits). The counter starts at zero 
   - **Rounds** (option): `20`, `12`, `8`
   - **Input** (option): `Hex`, `Raw`
   - **Output** (option): `Raw`, `Hex`
+
+---
+
+### `XTEADecrypt()`
+
+**Operation:** `XTEA Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+XTEA (eXtended Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1997 as a successor to TEA, correcting several weaknesses identified in the original algorithm. It operates on 64-bit blocks using a 128-bit key with an improved key schedule that uses sum-dependent key word selection to resist related-key attacks.
+
+XTEA retains the simplicity and compact implementation of TEA whilst providing significantly improved security. It is frequently encountered in malware analysis and CTF challenges due to its straightforward implementation.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Rounds: The recommended number of rounds is 32 (default). The reference implementation by Wheeler & Needham accepts a configurable round count.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/XTEA)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Rounds** (number): default `32`
+
+---
+
+### `XTEAEncrypt()`
+
+**Operation:** `XTEA Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+XTEA (eXtended Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1997 as a successor to TEA, correcting several weaknesses identified in the original algorithm. It operates on 64-bit blocks using a 128-bit key with an improved key schedule that uses sum-dependent key word selection to resist related-key attacks.
+
+XTEA retains the simplicity and compact implementation of TEA whilst providing significantly improved security. It is frequently encountered in malware analysis and CTF challenges due to its straightforward implementation.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Rounds: The recommended number of rounds is 32 (default). The reference implementation by Wheeler & Needham accepts a configurable round count.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/XTEA)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Rounds** (number): default `32`
 
 ---
 

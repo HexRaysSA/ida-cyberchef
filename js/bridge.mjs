@@ -204,9 +204,10 @@ function describeError(error) {
  * @param {boolean} isBytes
  * @param {string} recipeJson - [opName | {op, args}], args keyed by name or positional
  * @param {string} seedHex - 32 bytes of OS entropy for crypto.getRandomValues
+ * @param {boolean} present - return the output as the web app displays it
  * @returns {Promise<Array>} [dish type, payload]; rejects with an error message string
  */
-async function bake(input, isBytes, recipeJson, seedHex) {
+async function bake(input, isBytes, recipeJson, seedHex, present = false) {
     seedRandom(seedHex);
     try {
         const recipe = new Recipe(JSON.parse(recipeJson).map(toIngredient));
@@ -215,6 +216,12 @@ async function bake(input, isBytes, recipeJson, seedHex) {
         if (progress < recipe.opList.length) {
             // Core reports an OperationError by replacing the dish with its message.
             throw String(dish.value);
+        }
+        if (present) {
+            // As Chef.bake() does for the web app's output pane.
+            await recipe.present(dish);
+            const type = dish.type === Dish.HTML ? Dish.HTML : Dish.STRING;
+            return [type, await dish.get(type)];
         }
         return exportDish(dish);
     } catch (error) {

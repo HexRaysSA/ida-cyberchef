@@ -77,7 +77,7 @@ jobs:
           just build
 
       - name: Check that the committed build output is current
-        run: git diff --stat --exit-code -- ida_cyberchef/data docs/ops.md
+        run: git diff --stat --exit-code -- ida_cyberchef/data docs/ops.md tests/data/cyberchef_test_vectors.json
 
   offline-wheelhouse:
     # Build a wheelhouse for the runtime dependencies, then install from it

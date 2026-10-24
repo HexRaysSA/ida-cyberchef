@@ -1,4 +1,4 @@
 [submodule "deps/CyberChef"]
 	path = deps/CyberChef
 	url = https://github.com/williballenthin/CyberChef.git
-	branch = commonjs-minimal-interpeter
+	branch = ida-cyberchef

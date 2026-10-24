@@ -52,30 +52,6 @@ const config = {
         noParse: /argon2\.wasm$/,
         rules: [
             {
-                // CyberChef's sources default-import packages that only have
-                // named exports (es6-promisify, flat, d3) and rely on Babel's
-                // CommonJS interop for that. Only module syntax and block
-                // scoping are converted; V8 runs everything else as written.
-                test: /\.m?js$/,
-                exclude: /node_modules\/(?!crypto-api)/,
-                type: "javascript/auto",
-                resolve: {fullySpecified: false},
-                loader: "babel-loader",
-                options: {
-                    babelrc: false,
-                    configFile: false,
-                    cacheDirectory: true,
-                    plugins: [
-                        fromCyberChef("@babel/plugin-syntax-import-attributes"),
-                        fromCyberChef("@babel/plugin-transform-modules-commonjs"),
-                        // Upstream ships let/const as var, and some code (FuzzyMatch)
-                        // only works without the temporal dead zone.
-                        fromCyberChef("@babel/plugin-transform-block-scoping"),
-                    ],
-                    generatorOpts: {importAttributesKeyword: "with"},
-                },
-            },
-            {
                 test: /\.m?js$/,
                 type: "javascript/auto",
                 resolve: {fullySpecified: false},
@@ -130,7 +106,14 @@ const config = {
     },
     performance: {hints: false},
     stats: "errors-warnings",
-    ignoreWarnings: [/source-map/, /dependency is an expression/, /Can't resolve 'sodium'/],
+    ignoreWarnings: [
+        /source-map/,
+        /dependency is an expression/,
+        /Can't resolve 'sodium'/,
+        // CyberChef reads `ns.default ?? ns` from namespace imports of packages
+        // that have no default export; the fallback handles it at runtime.
+        /export 'default' \(imported as '\w+'\) was not found/,
+    ],
 };
 
 webpack(config, (error, stats) => {

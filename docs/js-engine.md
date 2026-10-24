@@ -37,7 +37,7 @@ mini-racer does not use the CPython C API, so a wheel works with every CPython v
 
 mini-racer runs V8 on its own thread. From Python to JS it passes only primitives and handles to JS objects. From JS to Python it returns ArrayBuffers as zero-copy `memoryview`s. Therefore:
 
-- `js/polyfills.mjs` adds the Web APIs that bare V8 lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder`, `crypto.getRandomValues` and `Blob`/`File`/`FileReader`.
+- `js/polyfills.mjs` adds the Web APIs that bare V8 lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder`, `URL`/`URLSearchParams` (from core-js), `crypto.getRandomValues`, `crypto.subtle.digest` (from @noble/hashes) and `Blob`/`File`/`FileReader`.
 - Bytes go into JS as latin-1 strings and come out as ArrayBuffers. The recipe goes in as JSON text.
 - JS cannot call Python synchronously. `crypto.getRandomValues` is a ChaCha20 stream, keyed with `os.urandom` before every bake.
 

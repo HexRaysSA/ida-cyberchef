@@ -78,7 +78,7 @@ def _files(payload: Any) -> list[CyberChefFile]:
     return files
 
 
-def bake(input_data: bytes | str, recipe: Recipe) -> Any:
+def bake(input_data: bytes | str, recipe: Recipe, *, present: bool = False) -> Any:
     """Run a recipe and return its output as a native Python value.
 
     Args:
@@ -88,10 +88,13 @@ def bake(input_data: bytes | str, recipe: Recipe) -> Any:
             `["From Base64", {"op": "XOR", "args": {"Key": {"option": "Hex", "string": "41"}}}]`.
             Arguments are matched by name, ignoring case and spaces, and the
             ones not given take their defaults from the web app.
+        present: Return the output as text, the way the web app displays it
+            (some operations render tables or other HTML), instead of as data.
 
     Returns:
         bytes, str, float, a JSON value, a CyberChefFile or a list of them,
-        depending on the output type of the last operation.
+        depending on the output type of the last operation; with `present`,
+        str.
 
     Raises:
         CyberChefError: An operation failed.
@@ -103,7 +106,7 @@ def bake(input_data: bytes | str, recipe: Recipe) -> Any:
     is_bytes = not isinstance(input_data, str)
     payload = input_data if isinstance(input_data, str) else bytes(input_data).decode("latin-1")
     try:
-        promise = _get_bake()(payload, is_bytes, json.dumps(recipe), os.urandom(32).hex())
+        promise = _get_bake()(payload, is_bytes, json.dumps(recipe), os.urandom(32).hex(), present)
         dish_type, value = promise.get(timeout=TIMEOUT_SECONDS)
     except JSPromiseError as exc:
         raise CyberChefError(str(exc.reason)) from None

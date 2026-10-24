@@ -9,7 +9,7 @@ The supported path is:
 - no browser tab, DOM, worker, or network dependency
 - no external asset fetch at runtime
 
-CyberChef runs in its browser (Web Worker) mode. `js/polyfills.mjs` provides the Web APIs that a bare V8 engine lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder`, `crypto.getRandomValues`, and `Blob`/`File`/`FileReader`.
+CyberChef runs in its browser (Web Worker) mode. `js/polyfills.mjs` provides the Web APIs that a bare V8 engine lacks: timers, `atob`/`btoa`, `TextEncoder`/`TextDecoder`, `URL`/`URLSearchParams`, `crypto.getRandomValues`, `crypto.subtle.digest`, and `Blob`/`File`/`FileReader`.
 
 ## Unsupported operations
 
@@ -30,8 +30,8 @@ These operations stay in the operation schema, and `docs/ops.md` marks them as u
 
 ## Known differences from the web app
 
-- Operations that render HTML for the web app's output pane (Bombe, Multiple Bombe, Index of Coincidence, Play Media) return their underlying data instead: JSON, a number, or bytes.
-- `crypto.subtle` is not available.
+- `bake()` returns an operation's output as data (bytes, text, a number, JSON or files). Some operations render it as a table or other HTML for the web app's output pane; `bake(..., present=True)` returns that rendering instead.
+- `crypto.subtle` provides only `digest()` (SHA-1/256/384/512). Libraries that check for other SubtleCrypto methods use their pure-JavaScript implementations.
 
 ## Support policy for docs and tests
 

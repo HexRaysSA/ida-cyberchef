@@ -33,28 +33,8 @@ BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy
 BRAILLE_ASCII = " A1B'K2L@CIF/MSP\"E3H9O6R^DJG>NTQ,*5<-U8V.%[$+X!&;:4\\0Z7(_?W]#Y)="
 BRAILLE_DOT6 = "⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔⠕⠖⠗⠘⠙⠚⠛⠜⠝⠞⠟⠠⠡⠢⠣⠤⠥⠦⠧⠨⠩⠪⠫⠬⠭⠮⠯⠰⠱⠲⠳⠴⠵⠶⠷⠸⠹⠺⠻⠼⠽⠾⠿"
 UPSTREAM_BUG_XFAILS = {
-    "mime_decoding_base64_encoded_word": ("UTF-8 encoded word decoded incorrectly after upstream update to v10.22.1"),
-    "jwt_sign_hs256_fixed_iat_payload": (
-        "Unsupported in the current JS runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
-    ),
-    "jwt_verify_static_hs256_token": (
-        "Unsupported in the current JS runtime: jsonwebtoken expects Node crypto KeyObject APIs that the current crypto-browserify compatibility layer does not provide"
-    ),
-    # The upstream Alice test key's encryption subkey expired on 2026-05-27,
-    # so kbpgp discards it at import time and decryption/verification of the
-    # stored upstream ciphertexts fails ("We don't have a key for the
-    # requested PGP ops"). Fresh encrypt/decrypt roundtrips still pass because
-    # they fall back to the primary key on both sides. Verified engine-independent
-    # (fails identically under Node.js/V8 and SpiderMonkey).
-    "pgp_decrypt_upstream_ascii_ciphertext": (
-        "upstream PGP fixture key expired 2026-05-27; subkey discarded at import"
-    ),
-    "pgp_verify_upstream_ascii_signed_message": (
-        "upstream PGP fixture key expired 2026-05-27; subkey discarded at import"
-    ),
-    "pgp_decrypt_and_verify_upstream_utf8_message": (
-        "upstream PGP fixture key expired 2026-05-27; subkey discarded at import"
-    ),
+    "jwt_sign_hs256_fixed_iat_payload": "jsonwebtoken needs Node crypto.KeyObject, which crypto-browserify lacks",
+    "jwt_verify_static_hs256_token": "jsonwebtoken needs Node crypto.KeyObject, which crypto-browserify lacks",
 }
 
 
@@ -1878,7 +1858,7 @@ def verify_generate_all_hashes_256_unnamed_output(result: object) -> None:
 
 def verify_bcrypt_rounds_four_hash(result: object) -> None:
     assert isinstance(result, str)
-    assert re.fullmatch(r"\$2a\$04\$[./A-Za-z0-9]{53}", result)
+    assert re.fullmatch(r"\$2b\$04\$[./A-Za-z0-9]{53}", result)
 
 
 def verify_bombe_default_crib_bbbb(result: object) -> None:
@@ -6417,10 +6397,10 @@ ARGON2_VECTORS = [
 
 NETWORK_BLOCKED_VECTORS = [
     BlockedBakeVector(
-        name="dns_over_https_requires_url_and_fetch_apis",
+        name="dns_over_https_requires_fetch_api",
         input_data="example.com",
         recipe=["DNS over HTTPS"],
-        error_message="ReferenceError: URL is not defined",
+        error_message="ReferenceError: fetch is not defined",
     ),
     BlockedBakeVector(
         name="http_request_requires_xmlhttprequest",
@@ -10159,11 +10139,11 @@ NETWORK_VECTORS = [
         expected_snapshot="Wiki",
     ),
     BakeVector(
-        name="dechunk_http_response_preserves_trailer_section",
+        name="dechunk_http_response_drops_trailer_section",
         input_data="4\nWiki\n5\npedia\n0\nTrailer: yes\n\n",
         recipe=["Dechunk HTTP response"],
-        expected="WikipediaTrailer: yes\n\n",
-        expected_snapshot="WikipediaTrailer: yes\n\n",
+        expected="Wikipedia",
+        expected_snapshot="Wikipedia",
     ),
     BakeVector(
         name="dechunk_http_response_md5_composition",
@@ -11251,8 +11231,23 @@ def build_hotp_code(secret: str, *, counter: int, digits: int) -> str:
     return f"{truncated % (10**digits):0{digits}d}"
 
 
-def build_hotp_output(secret: str, *, digits: int, counter: int, name: str = "") -> str:
-    label = f"/{name}" if name else "/"
+def build_analyse_uuid_output(value: str) -> str:
+    parsed = uuid.UUID(value)
+    if parsed.version != 1:
+        details = "No metadata available. Only versions 1, 6, 7 are supported."
+    else:
+        millis = (parsed.time - 0x01B21DD213814000) // 10_000
+        iso = datetime.fromtimestamp(millis // 1000, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        node = ":".join(f"{(parsed.node >> shift) & 0xFF:02X}" for shift in range(40, -8, -8))
+        details = (
+            f"Timestamp:\n{millis}\n\nTimestamp (ISO):\n{iso}.{millis % 1000:03d}Z\n\n"
+            f"Node:\n{node}\n\nClock:\n{parsed.clock_seq}"
+        )
+    return f"Version:\n{parsed.version}\n\n{details}\n\nUUID Integer:\n{parsed.int}"
+
+
+def build_hotp_output(secret: str, *, digits: int, counter: int, name: str = "Account") -> str:
+    label = f"/{name}"
     return (
         f"URI: otpauth://hotp{label}?secret={secret}&algorithm=SHA1&digits={digits}&counter={counter}"
         f"\n\nPassword: {build_hotp_code(secret, counter=counter, digits=digits)}"
@@ -11266,10 +11261,10 @@ def build_totp_output(
     epoch_offset: int,
     interval: int,
     at_time: int,
-    name: str = "",
+    name: str = "Account",
 ) -> str:
     counter = (at_time - epoch_offset) // interval
-    label = f"/{name}" if name else "/"
+    label = f"/{name}"
     return (
         f"URI: otpauth://totp{label}?secret={secret}&algorithm=SHA1&digits={digits}&period={interval}"
         f"\n\nPassword: {build_hotp_code(secret, counter=counter, digits=digits)}"
@@ -11406,7 +11401,7 @@ PGP_ASCII_TEXT = extract_js_string_constant(UPSTREAM_CIPHER_SAMPLES_TEXT, "ASCII
 PGP_UTF8_TEXT = extract_js_string_constant(UPSTREAM_CIPHER_SAMPLES_TEXT, "UTF8_TEXT")
 PGP_VERIFY_INPUT = extract_pgp_case_input(UPSTREAM_PGP_TESTS_TEXT, "PGP Verify: ASCII, Alice")
 PGP_VERIFY_EXPECTED = extract_pgp_case_expected_literal(UPSTREAM_PGP_TESTS_TEXT, "PGP Verify: ASCII, Alice")
-PGP_DECRYPT_INPUT = extract_pgp_case_input(UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt: ASCII, Alice -> Bob")
+PGP_DECRYPT_INPUT = extract_pgp_case_input(UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt: ASCII, Alice")
 PGP_DECRYPT_AND_VERIFY_INPUT = extract_pgp_case_input(
     UPSTREAM_PGP_TESTS_TEXT, "PGP Decrypt and Verify: UTF8, Alice -> Bob"
 )
@@ -11443,13 +11438,10 @@ def parse_json_lines(value: str) -> list[dict[str, object]]:
 
 
 def assert_pgp_signed_output(result: object, expected_message: str) -> None:
+    # "Signed by PGP key ID: ...\nPGP fingerprint: ..." of upstream's Alice key.
+    signer = "\n".join(PGP_VERIFY_EXPECTED.splitlines()[:2]) + "\n"
     assert isinstance(result, str)
-    assert result.startswith("Signed by PGP key ID: DF98E485\n")
-    assert "PGP fingerprint: e94e06dd0b3744a0e970de9d84246548df98e485\n" in result
-    assert re.search(
-        r"^Signed by PGP key ID: DF98E485\nPGP fingerprint: e94e06dd0b3744a0e970de9d84246548df98e485\nSigned on .+ GMT\n----------------------------------\n",
-        result,
-    )
+    assert re.match(re.escape(signer) + r"Signed on .+ GMT\n-{34}\n", result)
     assert result.endswith(expected_message)
 
 
@@ -11723,7 +11715,7 @@ PUBLIC_KEY_VECTORS = [
         input_data=PGP_VERIFY_INPUT,
         recipe=[{"op": "PGP Verify", "args": {"Public key of signer": PGP_ALICE_PUBLIC_KEY}}],
         expected=PGP_VERIFY_EXPECTED,
-        expected_snapshot="Signed by PGP key ID: DF98E485\nPGP fingerprint: e94e06dd0b3744a0e970de9d84246548df98e485\nSigned on Thu, 27 Jun 2019 16:20:15 GMT\n----------------------------------\nA common mistake that people make when trying to design something completely foolproof is to underestimate the ingenuity of complete fools.",
+        expected_snapshot="Signed by PGP key ID: 2ADF8D8C\nPGP fingerprint: 7afe93ff7614167c3fe831fe1b75204b2adf8d8c\nSigned on Wed, 27 May 2026 19:03:45 GMT\n----------------------------------\nA common mistake that people make when trying to design something completely foolproof is to underestimate the ingenuity of complete fools.",
     ),
     BakeVector(
         name="pgp_encrypt_and_sign_decrypt_and_verify_roundtrip",
@@ -11762,7 +11754,7 @@ PUBLIC_KEY_VECTORS = [
             }
         ],
         expected=PGP_DECRYPT_AND_VERIFY_EXPECTED,
-        expected_snapshot="Signed by PGP key ID: DF98E485\nPGP fingerprint: e94e06dd0b3744a0e970de9d84246548df98e485\nSigned on Tue, 29 May 2018 15:44:52 GMT\n----------------------------------\nШанцы на высвятленне таго, што адбываецца на самай справе ў сусвеце настолькі выдаленыя, адзінае, што трэба зрабіць, гэта павесіць пачуццё яго і трымаць сябе занятымі.",
+        expected_snapshot="Signed by PGP key ID: 2ADF8D8C\nPGP fingerprint: 7afe93ff7614167c3fe831fe1b75204b2adf8d8c\nSigned on Wed, 27 May 2026 17:18:20 GMT\n----------------------------------\nШанцы на высвятленне таго, што адбываецца на самай справе ў сусвеце настолькі выдаленыя, адзінае, што трэба зрабіць, гэта павесіць пачуццё яго і трымаць сябе занятымі.",
     ),
     BakeVector(
         name="parse_csr_rsa_with_requested_extensions",
@@ -12032,15 +12024,21 @@ OTHER_VECTORS = [
         name="analyse_uuid_version_1_namespace_dns",
         input_data="6ba7b810-9dad-11d1-80b4-00c04fd430c8",
         recipe=["Analyse UUID"],
-        expected="UUID version: 1",
-        expected_snapshot="UUID version: 1",
+        expected=build_analyse_uuid_output("6ba7b810-9dad-11d1-80b4-00c04fd430c8"),
+        expected_snapshot=(
+            "Version:\n1\n\nTimestamp:\n886630433151\n\nTimestamp (ISO):\n1998-02-04T22:13:53.151Z\n\n"
+            "Node:\n00:C0:4F:D4:30:C8\n\nClock:\n180\n\nUUID Integer:\n143098242404177361603877621312831893704"
+        ),
     ),
     BakeVector(
         name="analyse_uuid_version_4_random",
         input_data="550e8400-e29b-41d4-a716-446655440000",
         recipe=["Analyse UUID"],
-        expected="UUID version: 4",
-        expected_snapshot="UUID version: 4",
+        expected=build_analyse_uuid_output("550e8400-e29b-41d4-a716-446655440000"),
+        expected_snapshot=(
+            "Version:\n4\n\nNo metadata available. Only versions 1, 6, 7 are supported.\n\n"
+            "UUID Integer:\n113059749145936325402354257176981405696"
+        ),
     ),
     BakeVector(
         name="chi_square_empty_bytes",
@@ -12644,7 +12642,7 @@ OTHER_VECTORS = [
         input_data=b"JBSWY3DPEHPK3PXP",
         recipe=[{"op": "Generate HOTP", "args": {"Code length": 6, "Counter": 0}}],
         expected=build_hotp_output("JBSWY3DPEHPK3PXP", digits=6, counter=0),
-        expected_snapshot="URI: otpauth://hotp/?secret=JBSWY3DPEHPK3PXP&algorithm=SHA1&digits=6&counter=0\n\nPassword: 282760",
+        expected_snapshot="URI: otpauth://hotp/Account?secret=JBSWY3DPEHPK3PXP&algorithm=SHA1&digits=6&counter=0\n\nPassword: 282760",
     ),
     BakeVector(
         name="generate_lorem_ipsum_five_words",
@@ -12818,7 +12816,7 @@ OTHER_VECTORS = [
             interval=1_000_000_000,
             at_time=int(time.time()),
         ),
-        expected_snapshot="URI: otpauth://totp/?secret=JBSWY3DPEHPK3PXP&algorithm=SHA1&digits=8&period=1000000000\n\nPassword: 41996554",
+        expected_snapshot="URI: otpauth://totp/Account?secret=JBSWY3DPEHPK3PXP&algorithm=SHA1&digits=8&period=1000000000\n\nPassword: 41996554",
     ),
 ]
 
