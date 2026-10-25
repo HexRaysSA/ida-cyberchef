@@ -27,10 +27,10 @@ def _is_cyberchef_file(v: Any) -> bool:
 
 
 def typed_output_from_value(value: Any) -> TypedOutput:
-    """Wrap a value returned by plate() in a TypedOutput with an inferred kind.
+    """Wrap a value returned by bake() in a TypedOutput with an inferred kind.
 
     Args:
-        value: Native Python value produced by cyberchef.plate().
+        value: Native Python value produced by cyberchef.bake().
 
     Returns:
         A TypedOutput with the appropriate OutputKind.

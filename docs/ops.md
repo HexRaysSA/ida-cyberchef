@@ -1,6 +1,6 @@
 # CyberChef Operations Reference
 
-This document lists all 443 available CyberChef operations.
+This document lists all 506 available CyberChef operations.
 
 Unsupported operations shipped in the current runtime remain listed here and are annotated per operation.
 See the Runtime support section in `readme.md` for the broader support policy.
@@ -91,11 +91,13 @@ GCM Tag: This field is ignored unless 'GCM' mode is used.
 **Arguments:**
   - **Key** (toggleString): default ``
   - **IV** (toggleString): default ``
+  - **IV Length** (number): default `16`
   - **Mode** (argSelector): `CBC`, `CFB`, `OFB` (+5 more)
   - **Input** (option): `Hex`, `Raw`
   - **Output** (option): `Raw`, `Hex`
   - **GCM Tag** (toggleString): default ``
   - **Additional Authenticated Data** (toggleString): default ``
+  - **IV from input** (argSelector): `Off`, `From start`, `From end`
 
 ---
 
@@ -126,6 +128,7 @@ Padding: In CBC and ECB mode, PKCS#7 padding will be used.
   - **Input** (option): `Raw`, `Hex`
   - **Output** (option): `Hex`, `Raw`
   - **Additional Authenticated Data** (toggleString): default ``
+  - **Include IV in output** (option): `Off`, `Prepend`, `Append`
 
 ---
 
@@ -243,7 +246,7 @@ e.g. `fe023da5`
 
 **Module:** Image
 
-**Support:** Unsupported in the current JS runtime. Requires browser-style asset loading that this project does not provide.
+**Support:** Unsupported: loads its fonts with fetch, which this runtime does not provide.
 
 Adds text onto an image.
 
@@ -256,8 +259,8 @@ Variants of the Roboto font face are available in any size or colour.
   - **Text** (string): default ``
   - **Horizontal align** (option): `None`, `Left`, `Center` (+1 more)
   - **Vertical align** (option): `None`, `Top`, `Middle` (+1 more)
-  - **X position** (number): default ``
-  - **Y position** (number): default ``
+  - **X position** (number): default `0`
+  - **Y position** (number): default `0`
   - **Size** (number): default `32`
   - **Font face** (option): `Roboto`, `Roboto Black`, `Roboto Mono` (+1 more)
   - **Red** (number): default `255`
@@ -280,7 +283,25 @@ Adds line numbers to the output.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Offset** (number): default ``
+  - **Offset** (number): default `0`
+
+---
+
+### `Adler32Checksum()`
+
+**Operation:** `Adler-32 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Adler-32 is a checksum algorithm which was invented by Mark Adler in 1995, and is a modification of the Fletcher checksum. Compared to a cyclic redundancy check of the same length, it trades reliability for speed (preferring the latter).
+
+Adler-32 is more reliable than Fletcher-16, and slightly less reliable than Fletcher-32.
+
+[More info](https://wikipedia.org/wiki/Adler-32)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
 
 ---
 
@@ -300,7 +321,7 @@ The Affine cipher is a type of monoalphabetic substitution cipher. To decrypt, e
 
 **Arguments:**
   - **a** (number): default `1`
-  - **b** (number): default ``
+  - **b** (number): default `0`
 
 ---
 
@@ -320,7 +341,7 @@ The Affine cipher is a type of monoalphabetic substitution cipher, wherein each 
 
 **Arguments:**
   - **a** (number): default `1`
-  - **b** (number): default ``
+  - **b** (number): default `0`
 
 ---
 
@@ -348,11 +369,14 @@ Alternating caps, also known as studly caps, sticky caps, or spongecase is a for
 
 **Module:** Crypto
 
-Tries to determine information about a given UUID and suggests which version may have been used to generate it
+Operation for extracting metadata and detecting the version of a given UUID.
 
 [More info](https://wikipedia.org/wiki/Universally_unique_identifier)
 
 **Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Include Metadata** (boolean): default `true`
 
 ---
 
@@ -379,8 +403,6 @@ Tries to determine information about a given hash and suggests which algorithm m
 **Category:** `Hashing`
 
 **Module:** Crypto
-
-**Support:** Unsupported in the current JS runtime.
 
 Argon2 is a key derivation function that was selected as the winner of the Password Hashing Competition in July 2015. It was designed by Alex Biryukov, Daniel Dinu, and Dmitry Khovratovich from the University of Luxembourg.
 
@@ -409,8 +431,6 @@ Enter the password in the input to generate its hash.
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current JS runtime.
-
 Tests whether the input matches the given Argon2 hash. To test multiple possible passwords, use the 'Fork' operation.
 
 [More info](https://wikipedia.org/wiki/Argon2)
@@ -419,6 +439,105 @@ Tests whether the input matches the given Argon2 hash. To test multiple possible
 
 **Arguments:**
   - **Encoded hash** (string): default ``
+
+---
+
+### `AsconDecrypt()`
+
+**Operation:** `Ascon Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Ascon-AEAD128 authenticated decryption as standardised in NIST SP 800-232. Decrypts ciphertext and verifies the authentication tag. Decryption will fail if the ciphertext or associated data has been tampered with.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+Nonce: Must be exactly 16 bytes (128 bits). Must match the nonce used during encryption.
+
+Associated Data: Must match the associated data used during encryption. Any mismatch will cause authentication failure.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Nonce** (toggleString): default ``
+  - **Associated Data** (toggleString): default ``
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+
+---
+
+### `AsconEncrypt()`
+
+**Operation:** `Ascon Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Ascon-AEAD128 authenticated encryption as standardised in NIST SP 800-232. Ascon is a family of lightweight authenticated encryption algorithms designed for constrained devices such as IoT sensors and embedded systems.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+Nonce: Must be exactly 16 bytes (128 bits). Should be unique for each encryption with the same key. Never reuse a nonce with the same key.
+
+Associated Data: Optional additional data that is authenticated but not encrypted. Useful for including metadata like headers or timestamps.
+
+The output includes both the ciphertext and a 128-bit authentication tag.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Nonce** (toggleString): default ``
+  - **Associated Data** (toggleString): default ``
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+
+---
+
+### `AsconHash()`
+
+**Operation:** `Ascon Hash`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Ascon-Hash256 produces a fixed 256-bit (32-byte) cryptographic hash as standardised in NIST SP 800-232. Ascon is a family of lightweight authenticated encryption and hashing algorithms designed for constrained devices such as IoT sensors and embedded systems.
+
+The algorithm was selected by NIST in 2023 as the new standard for lightweight cryptography after a multi-year competition.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `AsconMAC()`
+
+**Operation:** `Ascon MAC`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Ascon-Mac produces a 128-bit (16-byte) message authentication code as part of the Ascon family standardised by NIST in SP 800-232. It provides authentication for messages using a secret key, ensuring both data integrity and authenticity.
+
+Ascon is designed for lightweight cryptography on constrained devices such as IoT sensors and embedded systems.
+
+[More info](https://wikipedia.org/wiki/Ascon_(cipher))
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
 
 ---
 
@@ -435,6 +554,29 @@ Atbash is a mono-alphabetic substitution cipher originally used to encode the He
 [More info](https://wikipedia.org/wiki/Atbash)
 
 **Input:** `string` → **Output:** `string`
+
+---
+
+### `AutomatedValidationTestOp()`
+
+**Operation:** `Automated Validation Test Op`
+
+**Category:** `Other`
+
+**Module:** Default
+
+Operation used specifically to test automated parameter validation.
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Integer Number** (number): default `5`
+  - **Real Number** (number): default `1.5`
+  - **Non Empty String** (string): default `hello`
+  - **Empty Allowed String** (string): default ``
+  - **Non Empty Toggle String** (toggleString): default `{'option': 'Option A', 'string': 'test'}`
+  - **Option Ingredient** (option): `[Group 1]`, `Option 1`, `Option 2` (+4 more)
+  - **Arg Selector Ingredient** (argSelector): `Option 1`, `Option 2`
 
 ---
 
@@ -526,7 +668,7 @@ Hashes the input using BLAKE3 (UTF-8 encoded), with an optional key (also UTF-8)
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Size (bytes)** (number): default ``
+  - **Size (bytes)** (number): default `16`
   - **Key** (string): default ``
 
 ---
@@ -584,7 +726,7 @@ Bacon's cipher or the Baconian cipher is a method of steganography devised by Fr
 **Arguments:**
   - **Alphabet** (option): `Standard (I=J and U=V)`, `Complete`
   - **Translation** (option): `0/1`, `A/B`, `Case` (+1 more)
-  - **Invert Translation** (boolean): default ``
+  - **Invert Translation** (boolean): default `false`
 
 ---
 
@@ -605,8 +747,8 @@ Bacon's cipher or the Baconian cipher is a method of steganography devised by Fr
 **Arguments:**
   - **Alphabet** (option): `Standard (I=J and U=V)`, `Complete`
   - **Translation** (option): `0/1`, `A/B`
-  - **Keep extra characters** (boolean): default ``
-  - **Invert Translation** (boolean): default ``
+  - **Keep extra characters** (boolean): default `false`
+  - **Invert Translation** (boolean): default `false`
 
 ---
 
@@ -850,7 +992,7 @@ More detailed descriptions of the Enigma, Typex and Bombe operations can be foun
   - **Right-hand rotor** (editableOption): `I`, `II`, `III` (+5 more); default `III`
   - **Reflector** (editableOption): `B`, `C`, `B Thin` (+1 more)
   - **Crib** (string): default ``
-  - **Crib offset** (number): default ``
+  - **Crib offset** (number): default `0`
   - **Use checking machine** (boolean): default `true`
 
 ---
@@ -890,7 +1032,7 @@ Decompresses data using the Bzip2 algorithm.
 **Input:** `ArrayBuffer` → **Output:** `ArrayBuffer`
 
 **Arguments:**
-  - **Use low-memory, slower decompression algorithm** (boolean): default ``
+  - **Use low-memory, slower decompression algorithm** (boolean): default `false`
 
 ---
 
@@ -1004,7 +1146,7 @@ Compresses Cascading Style Sheets (CSS) code.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Preserve comments** (boolean): default ``
+  - **Preserve comments** (boolean): default `false`
 
 ---
 
@@ -1086,6 +1228,24 @@ Caesar Box is a transposition cipher used in the Roman Empire, in which letters 
 
 ---
 
+### `CaretMDecode()`
+
+**Operation:** `Caret/M-decode`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Decodes caret or M-encoded strings, i.e. ^M turns into a newline, M-^] turns into 0x9d. Sources such as `cat -v`.
+
+Please be aware that when using `cat -v` ^_ (caret-underscore) will not be encoded, but represents a valid encoding (namely that of 0x1f).
+
+[More info](https://en.wikipedia.org/wiki/Caret_notation)
+
+**Input:** `string` → **Output:** `byteArray`
+
+---
+
 ### `CartesianProduct()`
 
 **Operation:** `Cartesian Product`
@@ -1161,7 +1321,7 @@ Counter: ChaCha uses a counter of 4 or 8 bytes (32 or 64 bits); together, the no
 **Arguments:**
   - **Key** (toggleString): default ``
   - **Nonce** (toggleString): default ``
-  - **Counter** (number): default ``
+  - **Counter** (number): default `0`
   - **Rounds** (option): `20`, `12`, `8`
   - **Input** (option): `Hex`, `Raw`
   - **Output** (option): `Raw`, `Hex`
@@ -1307,35 +1467,35 @@ A more detailed description of this operation can be found here.
   - **R1-Q3** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R1-Q4** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R1-Q5** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
-  - **R1-Negate** (boolean): default ``
+  - **R1-Negate** (boolean): default `false`
   - **R1-Counter** (option): ``, `1`, `2` (+3 more)
   - **R2-Q1** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R2-Q2** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R2-Q3** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R2-Q4** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R2-Q5** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
-  - **R2-Negate** (boolean): default ``
+  - **R2-Negate** (boolean): default `false`
   - **R2-Counter** (option): ``, `1`, `2` (+3 more)
   - **R3-Q1** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R3-Q2** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R3-Q3** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R3-Q4** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **R3-Q5** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
-  - **R3-Negate** (boolean): default ``
+  - **R3-Negate** (boolean): default `false`
   - **R3-Counter** (option): ``, `1`, `2` (+3 more)
-  - **Negate All** (boolean): default ``
+  - **Negate All** (boolean): default `false`
   - **K Rack: Addition** (label)
-  - **Add-Q1** (boolean): default ``
-  - **Add-Q2** (boolean): default ``
-  - **Add-Q3** (boolean): default ``
-  - **Add-Q4** (boolean): default ``
-  - **Add-Q5** (boolean): default ``
+  - **Add-Q1** (boolean): default `false`
+  - **Add-Q2** (boolean): default `false`
+  - **Add-Q3** (boolean): default `false`
+  - **Add-Q4** (boolean): default `false`
+  - **Add-Q5** (boolean): default `false`
   - **Add-Equals** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
-  - **Add-Counter1** (boolean): default ``
-  - **Add Negate All** (boolean): default ``
+  - **Add-Counter1** (boolean): default `false`
+  - **Add Negate All** (boolean): default `false`
   - **Total Motor** (editableOptionShort): `Up (.)`, `Centre`, `Down (x)`; default `Centre`
   - **Master Control Panel** (label)
-  - **Set Total** (number): default ``
+  - **Set Total** (number): default `0`
   - **Fast Step** (option): ``, `X1`, `X2` (+10 more)
   - **Slow Step** (option): ``, `X1`, `X2` (+10 more)
   - **Start Χ1** (number): default `1`
@@ -1422,7 +1582,7 @@ Conditionally jump forwards or backwards to the specified Label  based on whethe
 
 **Arguments:**
   - **Match (regex)** (string): default ``
-  - **Invert match** (boolean): default ``
+  - **Invert match** (boolean): default `false`
   - **Label name** (shortString)
   - **Maximum jumps (if jumping backwards)** (number): default `10`
 
@@ -1510,6 +1670,33 @@ Converts a unit of area to another format.
 **Arguments:**
   - **Input units** (option): `[Metric]`, `Square metre (sq m)`, `Square kilometre (sq km)` (+42 more)
   - **Output units** (option): `[Metric]`, `Square metre (sq m)`, `Square kilometre (sq km)` (+42 more)
+
+---
+
+### `ConvertCoOrdinateFormat()`
+
+**Operation:** `Convert co-ordinate format`
+
+**Category:** `Utils`
+
+**Module:** Hashing
+
+Converts geographical coordinates between different formats.
+
+Supported formats:Degrees Minutes Seconds (DMS)Degrees Decimal Minutes (DDM)Decimal Degrees (DD)GeohashMilitary Grid Reference System (MGRS)Ordnance Survey National Grid (OSNG)Universal Transverse Mercator (UTM)
+The operation can try to detect the input co-ordinate format and delimiter automatically, but this may not always work correctly.
+
+[More info](https://wikipedia.org/wiki/Geographic_coordinate_conversion)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Input Format** (option): `Auto`, `Degrees Minutes Seconds`, `Degrees Decimal Minutes` (+5 more)
+  - **Input Delimiter** (option): `Auto`, `Direction Preceding`, `Direction Following` (+4 more)
+  - **Output Format** (option): `Degrees Minutes Seconds`, `Degrees Decimal Minutes`, `Decimal Degrees` (+4 more)
+  - **Output Delimiter** (option): `Space`, `\n`, `Comma` (+2 more)
+  - **Include Compass Directions** (option): `None`, `Before`, `After`
+  - **Precision** (number): default `3`
 
 ---
 
@@ -1677,15 +1864,15 @@ The number of pixels of border to leave around the image.
 **Input:** `ArrayBuffer` → **Output:** `html`
 
 **Arguments:**
-  - **X Position** (number): default ``
-  - **Y Position** (number): default ``
+  - **X Position** (number): default `0`
+  - **Y Position** (number): default `0`
   - **Width** (number): default `10`
   - **Height** (number): default `10`
-  - **Autocrop** (boolean): default ``
+  - **Autocrop** (boolean): default `false`
   - **Autocrop tolerance (%)** (number): default `0.02`
   - **Only autocrop frames** (boolean): default `true`
-  - **Symmetric autocrop** (boolean): default ``
-  - **Autocrop keep border (px)** (number): default ``
+  - **Symmetric autocrop** (boolean): default `false`
+  - **Autocrop keep border (px)** (number): default `0`
 
 ---
 
@@ -1757,7 +1944,7 @@ Padding: In CBC and ECB mode, PKCS#7 padding will be used.
 
 **Module:** Default
 
-**Support:** Unsupported in the current JS runtime. Requires browser-style request APIs and live network access.
+**Support:** Unsupported: needs the browser's fetch API and network access.
 
 Takes a single domain name and performs a DNS lookup using DNS over HTTPS.
 
@@ -1772,8 +1959,8 @@ Can be used with any service that supports the GET parameters `name` and `type`.
 **Arguments:**
   - **Resolver** (editableOption): `Google`, `Cloudflare`
   - **Request Type** (option): `A`, `AAAA`, `ANAME` (+20 more)
-  - **Answer Data Only** (boolean): default ``
-  - **Disable DNSSEC validation** (boolean): default ``
+  - **Answer Data Only** (boolean): default `false`
+  - **Disable DNSSEC validation** (boolean): default `false`
 
 ---
 
@@ -1793,10 +1980,10 @@ Calculates a new DateTime value given an input DateTime value and a time differe
   - **Built in formats** (populateOption): default `[{'name': 'Standard date and time', 'value': 'DD/MM/YYYY HH:mm:ss'}, {'name': 'American-style date and time', 'value': 'MM/DD/YYYY HH:mm:ss'}, {'name': 'International date and time', 'value': 'YYYY-MM-DD HH:mm:ss'}, {'name': 'Verbose date and time', 'value': 'dddd Do MMMM YYYY HH:mm:ss Z z'}, {'name': 'UNIX timestamp (seconds)', 'value': 'X'}, {'name': 'UNIX timestamp offset (milliseconds)', 'value': 'x'}, {'name': 'Automatic', 'value': ''}]`
   - **Input format string** (binaryString): default `DD/MM/YYYY HH:mm:ss`
   - **Time Operation** (option): `Add`, `Subtract`
-  - **Days** (number): default ``
-  - **Hours** (number): default ``
-  - **Minutes** (number): default ``
-  - **Seconds** (number): default ``
+  - **Days** (number): default `0`
+  - **Hours** (number): default `0`
+  - **Minutes** (number): default `0`
+  - **Seconds** (number): default `0`
 
 ---
 
@@ -2180,8 +2367,36 @@ Compares two inputs (separated by the specified delimiter) and highlights the di
   - **Diff by** (option): `Character`, `Word`, `Line` (+3 more)
   - **Show added** (boolean): default `true`
   - **Show removed** (boolean): default `true`
-  - **Show subtraction** (boolean): default ``
-  - **Ignore whitespace** (boolean): default ``
+  - **Show subtraction** (boolean): default `false`
+  - **Ignore whitespace** (boolean): default `false`
+
+---
+
+### `DisassembleARM()`
+
+**Operation:** `Disassemble ARM`
+
+**Category:** `Other`
+
+**Module:** Shellcode
+
+Disassembles ARM machine code into assembly language.
+
+Supports ARM (32-bit), Thumb, and ARM64 (AArch64) architectures using the Capstone disassembly framework.
+
+Input should be in hexadecimal.
+
+[More info](https://wikipedia.org/wiki/ARM_architecture_family)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Architecture** (option): `ARM (32-bit)`, `ARM64 (AArch64)`
+  - **Mode** (option): `ARM`, `Thumb`, `Thumb + Cortex-M` (+1 more)
+  - **Endianness** (option): `Little Endian`, `Big Endian`
+  - **Starting address (hex)** (number): default `0`
+  - **Show instruction hex** (boolean): default `true`
+  - **Show instruction position** (boolean): default `true`
 
 ---
 
@@ -2206,8 +2421,8 @@ Input should be in hexadecimal.
 **Arguments:**
   - **Bit mode** (option): `64`, `32`, `16`
   - **Compatibility** (option): `Full x86 architecture`, `Knights Corner`, `Larrabee` (+4 more)
-  - **Code Segment (CS)** (number): default `16`
-  - **Offset (IP)** (number): default ``
+  - **Code Segment (CS)** (string): default `16`
+  - **Offset (IP)** (string): default `0`
   - **Show instruction hex** (boolean): default `true`
   - **Show instruction position** (boolean): default `true`
 
@@ -2261,9 +2476,9 @@ Cuts a slice of the specified number of bytes out of the data. Negative values a
 **Input:** `ArrayBuffer` → **Output:** `ArrayBuffer`
 
 **Arguments:**
-  - **Start** (number): default ``
+  - **Start** (number): default `0`
   - **Length** (number): default `5`
-  - **Apply to each line** (boolean): default ``
+  - **Apply to each line** (boolean): default `false`
 
 ---
 
@@ -2281,8 +2496,8 @@ Drops every nth byte starting with a given byte.
 
 **Arguments:**
   - **Drop every** (number): default `4`
-  - **Starting at** (number): default ``
-  - **Apply to each line** (boolean): default ``
+  - **Starting at** (number): default `0`
+  - **Apply to each line** (boolean): default `false`
 
 ---
 
@@ -2623,6 +2838,27 @@ Shannon Entropy, in the context of information theory, is a measure of the rate 
 
 ---
 
+### `EscapeSmartCharacters()`
+
+**Operation:** `Escape Smart Characters`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Converts smart (typographic) Unicode characters — e.g. smart quotes, em/en dashes, ellipses, ©, ®, ™, arrows — into their plain ASCII equivalents.
+
+Characters with no ASCII mapping (e.g. `☣`) are handled according to the 'Unmappable characters' option.
+
+e.g. `“Hello” — world…` becomes `"Hello" -- world...`
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Unmappable characters** (option): `Include`, `Remove`, `Replace with '.'`
+
+---
+
 ### `EscapeUnicodeCharacters()`
 
 **Operation:** `Escape Unicode Characters`
@@ -2639,7 +2875,7 @@ Supports the prefixes:`\u``%u``U+`e.g. `σου` becomes `\u03C3\u03BF\u03C5`
 
 **Arguments:**
   - **Prefix** (option): `\u`, `%u`, `U+`
-  - **Encode all chars** (boolean): default ``
+  - **Encode all chars** (boolean): default `false`
   - **Padding** (number): default `4`
   - **Uppercase hex** (boolean): default `true`
 
@@ -2664,9 +2900,9 @@ Supports the following escape sequences:`\n` (Line feed/newline)`\r` (Carriage r
 **Arguments:**
   - **Escape level** (option): `Special chars`, `Everything`, `Minimal`
   - **Escape quote** (option): `Single`, `Double`, `Backtick`
-  - **JSON compatible** (boolean): default ``
+  - **JSON compatible** (boolean): default `false`
   - **ES6 compatible** (boolean): default `true`
-  - **Uppercase hex** (boolean): default ``
+  - **Uppercase hex** (boolean): default `false`
 
 ---
 
@@ -2686,6 +2922,53 @@ e.g. `a-z` becomes `abcdefghijklmnopqrstuvwxyz`.
 
 **Arguments:**
   - **Delimiter** (binaryString): default ``
+
+---
+
+### `ExtendedGCD()`
+
+**Operation:** `Extended GCD`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Crypto
+
+Computes the Extended Euclidean Algorithm for integers a and b.
+
+Finds integers x and y (Bezout coefficients) such that:
+a*x + b*y = gcd(a, b)
+
+This is fundamental to many number theory algorithms including modular inverse, solving linear Diophantine equations, and cryptographic operations.
+
+Input handling: If either a or b is left blank, its value is taken from the Input field.
+
+[More info](https://wikipedia.org/wiki/Extended_Euclidean_algorithm)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Value a** (string): default ``
+  - **Value b** (string): default ``
+
+---
+
+### `ExtractAudioMetadata()`
+
+**Operation:** `Extract Audio Metadata`
+
+**Category:** `Extractors`
+
+**Module:** Default
+
+Extract common audio metadata across MP3 (ID3v2/ID3v1/GEOB), WAV/BWF/BW64 (INFO/bext/iXML/axml), FLAC (Vorbis Comment/Picture), OGG (Vorbis/OpusTags), AAC (ADTS), AC3 (Dolby Digital), WMA (ASF), plus best-effort MP4/M4A and AIFF scanning. Outputs normalized JSON.
+
+[More info](https://wikipedia.org/wiki/Audio_file_format)
+
+**Input:** `ArrayBuffer` → **Output:** `html`
+
+**Arguments:**
+  - **Filename (optional)** (string): default ``
+  - **Max embedded text bytes (iXML/axml/etc)** (number): default `524288`
 
 ---
 
@@ -2737,7 +3020,7 @@ This operation is currently capable of carving out the following formats:
   - **Documents** (boolean): default `true`
   - **Applications** (boolean): default `true`
   - **Archives** (boolean): default `true`
-  - **Miscellaneous** (boolean): default ``
+  - **Miscellaneous** (boolean): default `false`
   - **Ignore failed extractions** (boolean): default `true`
   - **Minimum File Size** (number): default `100`
 
@@ -2777,11 +3060,11 @@ Warning: Given a string `1.2.3.4.5.6.7.8`, this will match `1.2.3.4 and 5.6.7.8`
 
 **Arguments:**
   - **IPv4** (boolean): default `true`
-  - **IPv6** (boolean): default ``
-  - **Remove local IPv4 addresses** (boolean): default ``
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
+  - **IPv6** (boolean): default `false`
+  - **Remove local IPv4 addresses** (boolean): default `false`
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
 
 ---
 
@@ -2805,7 +3088,7 @@ Extracts the Least Significant Bit data from each pixel in an image. This is a c
   - **Colour Pattern #3** (option): ``, `R`, `G` (+2 more)
   - **Colour Pattern #4** (option): ``, `R`, `G` (+2 more)
   - **Pixel Order** (option): `Row`, `Column`
-  - **Bit** (number): default ``
+  - **Bit** (number): default `0`
 
 ---
 
@@ -2822,9 +3105,9 @@ Extracts all Media Access Control (MAC) addresses from the input.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
 
 ---
 
@@ -2861,9 +3144,9 @@ Extracts Uniform Resource Locators (URLs) from the input. The protocol (http, ft
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
 
 ---
 
@@ -2880,7 +3163,7 @@ Extracts dates in the following formats`yyyy-mm-dd``dd/mm/yyyy``mm/dd/yyyy`Divid
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Display total** (boolean): default ``
+  - **Display total** (boolean): default `false`
 
 ---
 
@@ -2898,10 +3181,10 @@ Note that this will not include paths. Use Extract URLs to find entire URLs.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
-  - **Underscore (DMARC, DKIM, etc)** (boolean): default ``
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
+  - **Underscore (DMARC, DKIM, etc)** (boolean): default `false`
 
 ---
 
@@ -2918,9 +3201,9 @@ Extracts all email addresses from the input.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
 
 ---
 
@@ -2941,9 +3224,9 @@ Note that if UNIX is selected, there will likely be a lot of false positives.
 **Arguments:**
   - **Windows** (boolean): default `true`
   - **UNIX** (boolean): default `true`
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
 
 ---
 
@@ -2963,8 +3246,8 @@ Extracts potential hashes based on hash character length
 
 **Arguments:**
   - **Hash character length** (number): default `40`
-  - **All hashes** (boolean): default ``
-  - **Display Total** (boolean): default ``
+  - **All hashes** (boolean): default `false`
+  - **Display Total** (boolean): default `false`
 
 ---
 
@@ -3066,7 +3349,161 @@ Splits up the input using the specified delimiter and then filters each branch b
 **Arguments:**
   - **Delimiter** (option): `Line feed`, `CRLF`, `Space` (+4 more)
   - **Regex** (string): default ``
-  - **Invert condition** (boolean): default ``
+  - **Invert condition** (boolean): default `false`
+
+---
+
+### `FindReplace()`
+
+**Operation:** `Find / Replace`
+
+**Category:** `Utils`
+
+**Module:** Regex
+
+Replaces all occurrences of the first string with the second.
+
+Includes support for regular expressions (regex), simple strings and extended strings (which support \n, \r, \t, \b, \f and escaped hex bytes using \x notation, e.g. \x00 for a null byte).
+
+[More info](https://wikipedia.org/wiki/Regular_expression)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Find** (toggleString): default ``
+  - **Replace** (binaryString): default ``
+  - **Global match** (boolean): default `true`
+  - **Case insensitive** (boolean): default `false`
+  - **Multiline matching** (boolean): default `true`
+  - **Dot matches all** (boolean): default `false`
+
+---
+
+### `FlaskSessionDecode()`
+
+**Operation:** `Flask Session Decode`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Decodes the payload of a Flask session cookie (itsdangerous) into JSON.
+
+**Input:** `string` → **Output:** `JSON`
+
+**Arguments:**
+  - **View TimeStamp** (boolean): default `false`
+
+---
+
+### `FlaskSessionSign()`
+
+**Operation:** `Flask Session Sign`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Signs a JSON payload to produce a Flask session cookie (itsdangerous HMAC).
+
+**Input:** `JSON` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Salt** (toggleString): default `cookie-session`
+  - **Algorithm** (option): `sha1`, `sha256`
+
+---
+
+### `FlaskSessionVerify()`
+
+**Operation:** `Flask Session Verify`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Verifies the HMAC signature of a Flask session cookie (itsdangerous) generated.
+
+**Input:** `string` → **Output:** `JSON`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **Salt** (toggleString): default `cookie-session`
+  - **Algorithm** (option): `sha1`, `sha256`
+  - **View TimeStamp** (boolean): default `true`
+
+---
+
+### `Fletcher16Checksum()`
+
+**Operation:** `Fletcher-16 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-16)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `Fletcher32Checksum()`
+
+**Operation:** `Fletcher-32 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-32)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `Fletcher64Checksum()`
+
+**Operation:** `Fletcher-64 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum#Fletcher-64)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `Fletcher8Checksum()`
+
+**Operation:** `Fletcher-8 Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+The Fletcher checksum is an algorithm for computing a position-dependent checksum devised by John Gould Fletcher at Lawrence Livermore Labs in the late 1970s.
+
+The objective of the Fletcher checksum was to provide error-detection properties approaching those of a cyclic redundancy check but with the lower computational effort associated with summation techniques.
+
+[More info](https://wikipedia.org/wiki/Fletcher%27s_checksum)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
 
 ---
 
@@ -3104,7 +3541,7 @@ For example, to decode multiple Base64 strings, enter them all on separate lines
 **Arguments:**
   - **Split delimiter** (binaryShortString): default `\\n`
   - **Merge delimiter** (binaryShortString): default `\\n`
-  - **Ignore errors** (boolean): default ``
+  - **Ignore errors** (boolean): default `false`
 
 ---
 
@@ -3131,8 +3568,8 @@ WARNING: There are no validity checks.
   - **No delimiter** (boolean): default `true`
   - **Dash delimiter** (boolean): default `true`
   - **Colon delimiter** (boolean): default `true`
-  - **Cisco style** (boolean): default ``
-  - **IPv6 interface ID** (boolean): default ``
+  - **Cisco style** (boolean): default `false`
+  - **IPv6 interface ID** (boolean): default `false`
 
 ---
 
@@ -3173,7 +3610,7 @@ Binary-Coded Decimal (BCD) is a class of binary encodings of decimal numbers whe
 **Arguments:**
   - **Scheme** (option): `8 4 2 1`, `7 4 2 1`, `4 2 2 1` (+4 more)
   - **Packed** (boolean): default `true`
-  - **Signed** (boolean): default ``
+  - **Signed** (boolean): default `false`
   - **Input format** (option): `Nibbles`, `Bytes`, `Raw`
 
 ---
@@ -3303,7 +3740,7 @@ e.g. `aGVsbG8=` becomes `hello`
 **Arguments:**
   - **Alphabet** (editableOption): `Standard (RFC 4648): A-Za-z0-9+/=`, `URL safe (RFC 4648 §5): A-Za-z0-9-_`, `Filename safe: A-Za-z0-9+-=` (+14 more)
   - **Remove non-alphabet chars** (boolean): default `true`
-  - **Strict mode** (boolean): default ``
+  - **Strict mode** (boolean): default `false`
 
 ---
 
@@ -3350,6 +3787,32 @@ Base92 is a notation for encoding arbitrary byte data using a restricted set of 
 
 ---
 
+### `FromBech32()`
+
+**Operation:** `From Bech32`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Bech32 is an encoding scheme primarily used for Bitcoin SegWit addresses (BIP-0173). It uses a 32-character alphabet that excludes easily confused characters (1, b, i, o) and includes a checksum for error detection.
+
+Bech32m (BIP-0350) is an updated version used for Bitcoin Taproot addresses.
+
+Auto-detect will attempt Bech32 first, then Bech32m if the checksum fails.
+
+Output format options allow you to see the Human-Readable Part (HRP) along with the decoded data.
+
+[More info](https://wikipedia.org/wiki/Bech32)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Encoding** (option): `Auto-detect`, `Bech32`, `Bech32m`
+  - **Output Format** (option): `Raw`, `Hex`, `Bitcoin scriptPubKey` (+2 more)
+
+---
+
 ### `FromBinary()`
 
 **Operation:** `From Binary`
@@ -3385,6 +3848,22 @@ Converts six-dot braille symbols to text.
 [More info](https://wikipedia.org/wiki/Braille)
 
 **Input:** `string` → **Output:** `string`
+
+---
+
+### `FromCOBS()`
+
+**Operation:** `From COBS`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Decodes COBS encoded bytes
+
+[More info](https://wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing)
+
+**Input:** `byteArray` → **Output:** `byteArray`
 
 ---
 
@@ -3443,8 +3922,8 @@ e.g. `72 101 108 108 111` becomes `Hello`
 **Input:** `string` → **Output:** `byteArray`
 
 **Arguments:**
-  - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+3 more)
-  - **Support signed values** (boolean): default ``
+  - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+4 more)
+  - **Support signed values** (boolean): default `false`
 
 ---
 
@@ -3635,7 +4114,7 @@ e.g. `mnchen-3ya` decodes to `münchen`
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Internationalised domain name** (boolean): default ``
+  - **Internationalised domain name** (boolean): default `false`
 
 ---
 
@@ -3647,7 +4126,7 @@ e.g. `mnchen-3ya` decodes to `münchen`
 
 **Module:** Default
 
-Converts QP-encoded text back to standard text.
+Converts QP-encoded text back to standard text. This format is a content transfer encoding common in email messages.
 
 e.g. The quoted-printable encoded string `hello=20world` becomes `hello world`
 
@@ -3942,16 +4421,16 @@ WARNING: Cryptographic operations in CyberChef should not be relied upon to prov
 
 The HMAC-based One-Time Password algorithm (HOTP) is an algorithm that computes a one-time password from a shared secret key and an incrementing counter. It has been adopted as Internet Engineering Task Force standard RFC 4226, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems.
 
-Enter the secret as the input or leave it blank for a random secret to be generated.
+Enter the secret as the input or leave it blank for a random secret to be generated. The secret must be a valid base32 string (characters A–Z and 2–7).
 
 [More info](https://wikipedia.org/wiki/HMAC-based_One-time_Password_algorithm)
 
 **Input:** `ArrayBuffer` → **Output:** `string`
 
 **Arguments:**
-  - **Name** (string): default ``
+  - **Name** (string): default `Account`
   - **Code length** (number): default `6`
-  - **Counter** (number): default ``
+  - **Counter** (number): default `0`
 
 ---
 
@@ -4074,16 +4553,16 @@ WARNING: Cryptographic operations in CyberChef should not be relied upon to prov
 
 The Time-based One-Time Password algorithm (TOTP) is an algorithm that computes a one-time password from a shared secret key and the current time. It has been adopted as Internet Engineering Task Force standard RFC 6238, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems. A TOTP is an HOTP where the counter is the current time.
 
-Enter the secret as the input or leave it blank for a random secret to be generated. T0 and T1 are in seconds.
+Enter the secret as the input or leave it blank for a random secret to be generated. The secret must be a valid base32 string (characters A–Z and 2–7). T0 and T1 are in seconds.
 
 [More info](https://wikipedia.org/wiki/Time-based_One-time_Password_algorithm)
 
 **Input:** `ArrayBuffer` → **Output:** `string`
 
 **Arguments:**
-  - **Name** (string): default ``
+  - **Name** (string): default `Account`
   - **Code length** (number): default `6`
-  - **Epoch offset (T0)** (number): default ``
+  - **Epoch offset (T0)** (number): default `0`
   - **Interval (T1)** (number): default `30`
 
 ---
@@ -4219,7 +4698,7 @@ Groups a list of IP addresses into subnets. Supports both IPv4 and IPv6 addresse
 **Arguments:**
   - **Delimiter** (option): `Line feed`, `CRLF`, `Space` (+2 more)
   - **Subnet (CIDR)** (number): default `24`
-  - **Only show the subnets** (boolean): default ``
+  - **Only show the subnets** (boolean): default `false`
 
 ---
 
@@ -4257,7 +4736,30 @@ Compresses data using the deflate algorithm with gzip headers.
   - **Compression type** (option): `Dynamic Huffman Coding`, `Fixed Huffman Coding`, `None (Store)`
   - **Filename (optional)** (string): default ``
   - **Comment (optional)** (string): default ``
-  - **Include file checksum** (boolean): default ``
+  - **Include file checksum** (boolean): default `false`
+
+---
+
+### `HAS160()`
+
+**Operation:** `HAS-160`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+HAS-160 is a cryptographic hash function designed for use with the Korean KCDSA digital signature algorithm. It is derived from SHA-1, with assorted changes intended to increase its security. It produces a 160-bit output.
+
+HAS-160 is used in the same way as SHA-1. First it divides input in blocks of 512 bits each and pads the final block. A digest function updates the intermediate hash value by processing the input blocks in turn.
+
+The message digest algorithm consists, by default, of 80 rounds.
+
+[More info](https://wikipedia.org/wiki/HAS-160)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+**Arguments:**
+  - **Rounds** (number): default `80`
 
 ---
 
@@ -4347,7 +4849,7 @@ Converts an HTML output from an operation to a readable string instead of being 
 
 **Module:** Default
 
-**Support:** Unsupported in the current JS runtime. Requires browser-style request APIs and live network access.
+**Support:** Unsupported: needs the browser's fetch API and network access.
 
 Makes an HTTP request and returns the response.
 
@@ -4366,7 +4868,7 @@ The status code of the response, along with a limited selection of exposed heade
   - **URL** (string): default ``
   - **Headers** (text)
   - **Mode** (option): `Cross-Origin Resource Sharing`, `No CORS (limited to HEAD, GET or POST)`
-  - **Show response metadata** (boolean): default ``
+  - **Show response metadata** (boolean): default `false`
 
 ---
 
@@ -4452,7 +4954,7 @@ A heatmap is a graphical representation of data where the individual values cont
   - **Use column headers as labels** (boolean): default `true`
   - **X label** (string): default ``
   - **Y label** (string): default ``
-  - **Draw bin edges** (boolean): default ``
+  - **Draw bin edges** (boolean): default `false`
   - **Min colour value** (string): default `white`
   - **Max colour value** (string): default `black`
 
@@ -4478,10 +4980,10 @@ Hex density charts are used in a similar way to scatter charts, however rather t
   - **Use column headers as labels** (boolean): default `true`
   - **X label** (string): default ``
   - **Y label** (string): default ``
-  - **Draw hexagon edges** (boolean): default ``
+  - **Draw hexagon edges** (boolean): default `false`
   - **Min colour value** (string): default `white`
   - **Max colour value** (string): default `black`
-  - **Draw empty hexagons within data boundaries** (boolean): default ``
+  - **Draw empty hexagons within data boundaries** (boolean): default `false`
 
 ---
 
@@ -4540,7 +5042,25 @@ Only /24 ranges and currently handled. Remove headers to easily copy out results
 
 **Arguments:**
   - **Ignore ranges** (boolean): default `true`
-  - **Remove headers** (boolean): default ``
+  - **Remove headers** (boolean): default `false`
+
+---
+
+### `ImageBrightnessContrast()`
+
+**Operation:** `Image Brightness / Contrast`
+
+**Category:** `Multimedia`
+
+**Module:** Image
+
+Adjust the brightness or contrast of an image.
+
+**Input:** `ArrayBuffer` → **Output:** `html`
+
+**Arguments:**
+  - **Brightness** (number): default `0`
+  - **Contrast** (number): default `0`
 
 ---
 
@@ -4558,6 +5078,25 @@ Applies a greyscale or sepia filter to an image.
 
 **Arguments:**
   - **Filter type** (option): `Greyscale`, `Sepia`
+
+---
+
+### `ImageHueSaturationLightness()`
+
+**Operation:** `Image Hue/Saturation/Lightness`
+
+**Category:** `Multimedia`
+
+**Module:** Image
+
+Adjusts the hue / saturation / lightness (HSL) values of an image.
+
+**Input:** `ArrayBuffer` → **Output:** `html`
+
+**Arguments:**
+  - **Hue** (number): default `0`
+  - **Saturation** (number): default `0`
+  - **Lightness** (number): default `0`
 
 ---
 
@@ -4732,7 +5271,7 @@ Tags: json viewer, prettify, syntax highlighting
 
 **Arguments:**
   - **Indent string** (binaryShortString): default `    `
-  - **Sort Object Keys** (boolean): default ``
+  - **Sort Object Keys** (boolean): default `false`
   - **Formatted** (boolean): default `true`
 
 ---
@@ -4827,7 +5366,7 @@ Decodes a JSON Web Token without checking whether the provided secret / private 
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current JS runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
+**Support:** Unsupported: the jsonwebtoken library needs Node's crypto.KeyObject, which crypto-browserify does not provide.
 
 Signs a JSON object as a JSON Web Token using a provided secret / private key.
 
@@ -4852,7 +5391,7 @@ The key should be either the secret for HMAC algorithms or the PEM-encoded priva
 
 **Module:** Crypto
 
-**Support:** Unsupported in the current JS runtime. The bundled jsonwebtoken dependency expects Node crypto KeyObject APIs that are unavailable in the current crypto-browserify compatibility layer.
+**Support:** Unsupported: the jsonwebtoken library needs Node's crypto.KeyObject, which crypto-browserify does not provide.
 
 Verifies that a JSON Web Token is valid and has been signed with the provided secret / private key.
 
@@ -4875,8 +5414,6 @@ The key should be either the secret for HMAC algorithms or the PEM-encoded publi
 
 **Module:** Code
 
-**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
-
 Parses and pretty prints valid JavaScript code. Also works with JavaScript Object Notation (JSON).
 
 **Input:** `string` → **Output:** `string`
@@ -4897,8 +5434,6 @@ Parses and pretty prints valid JavaScript code. Also works with JavaScript Objec
 
 **Module:** Code
 
-**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
-
 Compresses JavaScript code.
 
 **Input:** `string` → **Output:** `string`
@@ -4913,8 +5448,6 @@ Compresses JavaScript code.
 
 **Module:** Code
 
-**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
-
 Returns an Abstract Syntax Tree for valid JavaScript code.
 
 [More info](https://wikipedia.org/wiki/Abstract_syntax_tree)
@@ -4922,11 +5455,11 @@ Returns an Abstract Syntax Tree for valid JavaScript code.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Location info** (boolean): default ``
-  - **Range info** (boolean): default ``
-  - **Include tokens array** (boolean): default ``
-  - **Include comments array** (boolean): default ``
-  - **Report errors and try to continue** (boolean): default ``
+  - **Location info** (boolean): default `false`
+  - **Range info** (boolean): default `false`
+  - **Include tokens array** (boolean): default `false`
+  - **Include comments array** (boolean): default `false`
+  - **Report errors and try to continue** (boolean): default `false`
 
 ---
 
@@ -4946,6 +5479,7 @@ jq is a lightweight and flexible command-line JSON processor.
 
 **Arguments:**
   - **Query** (string): default ``
+  - **Raw** (boolean): default `false`
 
 ---
 
@@ -5259,7 +5793,7 @@ A more detailed description of this operation can be found here.
 **Arguments:**
   - **Model** (option): `SZ40`, `SZ42a`, `SZ42b`
   - **Wheel Pattern** (argSelector): `KH Pattern`, `ZMUG Pattern`, `BREAM Pattern` (+2 more)
-  - **KT-Schalter** (boolean): default ``
+  - **KT-Schalter** (boolean): default `false`
   - **Mode** (argSelector): `Send`, `Receive`
   - **Input Type** (option): `Plaintext`, `ITA2`
   - **Output Type** (option): `Plaintext`, `ITA2`
@@ -5404,6 +5938,26 @@ Enables the decoding of MIME message header extensions for non-ASCII text
 
 ---
 
+### `MOD()`
+
+**Operation:** `MOD`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Default
+
+Computes the modulo of each number in a list with a given modulus value. Numbers are extracted from the input based on the delimiter, and non-numeric values are ignored.
+
+e.g. `15 4 7` with modulus `3` becomes `0 1 1`
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Modulus** (number): default `2`
+  - **Delimiter** (option): `Line feed`, `Space`, `Comma` (+3 more)
+
+---
+
 ### `Magic()`
 
 **Operation:** `Magic`
@@ -5411,8 +5965,6 @@ Enables the decoding of MIME message header extensions for non-ASCII text
 **Category:** `Flow control`
 
 **Module:** Default
-
-**Support:** Unsupported in the current JS runtime.
 
 The Magic operation attempts to detect various properties of the input data and suggests which operations could help to make more sense of it.
 
@@ -5431,8 +5983,8 @@ Optionally enter a regular expression to match a string you expect to find to fi
 
 **Arguments:**
   - **Depth** (number): default `3`
-  - **Intensive mode** (boolean): default ``
-  - **Extensive language support** (boolean): default ``
+  - **Intensive mode** (boolean): default `false`
+  - **Extensive language support** (boolean): default `false`
   - **Crib (known plaintext string or regex)** (string): default ``
 
 ---
@@ -5522,6 +6074,55 @@ VScript.Echo(my_msg);`
 
 ---
 
+### `ModularExponentiation()`
+
+**Operation:** `Modular Exponentiation`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Crypto
+
+Performs modular exponentiation, as used in Diffie-Hellman and RSA.
+
+Computes Base ^ Exponent mod Modulus.
+
+Input handling: If either Base or Exponent is left blank, its value is taken from the Input field.
+
+[More info](https://wikipedia.org/wiki/Modular_exponentiation)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Base** (string): default ``
+  - **Modulus** (string): default `1`
+  - **Exponent** (string): default ``
+
+---
+
+### `ModularInverse()`
+
+**Operation:** `Modular Inverse`
+
+**Category:** `Arithmetic / Logic`
+
+**Module:** Crypto
+
+Computes the modular multiplicative inverse of a modulo m.
+
+Finds x such that a*x = 1 (mod m).
+
+Input handling: If either a or m is left blank, its value is taken from the Input field.
+
+[More info](https://wikipedia.org/wiki/Modular_multiplicative_inverse)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Value (a)** (string): default ``
+  - **Modulus (m)** (string): default ``
+
+---
+
 ### `MultipleBombe()`
 
 **Operation:** `Multiple Bombe`
@@ -5546,7 +6147,7 @@ More detailed descriptions of the Enigma, Typex and Bombe operations can be foun
   - **4th rotor** (text)
   - **Reflectors** (text)
   - **Crib** (string): default ``
-  - **Crib offset** (number): default ``
+  - **Crib offset** (number): default `0`
   - **Use checking machine** (boolean): default `true`
 
 ---
@@ -5587,8 +6188,8 @@ Generates a MurmurHash v3 for a string input and an optional seed input
 **Input:** `string` → **Output:** `number`
 
 **Arguments:**
-  - **Seed** (number): default ``
-  - **Convert to Signed** (boolean): default ``
+  - **Seed** (number): default `0`
+  - **Convert to Signed** (boolean): default `false`
 
 ---
 
@@ -5734,7 +6335,7 @@ Compares multiple inputs (separated by the specified delimiter) and highlights m
 
 **Module:** OCR
 
-**Support:** Unsupported in the current JS runtime. Requires browser workers and OCR assets that this project does not provide.
+**Support:** Unsupported: needs browser workers and OCR assets that this project does not provide.
 
 Optical character recognition or optical character reader (OCR) is the mechanical or electronic conversion of images of typed, handwritten or printed text into machine-encoded text.
 
@@ -5747,6 +6348,24 @@ Supported image formats: png, jpg, bmp, pbm.
 **Arguments:**
   - **Show confidence** (boolean): default `true`
   - **OCR Engine Mode** (option): `Tesseract only`, `LSTM only`, `Tesseract/LSTM Combined`; default `LSTM only`
+
+---
+
+### `PListViewer()`
+
+**Operation:** `P-list Viewer`
+
+**Category:** `Other`
+
+**Module:** Default
+
+In the macOS, iOS, NeXTSTEP, and GNUstep programming frameworks, property list files are files that store serialized objects. Property list files use the filename extension .plist, and thus are often referred to as p-list files.
+
+This operation displays plist files in a human readable format.
+
+[More info](https://wikipedia.org/wiki/Property_list)
+
+**Input:** `string` → **Output:** `string`
 
 ---
 
@@ -5779,6 +6398,9 @@ Converts Keys in PEM format to a JSON Web Key format.
 [More info](https://datatracker.ietf.org/doc/html/rfc7517)
 
 **Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Set key ID (kid) to RFC 7638 thumbprint** (boolean): default ``
 
 ---
 
@@ -5894,6 +6516,32 @@ This function uses the Keybase implementation of PGP.
 
 ---
 
+### `PGPSign()`
+
+**Operation:** `PGP Sign`
+
+**Category:** `Public Key`
+
+**Module:** PGP
+
+Input: the message you want to sign
+
+Arguments: the ASCII-armoured PGP private key of the sender.
+
+Pretty Good Privacy is an encryption standard (OpenPGP) used for encrypting, decrypting, and signing messages.
+
+This function uses the Keybase implementation of PGP.
+
+[More info](https://wikipedia.org/wiki/Pretty_Good_Privacy)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Private key of signer** (text)
+  - **Private key passphrase (optional)** (string): default ``
+
+---
+
 ### `PGPVerify()`
 
 **Operation:** `PGP Verify`
@@ -5974,6 +6622,58 @@ a:3:{i:0;i:5;i:1;s:3:"abc";i:2;b:1;}
 
 ---
 
+### `PRESENTDecrypt()`
+
+**Operation:** `PRESENT Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+PRESENT is an ultra-lightweight block cipher designed for constrained environments such as RFID tags and sensor networks. It operates on 64-bit blocks and supports 80-bit or 128-bit keys with 31 rounds. Standardised in ISO/IEC 29192-2:2019.
+
+When using CBC mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/PRESENT_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `ECB`
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
+### `PRESENTEncrypt()`
+
+**Operation:** `PRESENT Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+PRESENT is an ultra-lightweight block cipher designed for constrained environments such as RFID tags and sensor networks. It operates on 64-bit blocks and supports 80-bit or 128-bit keys with 31 rounds. Standardised in ISO/IEC 29192-2:2019.
+
+When using CBC mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/PRESENT_(cipher))
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `ECB`
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
 ### `PadLines()`
 
 **Operation:** `Pad lines`
@@ -5990,6 +6690,52 @@ Add the specified number of the specified character to the beginning or end of e
   - **Position** (option): `Start`, `End`
   - **Length** (number): default `5`
   - **Character** (binaryShortString): default ` `
+
+---
+
+### `ParityBit()`
+
+**Operation:** `Parity Bit`
+
+**Category:** `Hashing`
+
+**Module:** Default
+
+A parity bit, or check bit, is the simplest form of error detection. It is a bit which is added to a string of bits and represents if the number of 1's in the binary string is an even number or odd number.
+
+If a delimiter is specified, the parity bit calculation will be performed on each 'block' of the input data, where the blocks are created by slicing the input at each occurrence of the delimiter character
+
+[More info](https://wikipedia.org/wiki/Parity_bit)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Mode** (option): `Even Parity`, `Odd Parity`
+  - **Postion** (option): `Start`, `End`
+  - **Encode or Decode** (option): `Encode`, `Decode`
+  - **Delimiter** (shortString)
+
+---
+
+### `ParseASN1HexString()`
+
+**Operation:** `Parse ASN.1 hex string`
+
+**Category:** `Data format`
+
+**Module:** PublicKey
+
+Abstract Syntax Notation One (ASN.1) is a standard and notation that describes rules and structures for representing, encoding, transmitting, and decoding data in telecommunications and computer networking.
+
+This operation parses arbitrary ASN.1 data (encoded as an hex string: use the 'To Hex' operation if necessary) and presents the resulting tree.
+
+[More info](https://wikipedia.org/wiki/Abstract_Syntax_Notation_One)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Starting index** (number): default `0`
+  - **Truncate octet strings longer than** (number): default `32`
 
 ---
 
@@ -6029,7 +6775,27 @@ Parses a DateTime string in your specified format and displays it in whichever t
 **Arguments:**
   - **Built in formats** (populateOption): default `[{'name': 'Standard date and time', 'value': 'DD/MM/YYYY HH:mm:ss'}, {'name': 'American-style date and time', 'value': 'MM/DD/YYYY HH:mm:ss'}, {'name': 'International date and time', 'value': 'YYYY-MM-DD HH:mm:ss'}, {'name': 'Verbose date and time', 'value': 'dddd Do MMMM YYYY HH:mm:ss Z z'}, {'name': 'UNIX timestamp (seconds)', 'value': 'X'}, {'name': 'UNIX timestamp offset (milliseconds)', 'value': 'x'}, {'name': 'Automatic', 'value': ''}]`
   - **Input format string** (binaryString): default `DD/MM/YYYY HH:mm:ss`
-  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+594 more)
+  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+595 more)
+
+---
+
+### `ParseEthernetFrame()`
+
+**Operation:** `Parse Ethernet frame`
+
+**Category:** `Networking`
+
+**Module:** Default
+
+Parses an Ethernet frame and either shows the deduced values (Source and destination MAC, VLANs) or returns the packet data.Good for use in conjunction with the Parse IPv4, and Parse TCP/UDP recipes.
+
+[More info](https://en.wikipedia.org/wiki/Ethernet_frame#Frame_%E2%80%93_data_link_layer)
+
+**Input:** `string` → **Output:** `html`
+
+**Arguments:**
+  - **Input type** (option): `Raw`, `Hex`
+  - **Return type** (option): `Text output`, `Packet data`, `Packet data (hex)`
 
 ---
 
@@ -6052,7 +6818,7 @@ IPv6 is supported but will not be enumerated.
 **Arguments:**
   - **Include network info** (boolean): default `true`
   - **Enumerate IP addresses** (boolean): default `true`
-  - **Allow large queries** (boolean): default ``
+  - **Allow large queries** (boolean): default `false`
 
 ---
 
@@ -6072,6 +6838,7 @@ Given an IPv4 header, this operations parses and displays each field in an easil
 
 **Arguments:**
   - **Input format** (option): `Hex`, `Raw`
+  - **Output format** (option): `Table`, `Data (hex)`, `Data (raw)`
 
 ---
 
@@ -6109,6 +6876,22 @@ Parse timestamp from MongoDB/BSON ObjectID hex string.
 
 ---
 
+### `ParsePGPKey()`
+
+**Operation:** `Parse PGP Key`
+
+**Category:** `Public Key`
+
+**Module:** PGP
+
+Parse the contents of a PGP (v4 or v6) Key
+
+[More info](https://wikipedia.org/wiki/Pretty_Good_Privacy)
+
+**Input:** `string` → **Output:** `string`
+
+---
+
 ### `ParseQRCode()`
 
 **Operation:** `Parse QR Code`
@@ -6127,7 +6910,7 @@ Attempts to normalise the image before parsing it to improve detection of a QR c
 **Input:** `ArrayBuffer` → **Output:** `string`
 
 **Arguments:**
-  - **Normalise image** (boolean): default ``
+  - **Normalise image** (boolean): default `false`
 
 ---
 
@@ -6205,7 +6988,7 @@ Tags: Key-Length-Value, KLV, Length-Value, LV
 **Arguments:**
   - **Type/Key size** (number): default `1`
   - **Length size** (number): default `1`
-  - **Use BER** (boolean): default ``
+  - **Use BER** (boolean): default `false`
 
 ---
 
@@ -6273,6 +7056,64 @@ Pretty prints complicated Uniform Resource Identifier (URI) strings for ease of 
 Attempts to identify and categorise information contained in a user-agent string.
 
 [More info](https://wikipedia.org/wiki/User_agent)
+
+**Input:** `string` → **Output:** `string`
+
+---
+
+### `ParseX509CRL()`
+
+**Operation:** `Parse X.509 CRL`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+Parse Certificate Revocation List (CRL)
+
+[More info](https://wikipedia.org/wiki/Certificate_revocation_list)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Input format** (option): `PEM`, `DER Hex`, `Base64` (+1 more)
+
+---
+
+### `ParseX509Certificate()`
+
+**Operation:** `Parse X.509 certificate`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+X.509 is an ITU-T standard for a public key infrastructure (PKI) and Privilege Management Infrastructure (PMI). It is commonly involved with SSL/TLS security.
+
+This operation displays the contents of a certificate in a human readable format, similar to the openssl command line tool.
+
+Tags: X509, server hello, handshake
+
+[More info](https://wikipedia.org/wiki/X.509)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Input format** (option): `PEM`, `DER Hex`, `Base64` (+1 more)
+
+---
+
+### `ParseX509CertificateBundles()`
+
+**Operation:** `Parse X.509 certificate bundles`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+Parses a PEM file containing one or more X.509 certificates and displays the validity, issuer, subject, extensions and other details of each certificate in order.
+
+[More info](https://wikipedia.org/wiki/X.509)
 
 **Input:** `string` → **Output:** `string`
 
@@ -6358,8 +7199,8 @@ Show the type of a field next to its name. For undefined fields, the wiretype an
 
 **Arguments:**
   - **Schema (.proto text)** (text)
-  - **Show Unknown Fields** (boolean): default ``
-  - **Show Types** (boolean): default ``
+  - **Show Unknown Fields** (boolean): default `false`
+  - **Show Types** (boolean): default `false`
 
 ---
 
@@ -6379,6 +7220,116 @@ Encodes a valid JSON object into a protobuf byte array using the input .proto sc
 
 **Arguments:**
   - **Schema (.proto text)** (text)
+
+---
+
+### `PseudoRandomIntegerGenerator()`
+
+**Operation:** `Pseudo-Random Integer Generator`
+
+**Category:** `Other`
+
+**Module:** Ciphers
+
+A cryptographically-secure pseudo-random number generator (PRNG).
+
+Generates random integers within a specified range using the browser's built-in `crypto.getRandomValues()` method if available.
+
+The supported range of integers is from `-(2^53 - 1)` to `(2^53 - 1)`.
+
+[More info](https://wikipedia.org/wiki/Pseudorandom_number_generator)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Number of Integers** (number): default `1`
+  - **Min Value** (number): default `0`
+  - **Max Value** (number): default `99`
+  - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+3 more)
+  - **Output** (option): `Raw`, `Hex`, `Decimal`
+
+---
+
+### `PseudoRandomNumberGenerator()`
+
+**Operation:** `Pseudo-Random Number Generator`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+A cryptographically-secure pseudo-random number generator (PRNG).
+
+This operation uses the browser's built-in `crypto.getRandomValues()` method if available. If this cannot be found, it falls back to a Fortuna-based PRNG algorithm.
+
+[More info](https://wikipedia.org/wiki/Pseudorandom_number_generator)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Number of bytes** (number): default `32`
+  - **Output as** (option): `Hex`, `Integer`, `Byte array` (+1 more)
+
+---
+
+### `PseudoRandomPrimeGenerator()`
+
+**Operation:** `Pseudo-Random Prime Generator`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Crypto
+
+Generates a random probable prime number of specified bit length using the Miller-Rabin primality test.
+
+Primality guarantee:
+For numbers . 3,317, the result is guaranteed prime (deterministic test).
+For larger numbers, uses probabilistic testing:
+- Standard (7 rounds): Probability of composite approx 1 in 16,000)
+
+- Crypto grade (40 rounds): Probability of composite(approx 1 in 10^24)
+Crypto grade is recommended for cryptographic applications (RSA, Diffie-Hellman, etc.).
+
+[More info](https://wikipedia.org/wiki/Miller-Rabin_primality_test)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Bit length** (number): default `512`
+  - **Crypto grade** (boolean): default `false`
+  - **Output format** (option): `Decimal`, `Hexadecimal`
+
+---
+
+### `PublicKeyFromCertificate()`
+
+**Operation:** `Public Key from Certificate`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+Extracts the Public Key from a Certificate.
+
+[More info](https://en.wikipedia.org/wiki/X.509)
+
+**Input:** `string` → **Output:** `string`
+
+---
+
+### `PublicKeyFromPrivateKey()`
+
+**Operation:** `Public Key from Private Key`
+
+**Category:** `Public Key`
+
+**Module:** PublicKey
+
+Extracts the Public Key from a Private Key.
+
+[More info](https://en.wikipedia.org/wiki/PKCS_8)
+
+**Input:** `string` → **Output:** `string`
 
 ---
 
@@ -6506,6 +7457,70 @@ It was discovered that the first few bytes of the RC4 keystream are strongly non
 
 ---
 
+### `RC6Decrypt()`
+
+**Operation:** `RC6 Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+RC6 is a symmetric key block cipher derived from RC5. It was designed by Ron Rivest, Matt Robshaw, Ray Sidney, and Yiqun Lisa Yin to meet the requirements of the AES competition, and was one of the five finalists.
+
+RC6 is parameterised as RC6-w/r/b where w is word size in bits (any multiple of 8 from 8-256), r is the number of rounds (1-255), and b is the key length in bytes. The standard AES submission uses w=32, r=20. Common word sizes: 8, 16, 32 (standard), 64, 128.
+
+IV: The Initialisation Vector should be 4*w/8 bytes (e.g. 16 bytes for w=32). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/RC6)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Word Size** (number): default `32`
+  - **Rounds** (number): default `20`
+
+---
+
+### `RC6Encrypt()`
+
+**Operation:** `RC6 Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+RC6 is a symmetric key block cipher derived from RC5. It was designed by Ron Rivest, Matt Robshaw, Ray Sidney, and Yiqun Lisa Yin to meet the requirements of the AES competition, and was one of the five finalists.
+
+RC6 is parameterised as RC6-w/r/b where w is word size in bits (any multiple of 8 from 8-256), r is the number of rounds (1-255), and b is the key length in bytes. The standard AES submission uses w=32, r=20. Common word sizes: 8, 16, 32 (standard), 64, 128.
+
+IV: The Initialisation Vector should be 4*w/8 bytes (e.g. 16 bytes for w=32). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/RC6)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Word Size** (number): default `32`
+  - **Rounds** (number): default `20`
+
+---
+
 ### `RIPEMD()`
 
 **Operation:** `RIPEMD`
@@ -6527,6 +7542,20 @@ RIPEMD was based upon the design principles used in MD4, and is similar in perfo
 
 ---
 
+### `ROR13()`
+
+**Operation:** `ROR13`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Default
+
+Computes a ROR13 hash used in API hashing techniques.
+
+**Input:** `byteArray` → **Output:** `string`
+
+---
+
 ### `ROT13()`
 
 **Operation:** `ROT13`
@@ -6544,7 +7573,7 @@ A simple caesar substitution cipher which rotates alphabet characters by the spe
 **Arguments:**
   - **Rotate lower case chars** (boolean): default `true`
   - **Rotate upper case chars** (boolean): default `true`
-  - **Rotate numbers** (boolean): default ``
+  - **Rotate numbers** (boolean): default `false`
   - **Amount** (number): default `13`
 
 ---
@@ -6568,9 +7597,9 @@ Optionally you can enter your known plaintext (crib) to filter the result.
 **Arguments:**
   - **Rotate lower case chars** (boolean): default `true`
   - **Rotate upper case chars** (boolean): default `true`
-  - **Rotate numbers** (boolean): default ``
+  - **Rotate numbers** (boolean): default `false`
   - **Sample length** (number): default `100`
-  - **Sample offset** (number): default ``
+  - **Sample offset** (number): default `0`
   - **Print amount** (boolean): default `true`
   - **Crib (known plaintext string)** (string): default ``
 
@@ -6613,7 +7642,7 @@ Optionally you can enter your known plaintext (crib) to filter the result.
 
 **Arguments:**
   - **Sample length** (number): default `100`
-  - **Sample offset** (number): default ``
+  - **Sample offset** (number): default `0`
   - **Print amount** (boolean): default `true`
   - **Crib (known plaintext string)** (string): default ``
 
@@ -6765,7 +7794,7 @@ Decodes Strings that were created using the Rail fence Cipher provided a key and
 
 **Arguments:**
   - **Key** (number): default `2`
-  - **Offset** (number): default ``
+  - **Offset** (number): default `0`
 
 ---
 
@@ -6785,7 +7814,7 @@ Encodes Strings using the Rail fence Cipher provided a key and an offset
 
 **Arguments:**
   - **Key** (number): default `2`
-  - **Offset** (number): default ``
+  - **Offset** (number): default `0`
 
 ---
 
@@ -6842,11 +7871,42 @@ Decompresses data which has been compressed using the deflate algorithm with no 
 **Input:** `ArrayBuffer` → **Output:** `ArrayBuffer`
 
 **Arguments:**
-  - **Start index** (number): default ``
-  - **Initial output buffer size** (number): default ``
+  - **Start index** (number): default `0`
+  - **Initial output buffer size** (number): default `0`
   - **Buffer expansion type** (option): `Adaptive`, `Block`
-  - **Resize buffer after decompression** (boolean): default ``
-  - **Verify result** (boolean): default ``
+  - **Resize buffer after decompression** (boolean): default `false`
+  - **Verify result** (boolean): default `false`
+
+---
+
+### `Register()`
+
+**Operation:** `Register`
+
+**Category:** `Flow control`
+
+**Module:** Regex
+
+Extract data from the input and store it in registers which can then be passed into subsequent operations as arguments. Regular expression capture groups are used to select the data to extract.
+
+To use registers in arguments, refer to them using the notation `$Rn` where n is the register number, starting at 0.
+
+For example:
+Input: `Test`
+Extractor: `(.*)`
+Argument: `$R0` becomes `Test`
+
+Registers can be escaped in arguments using a backslash. e.g. `\$R0` would become `$R0` rather than `Test`.
+
+[More info](https://wikipedia.org/wiki/Regular_expression#Syntax)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Extractor** (binaryString): default `([\\s\\S]*)`
+  - **Case insensitive** (boolean): default `true`
+  - **Multiline matching** (boolean): default `false`
+  - **Dot matches all** (boolean): default `false`
 
 ---
 
@@ -6867,15 +7927,31 @@ Supports extended regex syntax including the 'dot matches all' flag, named captu
 **Input:** `string` → **Output:** `html`
 
 **Arguments:**
-  - **Built in regexes** (populateOption): default `[{'name': 'User defined', 'value': ''}, {'name': 'IPv4 address', 'value': '(?:(?:\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d|\\d)(?:\\/\\d{1,2})?'}, {'name': 'IPv6 address', 'value': '((?=.*::)(?!.*::.+::)(::)?([\\dA-Fa-f]{1,4}:(:|\\b)|){5}|([\\dA-Fa-f]{1,4}:){6})((([\\dA-Fa-f]{1,4}((?!\\3)::|:\\b|(?![\\dA-Fa-f])))|(?!\\2\\3)){2}|(((2[0-4]|1\\d|[1-9])?\\d|25[0-5])\\.?\\b){4})'}, {'name': 'Email address', 'value': '(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\\.[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*")@(?:(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFF-a-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?\\.)+[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}\\])'}, {'name': 'URL', 'value': '([A-Za-z]+://)([-\\w]+(?:\\.\\w[-\\w]*)+)(:\\d+)?(/[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]*(?:[.!,?]+[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]+)*)?'}, {'name': 'Domain', 'value': '\\b((?=[a-z0-9-]{1,63}\\.)(xn--)?[a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,63}\\b'}, {'name': 'Windows file path', 'value': '([A-Za-z]):\\\\((?:[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)~]{0,61}\\\\?)*[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)]{0,61})(\\.[A-Za-z\\d]{1,6})?'}, {'name': 'UNIX file path', 'value': '(?:/[A-Za-z\\d.][A-Za-z\\d\\-.]{0,61})+'}, {'name': 'MAC address', 'value': '[A-Fa-f\\d]{2}(?:[:-][A-Fa-f\\d]{2}){5}'}, {'name': 'UUID', 'value': '[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}'}, {'name': 'Date (yyyy-mm-dd)', 'value': '((?:19|20)\\d\\d)[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])'}, {'name': 'Date (dd/mm/yyyy)', 'value': '(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Date (mm/dd/yyyy)', 'value': '(0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Strings', 'value': '[A-Za-z\\d/\\-:.,_$%\\x27"()<>= !\\[\\]{}@]{4,}'}]`
+  - **Built in regexes** (populateOption): default `[{'name': 'User defined', 'value': ''}, {'name': 'IPv4 address', 'value': '(?:(?:\\d|[01]?\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d|\\d)(?:\\/\\d{1,2})?'}, {'name': 'IPv6 address', 'value': '((?=.*::)(?!.*::.+::)(::)?([\\dA-Fa-f]{1,4}:(:|\\b)|){5}|([\\dA-Fa-f]{1,4}:){6})((([\\dA-Fa-f]{1,4}((?!\\3)::|:\\b|(?![\\dA-Fa-f])))|(?!\\2\\3)){2}|(((2[0-4]|1\\d|[1-9])?\\d|25[0-5])\\.?\\b){4})'}, {'name': 'Email address', 'value': '(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\\.[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*")@(?:(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?\\.)+[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\])'}, {'name': 'URL', 'value': '([A-Za-z]+://)([-\\w]+(?:\\.\\w[-\\w]*)+)(:\\d+)?(/[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]*(?:[.!,?]+[^.!,?"<>\\[\\]{}\\s\\x7F-\\xFF]+)*)?'}, {'name': 'Domain', 'value': '\\b((?=[a-z0-9-]{1,63}\\.)(xn--)?[a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,63}\\b'}, {'name': 'Windows file path', 'value': '([A-Za-z]):\\\\((?:[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)~]{0,61}\\\\?)*[A-Za-z\\d][A-Za-z\\d\\- \\x27_\\(\\)]{0,61})(\\.[A-Za-z\\d]{1,6})?'}, {'name': 'UNIX file path', 'value': '(?:/[A-Za-z\\d.][A-Za-z\\d\\-.]{0,61})+'}, {'name': 'MAC address', 'value': '[A-Fa-f\\d]{2}(?:[:-][A-Fa-f\\d]{2}){5}'}, {'name': 'UUID', 'value': '[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}'}, {'name': 'Date (yyyy-mm-dd)', 'value': '((?:19|20)\\d\\d)[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])'}, {'name': 'Date (dd/mm/yyyy)', 'value': '(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Date (mm/dd/yyyy)', 'value': '(0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])[- /.]((?:19|20)\\d\\d)'}, {'name': 'Strings', 'value': '[A-Za-z\\d/\\-:.,_$%\\x27"()<>= !\\[\\]{}@]{4,}'}]`
   - **Regex** (text)
   - **Case insensitive** (boolean): default `true`
   - **^ and $ match at newlines** (boolean): default `true`
-  - **Dot matches all** (boolean): default ``
-  - **Unicode support** (boolean): default ``
-  - **Astral support** (boolean): default ``
-  - **Display total** (boolean): default ``
+  - **Dot matches all** (boolean): default `false`
+  - **Unicode support** (boolean): default `false`
+  - **Astral support** (boolean): default `false`
+  - **Display total** (boolean): default `false`
   - **Output format** (option): `Highlight matches`, `List matches`, `List capture groups` (+1 more)
+
+---
+
+### `RemoveANSIEscapeCodes()`
+
+**Operation:** `Remove ANSI Escape Codes`
+
+**Category:** `Utils`
+
+**Module:** Default
+
+Removes ANSI Escape Codes.
+
+[More info](https://wikipedia.org/wiki/ANSI_escape_code)
+
+**Input:** `string` → **Output:** `string`
 
 ---
 
@@ -6961,7 +8037,7 @@ This operation also supports the removal of full stops which are sometimes used 
   - **Line feeds (\n)** (boolean): default `true`
   - **Tabs** (boolean): default `true`
   - **Form feeds (\f)** (boolean): default `true`
-  - **Full stops** (boolean): default ``
+  - **Full stops** (boolean): default `false`
 
 ---
 
@@ -6999,8 +8075,26 @@ Renders input Markdown as HTML. HTML rendering is disabled to avoid XSS.
 **Input:** `string` → **Output:** `html`
 
 **Arguments:**
-  - **Autoconvert URLs to links** (boolean): default ``
+  - **Autoconvert URLs to links** (boolean): default `false`
   - **Enable syntax highlighting** (boolean): default `true`
+  - **Open links in new tab.** (boolean): default `false`
+
+---
+
+### `RenderPDF()`
+
+**Operation:** `Render PDF`
+
+**Category:** `Multimedia`
+
+**Module:** File
+
+Displays the input as a PDF preview. Supports Raw and Base64 input formats.
+
+**Input:** `string` → **Output:** `html`
+
+**Arguments:**
+  - **Input format** (option): `Base64`, `Raw`
 
 ---
 
@@ -7022,7 +8116,7 @@ Resizes an image to the specified width and height values.
   - **Width** (number): default `100`
   - **Height** (number): default `100`
   - **Unit type** (option): `Pixels`, `Percent`
-  - **Maintain aspect ratio** (boolean): default ``
+  - **Maintain aspect ratio** (boolean): default `false`
   - **Resizing algorithm** (option): `Nearest Neighbour`, `Bilinear`, `Bicubic` (+2 more); default `Bilinear`
 
 ---
@@ -7129,7 +8223,7 @@ Rotates each byte to the left by the number of bits specified, optionally carryi
 
 **Arguments:**
   - **Amount** (number): default `1`
-  - **Carry through** (boolean): default ``
+  - **Carry through** (boolean): default `false`
 
 ---
 
@@ -7149,7 +8243,7 @@ Rotates each byte to the right by the number of bits specified, optionally carry
 
 **Arguments:**
   - **Amount** (number): default `1`
-  - **Carry through** (boolean): default ``
+  - **Carry through** (boolean): default `false`
 
 ---
 
@@ -7203,7 +8297,7 @@ However, SHA-1's collision resistance has been weakening as new attacks are disc
 
 The SHA-2 (Secure Hash Algorithm 2) hash functions were designed by the NSA. SHA-2 includes significant changes from its predecessor, SHA-1. The SHA-2 family consists of hash functions with digests (hash values) that are 224, 256, 384 or 512 bits: SHA224, SHA256, SHA384, SHA512.
 
-SHA-512 operates on 64-bit words.SHA-256 operates on 32-bit words.SHA-384 is largely identical to SHA-512 but is truncated to 384 bytes.SHA-224 is largely identical to SHA-256 but is truncated to 224 bytes.SHA-512/224 and SHA-512/256 are truncated versions of SHA-512, but the initial values are generated using the method described in Federal Information Processing Standards (FIPS) PUB 180-4. The message digest algorithm for SHA256 variants consists, by default, of 64 rounds, and for SHA512 variants, it is, by default, 160.
+SHA-512 operates on 64-bit words.SHA-256 operates on 32-bit words.SHA-384 is largely identical to SHA-512 but is truncated to 384 bits.SHA-224 is largely identical to SHA-256 but is truncated to 224 bits.SHA-512/224 and SHA-512/256 are truncated versions of SHA-512, but the initial values are generated using the method described in Federal Information Processing Standards (FIPS) PUB 180-4. The message digest algorithm for SHA256 variants consists, by default, of 64 rounds, and for SHA512 variants, it is, by default, 160.
 
 [More info](https://wikipedia.org/wiki/SHA-2)
 
@@ -7259,34 +8353,34 @@ To configure rotor wirings, for the cipher and control rotors enter a string of 
 
 **Arguments:**
   - **1st (left-hand) cipher rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **1st cipher rotor reversed** (boolean): default ``
+  - **1st cipher rotor reversed** (boolean): default `false`
   - **1st cipher rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **2nd cipher rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **2nd cipher rotor reversed** (boolean): default ``
+  - **2nd cipher rotor reversed** (boolean): default `false`
   - **2nd cipher rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **3rd (middle) cipher rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **3rd cipher rotor reversed** (boolean): default ``
+  - **3rd cipher rotor reversed** (boolean): default `false`
   - **3rd cipher rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **4th cipher rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **4th cipher rotor reversed** (boolean): default ``
+  - **4th cipher rotor reversed** (boolean): default `false`
   - **4th cipher rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **5th (right-hand) cipher rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **5th cipher rotor reversed** (boolean): default ``
+  - **5th cipher rotor reversed** (boolean): default `false`
   - **5th cipher rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **1st (left-hand) control rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **1st control rotor reversed** (boolean): default ``
+  - **1st control rotor reversed** (boolean): default `false`
   - **1st control rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **2nd control rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **2nd control rotor reversed** (boolean): default ``
+  - **2nd control rotor reversed** (boolean): default `false`
   - **2nd control rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **3rd (middle) control rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **3rd control rotor reversed** (boolean): default ``
+  - **3rd control rotor reversed** (boolean): default `false`
   - **3rd control rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **4th control rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **4th control rotor reversed** (boolean): default ``
+  - **4th control rotor reversed** (boolean): default `false`
   - **4th control rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **5th (right-hand) control rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+7 more)
-  - **5th control rotor reversed** (boolean): default ``
+  - **5th control rotor reversed** (boolean): default `false`
   - **5th control rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **1st (left-hand) index rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+2 more)
   - **1st index rotor initial value** (option): `0`, `1`, `2` (+7 more)
@@ -7401,7 +8495,7 @@ SM4 is a 128-bit block cipher, currently established as a national standard (GB/
 **Arguments:**
   - **Key** (toggleString): default ``
   - **IV** (toggleString): default ``
-  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+4 more)
   - **Input** (option): `Raw`, `Hex`
   - **Output** (option): `Hex`, `Raw`
 
@@ -7500,7 +8594,7 @@ Counter: Salsa uses a counter of 8 bytes (64 bits). The counter starts at zero a
 **Arguments:**
   - **Key** (toggleString): default ``
   - **Nonce** (toggleString): default ``
-  - **Counter** (number): default ``
+  - **Counter** (number): default `0`
   - **Rounds** (option): `20`, `12`, `8`
   - **Input** (option): `Hex`, `Raw`
   - **Output** (option): `Raw`, `Hex`
@@ -7530,7 +8624,7 @@ WARNING: Files over about 100KB in size will take a VERY long time to process.
   - **Documents** (boolean): default `true`
   - **Applications** (boolean): default `true`
   - **Archives** (boolean): default `true`
-  - **Miscellaneous** (boolean): default ``
+  - **Miscellaneous** (boolean): default `false`
 
 ---
 
@@ -7556,7 +8650,7 @@ Plots two-variable data as single points on a graph.
   - **Y label** (string): default ``
   - **Colour** (string): default `black`
   - **Point radius** (number): default `10`
-  - **Use colour from third column** (boolean): default ``
+  - **Use colour from third column** (boolean): default `false`
 
 ---
 
@@ -7830,7 +8924,7 @@ The IP address option supports IPv4 only.
 
 **Arguments:**
   - **Delimiter** (option): `Line feed`, `CRLF`, `Space` (+4 more)
-  - **Reverse** (boolean): default ``
+  - **Reverse** (boolean): default `false`
   - **Order** (option): `Alphabetical (case sensitive)`, `Alphabetical (case insensitive)`, `IP address` (+3 more)
 
 ---
@@ -7927,9 +9021,9 @@ Extracts all strings from the input.
   - **Encoding** (option): `Single byte`, `16-bit littleendian`, `16-bit bigendian` (+1 more)
   - **Minimum length** (number): default `4`
   - **Match** (option): `[ASCII]`, `Alphanumeric + punctuation (A)`, `All printable chars (A)` (+5 more)
-  - **Display total** (boolean): default ``
-  - **Sort** (boolean): default ``
-  - **Unique** (boolean): default ``
+  - **Display total** (boolean): default `false`
+  - **Sort** (boolean): default `false`
+  - **Unique** (boolean): default `false`
 
 ---
 
@@ -8035,7 +9129,7 @@ Use the Merge operation to reset the effects of subsection.
   - **Section (regex)** (string): default ``
   - **Case sensitive matching** (boolean): default `true`
   - **Global matching** (boolean): default `true`
-  - **Ignore errors** (boolean): default ``
+  - **Ignore errors** (boolean): default `false`
 
 ---
 
@@ -8064,7 +9158,7 @@ Note that blackslash characters are used to escape special characters, so will n
 **Arguments:**
   - **Plaintext** (binaryString): default `ABCDEFGHIJKLMNOPQRSTUVWXYZ`
   - **Ciphertext** (binaryString): default `XYZABCDEFGHIJKLMNOPQRSTUVW`
-  - **Ignore case** (boolean): default ``
+  - **Ignore case** (boolean): default `false`
 
 ---
 
@@ -8173,8 +9267,6 @@ Calculates the symmetric difference of two sets.
 
 **Module:** Code
 
-**Support:** Unsupported in the current JS runtime. Excluded by the current Node-targeted bundle.
-
 Adds syntax highlighting to a range of source code languages. Note that this will not indent the code. Use one of the 'Beautify' operations for that.
 
 [More info](https://wikipedia.org/wiki/Syntax_highlighting)
@@ -8182,7 +9274,87 @@ Adds syntax highlighting to a range of source code languages. Note that this wil
 **Input:** `string` → **Output:** `html`
 
 **Arguments:**
-  - **Language** (option): `auto detect`, `1c`, `abnf` (+190 more)
+  - **Language** (option): `auto detect`, `1c`, `abnf` (+191 more)
+
+---
+
+### `TCPIPChecksum()`
+
+**Operation:** `TCP/IP Checksum`
+
+**Category:** `Hashing`
+
+**Module:** Crypto
+
+Calculates the checksum for a TCP (Transport Control Protocol) or IP (Internet Protocol) header from an input of raw bytes.
+
+[More info](https://wikipedia.org/wiki/IPv4_header_checksum)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+---
+
+### `TEADecrypt()`
+
+**Operation:** `TEA Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+TEA (Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1994. It operates on 64-bit blocks using a 128-bit key and performs 32 cycles (64 Feistel rounds) with the DELTA constant 0x9E3779B9 derived from the golden ratio.
+
+TEA is notable for its simplicity and compact implementation, making it frequently encountered in malware analysis and CTF challenges. Despite its elegance, TEA has known weaknesses including equivalent keys and susceptibility to related-key attacks, leading to successors XTEA and XXTEA.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Tiny_Encryption_Algorithm)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
+### `TEAEncrypt()`
+
+**Operation:** `TEA Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+TEA (Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1994. It operates on 64-bit blocks using a 128-bit key and performs 32 cycles (64 Feistel rounds) with the DELTA constant 0x9E3779B9 derived from the golden ratio.
+
+TEA is notable for its simplicity and compact implementation, making it frequently encountered in malware analysis and CTF challenges. Despite its elegance, TEA has known weaknesses including equivalent keys and susceptibility to related-key attacks, leading to successors XTEA and XXTEA.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Tiny_Encryption_Algorithm)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
 
 ---
 
@@ -8222,9 +9394,9 @@ Takes a slice of the specified number of bytes from the data. Negative values ar
 **Input:** `ArrayBuffer` → **Output:** `ArrayBuffer`
 
 **Arguments:**
-  - **Start** (number): default ``
+  - **Start** (number): default `0`
   - **Length** (number): default `5`
-  - **Apply to each line** (boolean): default ``
+  - **Apply to each line** (boolean): default `false`
 
 ---
 
@@ -8242,8 +9414,8 @@ Takes every nth byte starting with a given byte.
 
 **Arguments:**
   - **Take every** (number): default `4`
-  - **Starting at** (number): default ``
-  - **Apply to each line** (boolean): default ``
+  - **Starting at** (number): default `0`
+  - **Apply to each line** (boolean): default `false`
 
 ---
 
@@ -8461,6 +9633,38 @@ Simplified Chinese GB18030 (54936)
 
 ---
 
+### `TextIntegerConversion()`
+
+**Operation:** `Text-Integer Conversion`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Converts between text strings and large integers (decimal or hexadecimal).
+
+Text is interpreted as a big-endian sequence of character codes. For example:
+ABC is 0x414243 (hex) is 4276803 (decimal)
+Input format detection:
+Decimal: digits 0-9 only
+Hexadecimal: 0x... prefix
+Quoted or unquoted text: treated as string
+
+Character limitations:
+Text input may only contain ASCII and Latin-1 characters (code point < 256).
+Multi-byte Unicode characters will generate an error.
+
+.
+
+[More info](https://wikipedia.org/wiki/Endianness)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Output format** (option): `String`, `Decimal`, `Hexadecimal`
+
+---
+
 ### `ToBCD()`
 
 **Operation:** `To BCD`
@@ -8478,7 +9682,7 @@ Binary-Coded Decimal (BCD) is a class of binary encodings of decimal numbers whe
 **Arguments:**
   - **Scheme** (option): `8 4 2 1`, `7 4 2 1`, `4 2 2 1` (+4 more)
   - **Packed** (boolean): default `true`
-  - **Signed** (boolean): default ``
+  - **Signed** (boolean): default `false`
   - **Output format** (option): `Nibbles`, `Bytes`, `Raw`
 
 ---
@@ -8633,7 +9837,7 @@ Adds a '' delimiter to the start and end of the data. This is standard for Adobe
 
 **Arguments:**
   - **Alphabet** (editableOption): `Standard`, `Z85 (ZeroMQ)`, `IPv6`
-  - **Include delimeter** (boolean): default ``
+  - **Include delimiter** (boolean): default `false`
 
 ---
 
@@ -8649,7 +9853,36 @@ Base92 is a notation for encoding arbitrary byte data using a restricted set of 
 
 [More info](https://wikipedia.org/wiki/List_of_numeral_systems)
 
-**Input:** `string` → **Output:** `string`
+**Input:** `string` → **Output:** `byteArray`
+
+---
+
+### `ToBech32()`
+
+**Operation:** `To Bech32`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Bech32 is an encoding scheme primarily used for Bitcoin SegWit addresses (BIP-0173). It uses a 32-character alphabet that excludes easily confused characters (1, b, i, o) and includes a checksum for error detection.
+
+Bech32m (BIP-0350) is an updated version that fixes a weakness in the original Bech32 checksum and is used for Bitcoin Taproot addresses.
+
+The Human-Readable Part (HRP) identifies the network or purpose (e.g., 'bc' for Bitcoin mainnet, 'tb' for testnet, 'age' for AGE encryption keys).
+
+Maximum output length is 90 characters as per specification.
+
+[More info](https://wikipedia.org/wiki/Bech32)
+
+**Input:** `ArrayBuffer` → **Output:** `string`
+
+**Arguments:**
+  - **Human-Readable Part (HRP)** (string): default `bc`
+  - **Encoding** (option): `Bech32`, `Bech32m`
+  - **Input Format** (option): `Raw bytes`, `Hex`
+  - **Mode** (option): `Generic`, `Bitcoin SegWit`
+  - **Witness Version** (number): default `0`
 
 ---
 
@@ -8691,6 +9924,22 @@ Converts text to six-dot braille symbols.
 
 ---
 
+### `ToCOBS()`
+
+**Operation:** `To COBS`
+
+**Category:** `Data format`
+
+**Module:** Default
+
+Encodes bytes in COBS format
+
+[More info](https://wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+---
+
 ### `ToCamelCase()`
 
 **Operation:** `To Camel case`
@@ -8712,7 +9961,7 @@ e.g. thisIsCamelCase
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Attempt to be context aware** (boolean): default ``
+  - **Attempt to be context aware** (boolean): default `false`
 
 ---
 
@@ -8772,7 +10021,7 @@ e.g. `Hello` becomes `72 101 108 108 111`
 
 **Arguments:**
   - **Delimiter** (option): `Space`, `Comma`, `Semi-colon` (+3 more)
-  - **Support signed values** (boolean): default ``
+  - **Support signed values** (boolean): default `false`
 
 ---
 
@@ -8814,7 +10063,7 @@ e.g. `&` becomes `&amp;`
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Convert all characters** (boolean): default ``
+  - **Convert all characters** (boolean): default `false`
   - **Convert to** (option): `Named entities`, `Numeric entities`, `Hex entities`
 
 ---
@@ -8837,7 +10086,7 @@ e.g. The UTF-8 encoded string `Γειά σου` becomes `ce 93 ce b5 ce b9 ce ac
 
 **Arguments:**
   - **Delimiter** (option): `Space`, `Percent`, `Comma` (+8 more)
-  - **Bytes per line** (number): default ``
+  - **Bytes per line** (number): default `0`
 
 ---
 
@@ -8859,7 +10108,7 @@ e.g. `foo=bar` becomes `foo|3d|bar`.
 
 **Arguments:**
   - **Convert** (option): `Only special chars`, `Only special chars including spaces`, `All chars`
-  - **Print spaces between bytes** (boolean): default ``
+  - **Print spaces between bytes** (boolean): default `false`
 
 ---
 
@@ -8881,9 +10130,9 @@ The 'UNIX format' argument defines which subset of printable characters are disp
 
 **Arguments:**
   - **Width** (number): default `16`
-  - **Upper case hex** (boolean): default ``
-  - **Include final length** (boolean): default ``
-  - **UNIX format** (boolean): default ``
+  - **Upper case hex** (boolean): default `false`
+  - **Include final length** (boolean): default `false`
+  - **UNIX format** (boolean): default `false`
 
 ---
 
@@ -8908,7 +10157,7 @@ e.g. this-is-kebab-case
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Attempt to be context aware** (boolean): default ``
+  - **Attempt to be context aware** (boolean): default `false`
 
 ---
 
@@ -8958,7 +10207,7 @@ Converts the input string to modhex bytes separated by the specified delimiter.
 
 **Arguments:**
   - **Delimiter** (option): `Space`, `Percent`, `Comma` (+5 more)
-  - **Bytes per line** (number): default ``
+  - **Bytes per line** (number): default `0`
 
 ---
 
@@ -9025,7 +10274,7 @@ e.g. `münchen` encodes to `mnchen-3ya`
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Internationalised domain name** (boolean): default ``
+  - **Internationalised domain name** (boolean): default `false`
 
 ---
 
@@ -9037,7 +10286,7 @@ e.g. `münchen` encodes to `mnchen-3ya`
 
 **Module:** Default
 
-Quoted-Printable, or QP encoding, is an encoding using printable ASCII characters (alphanumeric and the equals sign '=') to transmit 8-bit data over a 7-bit data path or, generally, over a medium which is not 8-bit clean. It is defined as a MIME content transfer encoding for use in e-mail.
+Quoted-Printable, or QP encoding, is an encoding using printable ASCII characters (alphanumeric and the equals sign '=') to transmit 8-bit data over a 7-bit data path or, generally, over a medium which is not 8-bit clean. It is defined as a MIME content transfer encoding for use in email.
 
 QP works by using the equals sign '=' as an escape character. It also limits line length to 76, as some software has limits on line length.
 
@@ -9068,7 +10317,7 @@ e.g. this_is_snake_case
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Attempt to be context aware** (boolean): default ``
+  - **Attempt to be context aware** (boolean): default `false`
 
 ---
 
@@ -9093,7 +10342,7 @@ You can enter as many delimiters as you like. Each character will be treat as a 
 **Arguments:**
   - **Cell delimiters** (binaryShortString): default `,`
   - **Row delimiters** (binaryShortString): default `\\r\\n`
-  - **Make first row header** (boolean): default ``
+  - **Make first row header** (boolean): default `false`
   - **Format** (option): `ASCII`, `HTML`, `Markdown`
 
 ---
@@ -9159,9 +10408,9 @@ Run with no input to see the relevant format string examples.
 **Arguments:**
   - **Built in formats** (populateOption): default `[{'name': 'Standard date and time', 'value': 'DD/MM/YYYY HH:mm:ss'}, {'name': 'American-style date and time', 'value': 'MM/DD/YYYY HH:mm:ss'}, {'name': 'International date and time', 'value': 'YYYY-MM-DD HH:mm:ss'}, {'name': 'Verbose date and time', 'value': 'dddd Do MMMM YYYY HH:mm:ss Z z'}, {'name': 'UNIX timestamp (seconds)', 'value': 'X'}, {'name': 'UNIX timestamp offset (milliseconds)', 'value': 'x'}, {'name': 'Automatic', 'value': ''}]`
   - **Input format string** (binaryString): default `DD/MM/YYYY HH:mm:ss`
-  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+594 more)
+  - **Input timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+595 more)
   - **Output format string** (binaryString): default `dddd Do MMMM YYYY HH:mm:ss Z z`
-  - **Output timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+594 more)
+  - **Output timezone** (option): `UTC`, `Africa/Abidjan`, `Africa/Accra` (+595 more)
 
 ---
 
@@ -9225,6 +10474,58 @@ Padding: In CBC and ECB mode, PKCS#7 padding will be used.
 
 ---
 
+### `TwofishDecrypt()`
+
+**Operation:** `Twofish Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Twofish is a symmetric key block cipher designed by Bruce Schneier. It was one of the five AES finalists. Twofish operates on 128-bit blocks and supports key sizes of 128, 192, or 256 bits with 16 rounds of a Feistel network.
+
+When using CBC or ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Twofish)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
+### `TwofishEncrypt()`
+
+**Operation:** `Twofish Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+Twofish is a symmetric key block cipher designed by Bruce Schneier. It was one of the five AES finalists. Twofish operates on 128-bit blocks and supports key sizes of 128, 192, or 256 bits with 16 rounds of a Feistel network.
+
+When using CBC or ECB mode, the PKCS#7 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/Twofish)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+
+---
+
 ### `Typex()`
 
 **Operation:** `Typex`
@@ -9247,23 +10548,23 @@ More detailed descriptions of the Enigma, Typex and Bombe operations can be foun
 
 **Arguments:**
   - **1st (left-hand) rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+5 more)
-  - **1st rotor reversed** (boolean): default ``
+  - **1st rotor reversed** (boolean): default `false`
   - **1st rotor ring setting** (option): `A`, `B`, `C` (+23 more)
   - **1st rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **2nd rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+5 more); default `Example 2`
-  - **2nd rotor reversed** (boolean): default ``
+  - **2nd rotor reversed** (boolean): default `false`
   - **2nd rotor ring setting** (option): `A`, `B`, `C` (+23 more)
   - **2nd rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **3rd (middle) rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+5 more); default `Example 3`
-  - **3rd rotor reversed** (boolean): default ``
+  - **3rd rotor reversed** (boolean): default `false`
   - **3rd rotor ring setting** (option): `A`, `B`, `C` (+23 more)
   - **3rd rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **4th (static) rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+5 more); default `Example 4`
-  - **4th rotor reversed** (boolean): default ``
+  - **4th rotor reversed** (boolean): default `false`
   - **4th rotor ring setting** (option): `A`, `B`, `C` (+23 more)
   - **4th rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **5th (right-hand, static) rotor** (editableOption): `Example 1`, `Example 2`, `Example 3` (+5 more); default `Example 5`
-  - **5th rotor reversed** (boolean): default ``
+  - **5th rotor reversed** (boolean): default `false`
   - **5th rotor ring setting** (option): `A`, `B`, `C` (+23 more)
   - **5th rotor initial value** (option): `A`, `B`, `C` (+23 more)
   - **Reflector** (editableOption): `Example`
@@ -9334,10 +10635,10 @@ e.g. `=` becomes `%3d`
 
 [More info](https://wikipedia.org/wiki/Percent-encoding)
 
-**Input:** `string` → **Output:** `string`
+**Input:** `byteArray` → **Output:** `string`
 
 **Arguments:**
-  - **Encode all special chars** (boolean): default ``
+  - **Encode all special chars** (boolean): default `false`
 
 ---
 
@@ -9412,7 +10713,7 @@ Removes duplicate strings from the input.
 
 **Arguments:**
   - **Delimiter** (option): `Line feed`, `CRLF`, `Space` (+4 more)
-  - **Display count** (boolean): default ``
+  - **Display count** (boolean): default `false`
 
 ---
 
@@ -9448,7 +10749,7 @@ Decompresses data using the PKZIP algorithm and displays it per file, with suppo
 
 **Arguments:**
   - **Password** (binaryString): default ``
-  - **Verify result** (boolean): default ``
+  - **Verify result** (boolean): default `false`
 
 ---
 
@@ -9500,7 +10801,7 @@ Extracts and displays a bit plane of any given image. These show only a single b
 
 **Arguments:**
   - **Colour** (option): `Red`, `Green`, `Blue` (+1 more)
-  - **Bit** (number): default ``
+  - **Bit** (number): default `0`
 
 ---
 
@@ -9590,6 +10891,23 @@ This operation also supports UNIX timestamps in milliseconds, microseconds and n
 
 ---
 
+### `Wrap()`
+
+**Operation:** `Wrap`
+
+**Category:** `Utils`
+
+**Module:** Default
+
+Wraps the input text at a specified number of characters per line.
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Line Width** (number): default `64`
+
+---
+
 ### `XKCDRandomNumber()`
 
 **Operation:** `XKCD Random Number`
@@ -9636,7 +10954,7 @@ Compresses eXtensible Markup Language (XML) code.
 **Input:** `string` → **Output:** `string`
 
 **Arguments:**
-  - **Preserve comments** (boolean): default ``
+  - **Preserve comments** (boolean): default `false`
 
 ---
 
@@ -9663,7 +10981,7 @@ Scheme:Standard - key is unchanged after each roundInput differential - key is s
 **Arguments:**
   - **Key** (toggleString): default ``
   - **Scheme** (option): `Standard`, `Input differential`, `Output differential` (+1 more)
-  - **Null preserving** (boolean): default ``
+  - **Null preserving** (boolean): default `false`
 
 ---
 
@@ -9686,11 +11004,11 @@ Optionally enter a string that you expect to find in the plaintext to filter res
 **Arguments:**
   - **Key length** (number): default `1`
   - **Sample length** (number): default `100`
-  - **Sample offset** (number): default ``
+  - **Sample offset** (number): default `0`
   - **Scheme** (option): `Standard`, `Input differential`, `Output differential`
-  - **Null preserving** (boolean): default ``
+  - **Null preserving** (boolean): default `false`
   - **Print key** (boolean): default `true`
-  - **Output as hex** (boolean): default ``
+  - **Output as hex** (boolean): default `false`
   - **Crib (known plaintext string)** (binaryString): default ``
 
 ---
@@ -9711,6 +11029,45 @@ XOR Checksum splits the input into blocks of a configurable size and performs th
 
 **Arguments:**
   - **Blocksize** (number): default `4`
+
+---
+
+### `XPRESSDecompress()`
+
+**Operation:** `XPRESS Decompress`
+
+**Category:** `Compression`
+
+**Module:** Compression
+
+Decompresses data using the XPRESS plain LZ77 algorithm (MS-XCA section 2.1).
+
+Similar to the Windows API `RtlDecompressBuffer` with `COMPRESSION_FORMAT_XPRESS`.
+
+[More info](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/5655f4a3-6ba4-489b-959f-e1f407c52f15)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+---
+
+### `XPRESSLZ77HuffmanDecompress()`
+
+**Operation:** `XPRESS LZ77+Huffman Decompress`
+
+**Category:** `Compression`
+
+**Module:** Compression
+
+Decompresses data using the XPRESS LZ77+Huffman algorithm (MS-XCA section 2.2).
+
+The uncompressed size must be known in advance, as it is from the WOF chunk table or WIM header, so it is taken as an argument.
+
+[More info](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/5655f4a3-6ba4-489b-959f-e1f407c52f15)
+
+**Input:** `byteArray` → **Output:** `byteArray`
+
+**Arguments:**
+  - **Decompressed size** (number): default `4096`
 
 ---
 
@@ -9757,10 +11114,80 @@ Counter: XSalsa uses a counter of 8 bytes (64 bits). The counter starts at zero 
 **Arguments:**
   - **Key** (toggleString): default ``
   - **Nonce** (toggleString): default ``
-  - **Counter** (number): default ``
+  - **Counter** (number): default `0`
   - **Rounds** (option): `20`, `12`, `8`
   - **Input** (option): `Hex`, `Raw`
   - **Output** (option): `Raw`, `Hex`
+
+---
+
+### `XTEADecrypt()`
+
+**Operation:** `XTEA Decrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+XTEA (eXtended Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1997 as a successor to TEA, correcting several weaknesses identified in the original algorithm. It operates on 64-bit blocks using a 128-bit key with an improved key schedule that uses sum-dependent key word selection to resist related-key attacks.
+
+XTEA retains the simplicity and compact implementation of TEA whilst providing significantly improved security. It is frequently encountered in malware analysis and CTF challenges due to its straightforward implementation.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Rounds: The recommended number of rounds is 32 (default). The reference implementation by Wheeler & Needham accepts a configurable round count.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/XTEA)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Hex`, `Raw`
+  - **Output** (option): `Raw`, `Hex`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Rounds** (number): default `32`
+
+---
+
+### `XTEAEncrypt()`
+
+**Operation:** `XTEA Encrypt`
+
+**Category:** `Encryption / Encoding`
+
+**Module:** Ciphers
+
+XTEA (eXtended Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1997 as a successor to TEA, correcting several weaknesses identified in the original algorithm. It operates on 64-bit blocks using a 128-bit key with an improved key schedule that uses sum-dependent key word selection to resist related-key attacks.
+
+XTEA retains the simplicity and compact implementation of TEA whilst providing significantly improved security. It is frequently encountered in malware analysis and CTF challenges due to its straightforward implementation.
+
+Key: Must be exactly 16 bytes (128 bits).
+
+IV: The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.
+
+Rounds: The recommended number of rounds is 32 (default). The reference implementation by Wheeler & Needham accepts a configurable round count.
+
+Padding: In CBC and ECB mode, the PKCS#5 padding scheme is used.
+
+[More info](https://wikipedia.org/wiki/XTEA)
+
+**Input:** `string` → **Output:** `string`
+
+**Arguments:**
+  - **Key** (toggleString): default ``
+  - **IV** (toggleString): default ``
+  - **Mode** (option): `CBC`, `CFB`, `OFB` (+2 more)
+  - **Input** (option): `Raw`, `Hex`
+  - **Output** (option): `Hex`, `Raw`
+  - **Padding** (option): `PKCS5`, `NO`, `ZERO` (+2 more)
+  - **Rounds** (number): default `32`
 
 ---
 
@@ -9826,8 +11253,6 @@ Convert YAML to JSON
 
 **Module:** Yara
 
-**Support:** Unsupported in the current JS runtime.
-
 YARA is a tool developed at VirusTotal, primarily aimed at helping malware researchers to identify and classify malware samples. It matches based on rules specified by the user containing textual or binary patterns and a boolean expression. For help on writing rules, see the YARA documentation.
 
 [More info](https://wikipedia.org/wiki/YARA)
@@ -9836,9 +11261,9 @@ YARA is a tool developed at VirusTotal, primarily aimed at helping malware resea
 
 **Arguments:**
   - **Rules** (text)
-  - **Show strings** (boolean): default ``
-  - **Show string lengths** (boolean): default ``
-  - **Show metadata** (boolean): default ``
+  - **Show strings** (boolean): default `false`
+  - **Show string lengths** (boolean): default `false`
+  - **Show metadata** (boolean): default `false`
   - **Show counts** (boolean): default `true`
   - **Show rule warnings** (boolean): default `true`
   - **Show console module messages** (boolean): default `true`
@@ -9905,10 +11330,10 @@ Decompresses data which has been compressed using the deflate algorithm with zli
 **Input:** `ArrayBuffer` → **Output:** `ArrayBuffer`
 
 **Arguments:**
-  - **Start index** (number): default ``
-  - **Initial output buffer size** (number): default ``
+  - **Start index** (number): default `0`
+  - **Initial output buffer size** (number): default `0`
   - **Buffer expansion type** (option): `Adaptive`, `Block`
-  - **Resize buffer after decompression** (boolean): default ``
-  - **Verify result** (boolean): default ``
+  - **Resize buffer after decompression** (boolean): default `false`
+  - **Verify result** (boolean): default `false`
 
 ---

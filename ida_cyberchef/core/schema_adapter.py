@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import warnings
 from typing import Any
 
 
@@ -20,27 +19,6 @@ def _parse_schema_value(value: Any) -> Any:
 def sanitise_operation_name(value: str) -> str:
     """Return the name form used by CyberChef's name matching."""
     return value.replace(" ", "").lower()
-
-
-def decode_escaped_string(value: str) -> str:
-    """Decode the escape sequences used in CyberChef argument defaults."""
-    with warnings.catch_warnings():
-        # CyberChef schema defaults use backslash escapes in free-form strings,
-        # including regex-style sequences such as "\." and "\-". Python's
-        # unicode_escape codec decodes the escapes we need, but can emit
-        # warning noise for those literal regex escapes. Preserve the existing
-        # decoding behavior while keeping schema normalization quiet.
-        warnings.filterwarnings(
-            "ignore",
-            category=DeprecationWarning,
-            message=r"invalid escape sequence",
-        )
-        warnings.filterwarnings(
-            "ignore",
-            category=SyntaxWarning,
-            message=r"invalid escape sequence",
-        )
-        return value.encode("raw_unicode_escape").decode("unicode_escape")
 
 
 def coerce_schema_boolean(value: Any) -> bool:
@@ -62,20 +40,6 @@ def get_argument_default_index(arg: dict[str, Any]) -> int:
     return 0
 
 
-def _decode_runtime_string(value: Any) -> Any:
-    """Decode CyberChef escape sequences for runtime string values."""
-    if isinstance(value, str):
-        return decode_escaped_string(value)
-    return value
-
-
-def _decode_option_runtime_value(arg_type: str, value: Any) -> Any:
-    """Decode option values only for schema types that use escaped runtime strings."""
-    if arg_type in {"editableOption", "editableOptionShort"}:
-        return _decode_runtime_string(value)
-    return value
-
-
 def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
     """Return normalised option metadata for list-backed schema arguments."""
     raw_value = _parse_schema_value(arg.get("value", ""))
@@ -91,7 +55,7 @@ def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
             options.append(
                 {
                     "label": label,
-                    "value": _decode_option_runtime_value(arg_type, runtime_value),
+                    "value": runtime_value,
                     "raw": entry,
                 }
             )
@@ -100,7 +64,7 @@ def _get_option_entries(arg: dict[str, Any]) -> list[dict[str, Any]]:
         options.append(
             {
                 "label": str(entry),
-                "value": _decode_option_runtime_value(arg_type, entry),
+                "value": entry,
                 "raw": entry,
             }
         )
@@ -152,9 +116,6 @@ def restore_saved_argument_value(arg: dict[str, Any], saved_value: Any) -> Any:
     """Restore saved values using schema-aware canonicalisation rules."""
     arg_type = str(arg.get("type", "string"))
 
-    if arg_type in {"binaryString", "binaryShortString"} and isinstance(saved_value, str):
-        return decode_escaped_string(saved_value)
-
     if arg_type == "boolean":
         return coerce_schema_boolean(saved_value)
 
@@ -182,9 +143,6 @@ def get_argument_default_value(arg: dict[str, Any]) -> Any:
     arg_type = str(arg.get("type", "string"))
     raw_value = _parse_schema_value(arg.get("value", ""))
     options = _get_option_entries(arg)
-
-    if arg_type in {"binaryString", "binaryShortString"}:
-        return _decode_runtime_string(raw_value)
 
     if arg_type == "boolean":
         return coerce_schema_boolean(raw_value)
@@ -218,10 +176,7 @@ def get_argument_default_value(arg: dict[str, Any]) -> Any:
                 "string": str(raw_value.get("string", "")),
                 "option": str(raw_value.get("option", default_option)),
             }
-        return {
-            "string": _decode_runtime_string(raw_value) if raw_value else "",
-            "option": default_option,
-        }
+        return {"string": raw_value or "", "option": default_option}
 
     return raw_value
 
@@ -232,36 +187,6 @@ def get_toggle_values(arg: dict[str, Any]) -> tuple[str, ...]:
     if not isinstance(raw_values, list):
         return ()
     return tuple(str(value) for value in raw_values)
-
-
-def expand_populate_multi_option(arg: dict[str, Any], value: Any) -> dict[str, Any]:
-    """Expand populateMultiOption selections into their target arguments."""
-    if not isinstance(value, str):
-        return {}
-
-    targets = arg.get("target")
-    if not isinstance(targets, list):
-        return {}
-
-    selected_value = canonicalise_option_value(arg, value)
-    for option in _get_option_entries(arg):
-        if option["value"] != selected_value:
-            continue
-
-        raw_option = option["raw"]
-        if not isinstance(raw_option, dict):
-            return {}
-
-        expanded_values = raw_option.get("value", [])
-        if not isinstance(expanded_values, list):
-            return {}
-        return {
-            str(target_index): expanded_values[index]
-            for index, target_index in enumerate(targets)
-            if index < len(expanded_values)
-        }
-
-    return {}
 
 
 def get_dependent_args(
@@ -292,45 +217,3 @@ def get_dependent_args(
         return visible, hidden
 
     return set(), set()
-
-
-def normalise_recipe_argument_value(arg: dict[str, Any], value: Any) -> Any:
-    """Return a recipe argument value in the form CyberChef expects."""
-    arg_type = str(arg.get("type", "string"))
-
-    if arg_type in {"binaryString", "binaryShortString"} and isinstance(value, str):
-        return decode_escaped_string(value)
-
-    if arg_type == "boolean":
-        return coerce_schema_boolean(value)
-
-    if arg_type == "number" and isinstance(value, str):
-        try:
-            return int(value) if "." not in value else float(value)
-        except ValueError:
-            return value
-
-    if arg_type in {
-        "argSelector",
-        "editableOption",
-        "editableOptionShort",
-        "option",
-        "populateOption",
-        "populateMultiOption",
-    }:
-        return canonicalise_option_value(arg, value)
-
-    return value
-
-
-def should_apply_schema_default(arg: dict[str, Any]) -> bool:
-    """Return whether the bridge should materialise this argument's default."""
-    return str(arg.get("type", "")) in {
-        "argSelector",
-        "binaryShortString",
-        "binaryString",
-        "boolean",
-        "editableOption",
-        "editableOptionShort",
-        "populateMultiOption",
-    }

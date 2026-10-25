@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 from tools.generate_operation_schema import (
-    deduplicate_operations,
     enhance_schema_with_categories,
     extract_categories_and_favorites,
+    operation_metadata,
 )
 
 
@@ -40,17 +40,32 @@ def test_extract_categories_and_favorites():
     assert "XOR" in result["categories"]
 
 
-def test_deduplicate_operations_keeps_first_operation():
-    operations = [
-        {"name": "AES Decrypt", "module": "Ciphers"},
-        {"name": "AES Decrypt", "module": "Alias"},
-        {"name": "SM3", "module": "Crypto"},
-    ]
+def test_operation_metadata_keeps_widget_fields():
+    config = {
+        "module": "Default",
+        "description": "Splits a string.",
+        "infoURL": "",
+        "inputType": "string",
+        "outputType": "string",
+        "flowControl": False,
+        "args": [
+            {"name": "Delimiter", "type": "editableOption", "value": [{"name": "Comma", "value": ","}], "hint": "x"},
+            {"name": "Count", "type": "number", "value": 1, "min": 0},
+        ],
+    }
 
-    assert deduplicate_operations(operations) == [
-        {"name": "AES Decrypt", "module": "Ciphers"},
-        {"name": "SM3", "module": "Crypto"},
-    ]
+    assert operation_metadata("Split", config) == {
+        "name": "Split",
+        "module": "Default",
+        "description": "Splits a string.",
+        "infoURL": None,
+        "inputType": "string",
+        "outputType": "string",
+        "args": [
+            {"name": "Delimiter", "type": "editableOption", "value": [{"name": "Comma", "value": ","}]},
+            {"name": "Count", "type": "number", "value": 1},
+        ],
+    }
 
 
 def test_enhance_schema_with_categories():

@@ -69,7 +69,7 @@ def test_shared_adapter_extracts_defaults_for_binary_and_populate_multi_option()
     indent_string_arg = next(arg for arg in css_beautify_op["args"] if arg["name"] == "Indent string")
     default_value = get_argument_default_value(bombe_op["args"][0])
 
-    assert get_argument_default_value(indent_string_arg) == "\t"
+    assert get_argument_default_value(indent_string_arg) == "\\t"
     assert default_value == "German Service Enigma (First - 3 rotor)"
 
 
