@@ -9626,7 +9626,7 @@ Simplified Chinese GB18030 (54936)
 
 [More info](https://wikipedia.org/wiki/Character_encoding)
 
-**Input:** `ArrayBuffer` → **Output:** `html`
+**Input:** `string` → **Output:** `html`
 
 **Arguments:**
   - **Mode** (option): `Encode`, `Decode`

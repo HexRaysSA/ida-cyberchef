@@ -33,7 +33,7 @@ mini-racer does not use the CPython C API, so a wheel works with every CPython v
 
 ## How the bridge works
 
-`just build` bundles CyberChef's core (all operations) with `js/polyfills.mjs` and `js/bridge.mjs` into `ida_cyberchef/data/CyberChef.js`. CyberChef runs in its browser (Web Worker) mode, as in the web app, and recipes run through its own `Recipe` class, so flow control, argument defaults and escape handling are upstream's.
+The `deps/CyberChef` submodule tracks gchq/CyberChef `master` without patches. `just build` bundles CyberChef's core (all operations) with `js/polyfills.mjs` and `js/bridge.mjs` into `ida_cyberchef/data/CyberChef.js`. CyberChef runs in its browser (Web Worker) mode, as in the web app, and recipes run through its own `Recipe` class, so flow control, argument defaults and escape handling are upstream's.
 
 mini-racer runs V8 on its own thread. From Python to JS it passes only primitives and handles to JS objects. From JS to Python it returns ArrayBuffers as zero-copy `memoryview`s. Therefore:
 

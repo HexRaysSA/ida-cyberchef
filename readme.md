@@ -29,7 +29,7 @@ As a minor extension beyond traditional CyberChef, each operation step can be ex
 
 ## Background
 
-This started as an experiment to see if CyberChef could be embedded in Python without needing a browser or Electron. The GCHQ team built CyberChef as a web application, but they also exposed a Node.js API. We're using a minimal CommonJS-compatible build (from Willi Ballenthin's fork) that doesn't require the full Node.js runtime.
+This started as an experiment to see if CyberChef could be embedded in Python without needing a browser or Electron. The GCHQ team built CyberChef as a web application; we bundle its core, unmodified from upstream `master`, so that it runs without a browser, Electron or Node.js.
 
 The project went through a few iterations:
 1. First, just getting the JavaScript engine to work with proper type conversions between Python bytes and CyberChef's "Dish" objects

@@ -1,4 +1,4 @@
 [submodule "deps/CyberChef"]
 	path = deps/CyberChef
-	url = https://github.com/williballenthin/CyberChef.git
-	branch = ida-cyberchef
+	url = https://github.com/gchq/CyberChef.git
+	branch = master

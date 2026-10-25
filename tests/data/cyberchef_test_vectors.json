@@ -46000,21 +46000,6 @@
    "flags": ""
   },
   {
-   "name": "Text Encoding Brute Force - Decode UTF-8 bytes",
-   "module": "TextEncodingBruteForce",
-   "input": "cafÃ©",
-   "recipe": [
-    {
-     "op": "Text Encoding Brute Force",
-     "args": [
-      "Decode"
-     ]
-    }
-   ],
-   "expected_match": "IBM EBCDIC International \\(500\\).{1,10}Ä\\/ÃCz",
-   "flags": ""
-  },
-  {
    "name": "Translate DateTime Format: invalid input",
    "module": "TranslateDateTimeFormat",
    "input": "1234567890",

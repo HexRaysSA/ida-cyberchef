@@ -35,6 +35,8 @@ BRAILLE_DOT6 = "⠀⠁⠂⠃⠄⠅⠆⠇⠈⠉⠊⠋⠌⠍⠎⠏⠐⠑⠒⠓⠔�
 UPSTREAM_BUG_XFAILS = {
     "jwt_sign_hs256_fixed_iat_payload": "jsonwebtoken needs Node crypto.KeyObject, which crypto-browserify lacks",
     "jwt_verify_static_hs256_token": "jsonwebtoken needs Node crypto.KeyObject, which crypto-browserify lacks",
+    "text_encoding_brute_force_decode_selected_encodings": "upstream decodes the UTF-8 string of byte input, not the bytes",
+    "fuzzy_match_docs_example_highlights_disjoint_ranges": "upstream FuzzyMatch reads recursiveMatches before initialising it (TDZ)",
 }
 
 

@@ -58,7 +58,7 @@
 - `tools/generate_operation_schema.py`: generates the schema from CyberChef's `OperationConfig.json` and `Categories.json`.
 - `tools/generate_docs.py`: renders `docs/ops.md`.
 - `tools/extract_upstream_vectors.mjs`: extracts CyberChef's own operation tests into `tests/data/cyberchef_test_vectors.json`.
-- `deps/CyberChef/`: CyberChef submodule, the `ida-cyberchef` branch of williballenthin/CyberChef: upstream `master` plus a few fixes not yet upstream.
+- `deps/CyberChef/`: CyberChef submodule, tracking gchq/CyberChef `master` directly, with no fork. Tests that fail because of upstream bugs are marked xfail with the reason (`UPSTREAM_BUG_XFAILS`, `XFAIL`).
 - `justfile`: `just build` installs npm dependencies, generates CyberChef's config, rebuilds `CyberChef.js`, and regenerates the schema, `docs/ops.md` and the upstream test vectors. The build is reproducible; CI checks that the committed outputs match.
 
 ### Tests
@@ -93,7 +93,7 @@ Qt tests:
 - Use `.venv/bin/python` for installs and test runs.
 - Run non-Qt tests with `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q`.
 - Run Qt tests only through `IDA_CYBERCHEF_ENABLE_QT_TESTS=1 QT_QPA_PLATFORM=offscreen .venv/bin/python tools/run_pytest.py -q`.
-- Rebuild with `just build` after changing `js/` or the CyberChef submodule (needs Node.js and npm). To update CyberChef, merge upstream `master` into the submodule's `ida-cyberchef` branch, push it, commit the new submodule commit, and run `just build`.
+- Rebuild with `just build` after changing `js/` or the CyberChef submodule (needs Node.js and npm). To update CyberChef, run `git submodule update --remote deps/CyberChef`, run `just build` and the tests, and commit the new submodule commit with the rebuilt outputs. Mark tests broken by upstream bugs as xfail rather than patching CyberChef.
 - For operation coverage work, inspect both `operation_schema.json` and `docs/ops.md` before adding vectors.
 
 ## Operation test triage notes
