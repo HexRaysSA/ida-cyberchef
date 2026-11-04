@@ -6,7 +6,7 @@
  * tests/data/cyberchef_test_vectors.json for tests/test_cyberchef_vectors.py.
  * Recipes keep CyberChef's positional args, which bake() accepts as is.
  *
- * Usage (see `just test-vectors`): node tools/extract_upstream_vectors.mjs
+ * Usage (see `just build`): node tools/extract_upstream_vectors.mjs
  * Needs CyberChef's npm dependencies and generated config (`just config`).
  */
 

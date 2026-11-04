@@ -1,6 +1,6 @@
 # JavaScript engine choice
 
-ida-cyberchef runs CyberChef's Node-targeted bundle in an embedded JavaScript engine. Since 2026-10 that engine is [mini-racer](https://github.com/bpcreech/PyMiniRacer) (V8). This note records why, so the next re-evaluation can start from it.
+ida-cyberchef runs CyberChef's core in an embedded JavaScript engine. Since 2026-10 that engine is [mini-racer](https://github.com/bpcreech/PyMiniRacer) (V8). This note records why, so the next re-evaluation can start from it.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ ida-cyberchef runs CyberChef's Node-targeted bundle in an embedded JavaScript en
 
 | Engine | PyPI | Wheels | Verdict |
 |---|---|---|---|
-| V8 | `mini-racer` 0.14.1 | `py3-none` per platform (ctypes), including win_amd64, macosx_11_0_arm64, manylinux_2_27 x86_64 and aarch64 | chosen |
+| V8 | `mini-racer` 0.14.1 | `py3-none` per platform (ctypes), including win_amd64, macosx_11_0_arm64, macosx_10_9_x86_64, manylinux_2_27 x86_64 and aarch64 | chosen |
 | QuickJS-ng | `quickjs-ng` | `cp310-abi3` | fallback: no `Intl`, no WebAssembly, interpreter only |
 | QuickJS | `quickjs` | up to cp312 | archived |
 | V8 | `stpyv8` | no cp315 | archived |

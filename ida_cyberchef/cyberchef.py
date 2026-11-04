@@ -18,7 +18,9 @@ from py_mini_racer import JSPromiseError, JSTimeoutException, MiniRacer
 
 BUNDLE_PATH = Path(__file__).parent / "data" / "CyberChef.js"
 
-# Upper bound on one bake, including time spent in asynchronous operations.
+# Upper bound on waiting for a bake's promise to settle. It is checked only
+# while V8 is idle between tasks: synchronous compute inside an operation runs
+# to completion first, and a timed-out recipe keeps running in the isolate.
 TIMEOUT_SECONDS = 30.0
 
 Recipe = list[str | dict[str, Any]]
@@ -68,6 +70,7 @@ def _get_bake() -> Any:
 
 
 def _files(payload: Any) -> list[CyberChefFile]:
+    """Split exportDish()'s [metadata JSON, concatenated contents] into files."""
     meta, data = json.loads(payload[0]), bytes(payload[1])
     files: list[CyberChefFile] = []
     offset = 0

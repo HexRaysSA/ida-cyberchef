@@ -46,7 +46,7 @@ Unsupported operations: DNS over HTTPS and HTTP request (they need network acces
 
 ## Supported Python versions
 
-Python 3.10 through 3.15, on Windows x86_64, macOS arm64 and Linux x86_64.
+Python 3.10 through 3.15, on Windows x86_64, macOS arm64 and x86_64, and Linux x86_64.
 
 mini-racer loads V8 as a plain shared library through `ctypes` and does not use the CPython C API, so it ships one `py3-none` wheel per platform that works with every Python version. All runtime dependencies (`mini-racer`, `pydantic`) install from prebuilt wheels, with no compiler, Node.js or npm needed. To install offline, build a wheelhouse on a connected machine and copy it over:
 
@@ -55,7 +55,7 @@ python -m pip download --only-binary :all: --dest wheelhouse "mini-racer>=0.14.1
 python -m pip install --no-index --find-links wheelhouse "mini-racer>=0.14.1" "pydantic>=2"
 ```
 
-To build a wheelhouse for other platforms or Python versions, add `--platform` (for example `win_amd64`, `macosx_11_0_arm64`, or `manylinux_2_27_x86_64 --platform manylinux_2_17_x86_64`) and `--python-version`. Linux needs glibc 2.27 or newer.
+To build a wheelhouse for other platforms or Python versions, add `--platform` (for example `win_amd64`, `macosx_11_0_arm64`, `macosx_10_9_x86_64`, or `manylinux_2_27_x86_64 --platform manylinux_2_17_x86_64`) and `--python-version`. Linux needs glibc 2.27 or newer.
 
 ## Building
 

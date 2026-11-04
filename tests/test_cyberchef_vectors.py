@@ -2,7 +2,7 @@
 
 tests/data/cyberchef_test_vectors.json is extracted from
 deps/CyberChef/tests/operations/tests/ by tools/extract_upstream_vectors.mjs
-(`just test-vectors`). Do not edit it manually.
+(`just build`). Do not edit it manually.
 """
 
 import json
@@ -36,8 +36,11 @@ XFAIL = {
     # crypto module in browser builds of CyberChef) does not provide.
     "JWT Sign": "jsonwebtoken needs Node crypto.KeyObject",
     "JWT Verify": "jsonwebtoken needs Node crypto.KeyObject",
-    # The msgpack library reports a different error than under Node.js.
-    "From MessagePack: no content": "V8 msgpack throws a different error message than upstream test expects",
+    # notepack.io's browser decoder reads through a DataView and fails with
+    # "RangeError: Offset is outside the bounds of the DataView", where its
+    # Node.js decoder, which upstream's test was written against, fails with
+    # "Error: Could not parse".
+    "From MessagePack: no content": "notepack.io's browser decoder reports a different error than its Node.js one",
 }
 
 
@@ -46,10 +49,10 @@ def _xfail_reason(name: str) -> str | None:
 
 
 def _error_matches_expected(error_msg: str, expected: str) -> bool:
-    """Check if a JS exception message matches the expected CyberChef output.
+    """Check if a CyberChefError message matches the expected CyberChef output.
 
-    CyberChef returns errors as "OpName - error details" in its test harness.
-    Our bridge throws exceptions with just the error details and a JSError wrapper.
+    CyberChef's test harness reports some errors as "OpName - error details";
+    bake() raises CyberChefError with only the error details.
     """
     if expected in error_msg:
         return True
