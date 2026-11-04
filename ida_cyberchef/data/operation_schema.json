@@ -104,63 +104,68 @@
           ]
         },
         {
+          "name": "IV Length",
+          "type": "number",
+          "value": 16
+        },
+        {
           "name": "Mode",
           "type": "argSelector",
           "value": [
             {
               "name": "CBC",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "CFB",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "OFB",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "CTR",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "GCM",
               "on": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "ECB",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "CBC/NoPadding",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             },
             {
               "name": "ECB/NoPadding",
               "off": [
-                5,
-                6
+                6,
+                7
               ]
             }
           ]
@@ -201,6 +206,39 @@
             "UTF8",
             "Latin1",
             "Base64"
+          ]
+        },
+        {
+          "name": "IV from input",
+          "type": "argSelector",
+          "value": [
+            {
+              "name": "Off",
+              "on": [
+                1
+              ],
+              "off": [
+                2
+              ]
+            },
+            {
+              "name": "From start",
+              "on": [
+                2
+              ],
+              "off": [
+                1
+              ]
+            },
+            {
+              "name": "From end",
+              "on": [
+                2
+              ],
+              "off": [
+                1
+              ]
+            }
           ]
         }
       ],
@@ -316,6 +354,15 @@
             "UTF8",
             "Latin1",
             "Base64"
+          ]
+        },
+        {
+          "name": "Include IV in output",
+          "type": "option",
+          "value": [
+            "Off",
+            "Prepend",
+            "Append"
           ]
         }
       ],
@@ -657,11 +704,17 @@
     {
       "name": "Analyse UUID",
       "module": "Crypto",
-      "description": "Tries to determine information about a given UUID and suggests which version may have been used to generate it",
+      "description": "Operation for extracting metadata and detecting the version of a given UUID.",
       "infoURL": "https://wikipedia.org/wiki/Universally_unique_identifier",
       "inputType": "string",
       "outputType": "string",
-      "args": [],
+      "args": [
+        {
+          "name": "Include Metadata",
+          "type": "boolean",
+          "value": true
+        }
+      ],
       "category": "Other",
       "is_favorite": false
     },
@@ -755,6 +808,162 @@
       "is_favorite": false
     },
     {
+      "name": "Ascon Decrypt",
+      "module": "Ciphers",
+      "description": "Ascon-AEAD128 authenticated decryption as standardised in NIST SP 800-232. Decrypts ciphertext and verifies the authentication tag. Decryption will fail if the ciphertext or associated data has been tampered with.<br><br><b>Key:</b> Must be exactly 16 bytes (128 bits).<br><br><b>Nonce:</b> Must be exactly 16 bytes (128 bits). Must match the nonce used during encryption.<br><br><b>Associated Data:</b> Must match the associated data used during encryption. Any mismatch will cause authentication failure.",
+      "infoURL": "https://wikipedia.org/wiki/Ascon_(cipher)",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Nonce",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Associated Data",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Ascon Encrypt",
+      "module": "Ciphers",
+      "description": "Ascon-AEAD128 authenticated encryption as standardised in NIST SP 800-232. Ascon is a family of lightweight authenticated encryption algorithms designed for constrained devices such as IoT sensors and embedded systems.<br><br><b>Key:</b> Must be exactly 16 bytes (128 bits).<br><br><b>Nonce:</b> Must be exactly 16 bytes (128 bits). Should be unique for each encryption with the same key. Never reuse a nonce with the same key.<br><br><b>Associated Data:</b> Optional additional data that is authenticated but not encrypted. Useful for including metadata like headers or timestamps.<br><br>The output includes both the ciphertext and a 128-bit authentication tag.",
+      "infoURL": "https://wikipedia.org/wiki/Ascon_(cipher)",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Nonce",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Associated Data",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Ascon Hash",
+      "module": "Crypto",
+      "description": "Ascon-Hash256 produces a fixed 256-bit (32-byte) cryptographic hash as standardised in NIST SP 800-232. Ascon is a family of lightweight authenticated encryption and hashing algorithms designed for constrained devices such as IoT sensors and embedded systems.<br><br>The algorithm was selected by NIST in 2023 as the new standard for lightweight cryptography after a multi-year competition.",
+      "infoURL": "https://wikipedia.org/wiki/Ascon_(cipher)",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [],
+      "category": "Hashing",
+      "is_favorite": false
+    },
+    {
+      "name": "Ascon MAC",
+      "module": "Crypto",
+      "description": "Ascon-Mac produces a 128-bit (16-byte) message authentication code as part of the Ascon family standardised by NIST in SP 800-232. It provides authentication for messages using a secret key, ensuring both data integrity and authenticity.<br><br>Ascon is designed for lightweight cryptography on constrained devices such as IoT sensors and embedded systems.",
+      "infoURL": "https://wikipedia.org/wiki/Ascon_(cipher)",
+      "inputType": "ArrayBuffer",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        }
+      ],
+      "category": "Hashing",
+      "is_favorite": false
+    },
+    {
       "name": "Atbash Cipher",
       "module": "Ciphers",
       "description": "Atbash is a mono-alphabetic substitution cipher originally used to encode the Hebrew alphabet. It has been modified here for use with the Latin alphabet.",
@@ -763,6 +972,87 @@
       "outputType": "string",
       "args": [],
       "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Automated Validation Test Op",
+      "module": "Default",
+      "description": "Operation used specifically to test automated parameter validation.",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Integer Number",
+          "type": "number",
+          "value": 5
+        },
+        {
+          "name": "Real Number",
+          "type": "number",
+          "value": 1.5
+        },
+        {
+          "name": "Non Empty String",
+          "type": "string",
+          "value": "hello"
+        },
+        {
+          "name": "Empty Allowed String",
+          "type": "string",
+          "value": ""
+        },
+        {
+          "name": "Non Empty Toggle String",
+          "type": "toggleString",
+          "value": {
+            "option": "Option A",
+            "string": "test"
+          },
+          "toggleValues": [
+            "Option A",
+            "Option B"
+          ]
+        },
+        {
+          "name": "Option Ingredient",
+          "type": "option",
+          "value": [
+            "[Group 1]",
+            "Option 1",
+            "Option 2",
+            "[/Group 1]",
+            "[Group 2]",
+            "Option 3",
+            "[/Group 2]"
+          ]
+        },
+        {
+          "name": "Arg Selector Ingredient",
+          "type": "argSelector",
+          "value": [
+            {
+              "name": "Option 1",
+              "on": [
+                0
+              ],
+              "off": [
+                1
+              ]
+            },
+            {
+              "name": "Option 2",
+              "on": [
+                1
+              ],
+              "off": [
+                0
+              ]
+            }
+          ]
+        }
+      ],
+      "category": "Other",
       "is_favorite": false
     },
     {
@@ -879,7 +1169,7 @@
         {
           "name": "Size (bytes)",
           "type": "number",
-          "value": ""
+          "value": 16
         },
         {
           "name": "Key",
@@ -6562,13 +6852,13 @@
         },
         {
           "name": "Code Segment (CS)",
-          "type": "number",
-          "value": 16
+          "type": "string",
+          "value": "16"
         },
         {
           "name": "Offset (IP)",
-          "type": "number",
-          "value": 0
+          "type": "string",
+          "value": "0"
         },
         {
           "name": "Show instruction hex",
@@ -7471,6 +7761,27 @@
       "is_favorite": false
     },
     {
+      "name": "Escape Smart Characters",
+      "module": "Default",
+      "description": "Converts smart (typographic) Unicode characters \u2014 e.g. smart quotes, em/en dashes, ellipses, \u00a9, \u00ae, \u2122, arrows \u2014 into their plain ASCII equivalents.<br><br>Characters with no ASCII mapping (e.g. <code>\u2623</code>) are handled according to the 'Unmappable characters' option.<br><br>e.g. <code>\u201cHello\u201d \u2014 world\u2026</code> becomes <code>\"Hello\" -- world...</code>",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Unmappable characters",
+          "type": "option",
+          "value": [
+            "Include",
+            "Remove",
+            "Replace with '.'"
+          ]
+        }
+      ],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
       "name": "Escape Unicode Characters",
       "module": "Default",
       "description": "Converts characters to their unicode-escaped notations.<br><br>Supports the prefixes:<ul><li><code>\\u</code></li><li><code>%u</code></li><li><code>U+</code></li></ul>e.g. <code>\u03c3\u03bf\u03c5</code> becomes <code>\\u03C3\\u03BF\\u03C5</code>",
@@ -7566,6 +7877,28 @@
         }
       ],
       "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Extended GCD",
+      "module": "Crypto",
+      "description": "Computes the Extended Euclidean Algorithm for integers <i>a</i> and <i>b</i>.<br><br>Finds integers <i>x</i> and <i>y</i> (Bezout coefficients) such that:<br>a*x + b*y = gcd(a, b)<br><br>This is fundamental to many number theory algorithms including modular inverse, solving linear Diophantine equations, and cryptographic operations.<br><br><b>Input handling:</b> If either <i>a</i> or <i>b</i> is left blank, its value is taken from the Input field.",
+      "infoURL": "https://wikipedia.org/wiki/Extended_Euclidean_algorithm",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Value a",
+          "type": "string",
+          "value": ""
+        },
+        {
+          "name": "Value b",
+          "type": "string",
+          "value": ""
+        }
+      ],
+      "category": "Arithmetic / Logic",
       "is_favorite": false
     },
     {
@@ -8841,6 +9174,17 @@
       "is_favorite": false
     },
     {
+      "name": "From COBS",
+      "module": "Default",
+      "description": "Decodes COBS encoded bytes",
+      "infoURL": "https://wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing",
+      "inputType": "byteArray",
+      "outputType": "byteArray",
+      "args": [],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
       "name": "From Case Insensitive Regex",
       "module": "Default",
       "description": "Converts a case-insensitive regex string to a case sensitive regex string (no guarantee on it being the proper original casing) in case the i flag wasn't available at the time but now is, or you need it to be case-sensitive again.<br><br>e.g. <code>[mM][oO][zZ][iI][lL][lL][aA]/[0-9].[0-9] .*</code> becomes <code>Mozilla/[0-9].[0-9] .*</code>",
@@ -8897,7 +9241,8 @@
             "Semi-colon",
             "Colon",
             "Line feed",
-            "CRLF"
+            "CRLF",
+            "Auto"
           ]
         },
         {
@@ -9956,7 +10301,7 @@
     {
       "name": "Generate HOTP",
       "module": "Default",
-      "description": "The HMAC-based One-Time Password algorithm (HOTP) is an algorithm that computes a one-time password from a shared secret key and an incrementing counter. It has been adopted as Internet Engineering Task Force standard RFC 4226, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems.<br><br>Enter the secret as the input or leave it blank for a random secret to be generated.",
+      "description": "The HMAC-based One-Time Password algorithm (HOTP) is an algorithm that computes a one-time password from a shared secret key and an incrementing counter. It has been adopted as Internet Engineering Task Force standard RFC 4226, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems.<br><br>Enter the secret as the input or leave it blank for a random secret to be generated. The secret must be a valid base32 string (characters A\u2013Z and 2\u20137).",
       "infoURL": "https://wikipedia.org/wiki/HMAC-based_One-time_Password_algorithm",
       "inputType": "ArrayBuffer",
       "outputType": "string",
@@ -9964,7 +10309,7 @@
         {
           "name": "Name",
           "type": "string",
-          "value": ""
+          "value": "Account"
         },
         {
           "name": "Code length",
@@ -10155,7 +10500,7 @@
     {
       "name": "Generate TOTP",
       "module": "Default",
-      "description": "The Time-based One-Time Password algorithm (TOTP) is an algorithm that computes a one-time password from a shared secret key and the current time. It has been adopted as Internet Engineering Task Force standard RFC 6238, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems. A TOTP is an HOTP where the counter is the current time.<br><br>Enter the secret as the input or leave it blank for a random secret to be generated. T0 and T1 are in seconds.",
+      "description": "The Time-based One-Time Password algorithm (TOTP) is an algorithm that computes a one-time password from a shared secret key and the current time. It has been adopted as Internet Engineering Task Force standard RFC 6238, is the cornerstone of Initiative For Open Authentication (OAUTH), and is used in a number of two-factor authentication systems. A TOTP is an HOTP where the counter is the current time.<br><br>Enter the secret as the input or leave it blank for a random secret to be generated. The secret must be a valid base32 string (characters A\u2013Z and 2\u20137). T0 and T1 are in seconds.",
       "infoURL": "https://wikipedia.org/wiki/Time-based_One-time_Password_algorithm",
       "inputType": "ArrayBuffer",
       "outputType": "string",
@@ -10163,7 +10508,7 @@
         {
           "name": "Name",
           "type": "string",
-          "value": ""
+          "value": "Account"
         },
         {
           "name": "Code length",
@@ -12044,6 +12389,35 @@
       "is_favorite": false
     },
     {
+      "name": "MOD",
+      "module": "Default",
+      "description": "Computes the modulo of each number in a list with a given modulus value. Numbers are extracted from the input based on the delimiter, and non-numeric values are ignored.<br><br>e.g. <code>15 4 7</code> with modulus <code>3</code> becomes <code>0 1 1</code>",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Modulus",
+          "type": "number",
+          "value": 2
+        },
+        {
+          "name": "Delimiter",
+          "type": "option",
+          "value": [
+            "Line feed",
+            "Space",
+            "Comma",
+            "Semi-colon",
+            "Colon",
+            "CRLF"
+          ]
+        }
+      ],
+      "category": "Arithmetic / Logic",
+      "is_favorite": false
+    },
+    {
       "name": "Magic",
       "module": "Default",
       "description": "The Magic operation attempts to detect various properties of the input data and suggests which operations could help to make more sense of it.<br><br><b>Options</b><br><u>Depth:</u> If an operation appears to match the data, it will be run and the result will be analysed further. This argument controls the maximum number of levels of recursion.<br><br><u>Intensive mode:</u> When this is turned on, various operations like XOR, bit rotates, and character encodings are brute-forced to attempt to detect valid data underneath. To improve performance, only the first 100 bytes of the data is brute-forced.<br><br><u>Extensive language support:</u> At each stage, the relative byte frequencies of the data will be compared to average frequencies for a number of languages. The default set consists of ~40 of the most commonly used languages on the Internet. The extensive list consists of 284 languages and can result in many languages matching the data if their byte frequencies are similar.<br><br>Optionally enter a regular expression to match a string you expect to find to filter results (crib).",
@@ -12149,6 +12523,55 @@
       "outputType": "string",
       "args": [],
       "category": "Code tidy",
+      "is_favorite": false
+    },
+    {
+      "name": "Modular Exponentiation",
+      "module": "Crypto",
+      "description": "Performs modular exponentiation, as used in Diffie-Hellman and RSA.<br><br>Computes Base ^ Exponent mod Modulus.<br><br><b>Input handling:</b> If <i>either</i> Base <i>or</i> Exponent is left blank, its value is taken from the Input field.",
+      "infoURL": "https://wikipedia.org/wiki/Modular_exponentiation",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Base",
+          "type": "string",
+          "value": ""
+        },
+        {
+          "name": "Modulus",
+          "type": "string",
+          "value": "1"
+        },
+        {
+          "name": "Exponent",
+          "type": "string",
+          "value": ""
+        }
+      ],
+      "category": "Arithmetic / Logic",
+      "is_favorite": false
+    },
+    {
+      "name": "Modular Inverse",
+      "module": "Crypto",
+      "description": "Computes the modular multiplicative inverse of <i>a</i> modulo <i>m</i>.<br><br>Finds <i>x</i> such that a*x = 1 (mod m).<br><br><b>Input handling:</b> If either <i>a</i> or <i>m</i> is left blank, its value is taken from the Input field.",
+      "infoURL": "https://wikipedia.org/wiki/Modular_multiplicative_inverse",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Value (a)",
+          "type": "string",
+          "value": ""
+        },
+        {
+          "name": "Modulus (m)",
+          "type": "string",
+          "value": ""
+        }
+      ],
+      "category": "Arithmetic / Logic",
       "is_favorite": false
     },
     {
@@ -12465,7 +12888,13 @@
       "infoURL": "https://datatracker.ietf.org/doc/html/rfc7517",
       "inputType": "string",
       "outputType": "string",
-      "args": [],
+      "args": [
+        {
+          "name": "Set key ID (kid) to RFC 7638 thumbprint",
+          "type": "boolean",
+          "value": ""
+        }
+      ],
       "category": "Public Key",
       "is_favorite": false
     },
@@ -12563,6 +12992,28 @@
       "is_favorite": false
     },
     {
+      "name": "PGP Sign",
+      "module": "PGP",
+      "description": "Input: the message you want to sign\n<br><br>\nArguments: the ASCII-armoured PGP private key of the sender.\n<br><br>\nPretty Good Privacy is an encryption standard (OpenPGP) used for encrypting, decrypting, and signing messages.\n<br><br>\nThis function uses the Keybase implementation of PGP.",
+      "infoURL": "https://wikipedia.org/wiki/Pretty_Good_Privacy",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Private key of signer",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "name": "Private key passphrase (optional)",
+          "type": "string",
+          "value": ""
+        }
+      ],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
       "name": "PGP Verify",
       "module": "PGP",
       "description": "Input: the ASCII-armoured encrypted PGP message you want to verify.\n<br><br>\nArgument: the ASCII-armoured PGP public key of the signer\n<br><br>\nThis operation uses PGP to decrypt a clearsigned message.\n<br><br>\nPretty Good Privacy is an encryption standard (OpenPGP) used for encrypting, decrypting, and signing messages.\n<br><br>\nThis function uses the Keybase implementation of PGP.",
@@ -12608,6 +13059,144 @@
       "is_favorite": false
     },
     {
+      "name": "PRESENT Decrypt",
+      "module": "Ciphers",
+      "description": "PRESENT is an ultra-lightweight block cipher designed for constrained environments such as RFID tags and sensor networks. It operates on 64-bit blocks and supports 80-bit or 128-bit keys with 31 rounds. Standardised in ISO/IEC 29192-2:2019.<br><br>When using CBC mode, the PKCS#7 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/PRESENT_(cipher)",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "PRESENT Encrypt",
+      "module": "Ciphers",
+      "description": "PRESENT is an ultra-lightweight block cipher designed for constrained environments such as RFID tags and sensor networks. It operates on 64-bit blocks and supports 80-bit or 128-bit keys with 31 rounds. Standardised in ISO/IEC 29192-2:2019.<br><br>When using CBC mode, the PKCS#7 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/PRESENT_(cipher)",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
       "name": "Pad lines",
       "module": "Default",
       "description": "Add the specified number of the specified character to the beginning or end of each line",
@@ -12635,6 +13224,47 @@
         }
       ],
       "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Parity Bit",
+      "module": "Default",
+      "description": "A parity bit, or check bit, is the simplest form of error detection. It is a bit which is added to a string of bits and represents if the number of 1's in the binary string is an even number or odd number.<br><br>If a delimiter is specified, the parity bit calculation will be performed on each 'block' of the input data, where the blocks are created by slicing the input at each occurrence of the delimiter character",
+      "infoURL": "https://wikipedia.org/wiki/Parity_bit",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "Even Parity",
+            "Odd Parity"
+          ]
+        },
+        {
+          "name": "Postion",
+          "type": "option",
+          "value": [
+            "Start",
+            "End"
+          ]
+        },
+        {
+          "name": "Encode or Decode",
+          "type": "option",
+          "value": [
+            "Encode",
+            "Decode"
+          ]
+        },
+        {
+          "name": "Delimiter",
+          "type": "shortString",
+          "value": ""
+        }
+      ],
+      "category": "Hashing",
       "is_favorite": false
     },
     {
@@ -13442,6 +14072,17 @@
       "is_favorite": false
     },
     {
+      "name": "Parse PGP Key",
+      "module": "PGP",
+      "description": "Parse the contents of a PGP (v4 or v6) Key",
+      "infoURL": "https://wikipedia.org/wiki/Pretty_Good_Privacy",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
       "name": "Parse QR Code",
       "module": "Image",
       "description": "Reads an image file and attempts to detect and read a Quick Response (QR) code from the image.<br><br><u>Normalise Image</u><br>Attempts to normalise the image before parsing it to improve detection of a QR code.",
@@ -13635,6 +14276,17 @@
       "is_favorite": false
     },
     {
+      "name": "Parse X.509 certificate bundles",
+      "module": "PublicKey",
+      "description": "Parses a PEM file containing one or more X.509 certificates and displays the validity, issuer, subject, extensions and other details of each certificate in order.",
+      "infoURL": "https://wikipedia.org/wiki/X.509",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
       "name": "Parse colour code",
       "module": "Default",
       "description": "Converts a colour code in a standard format to other standard formats and displays the colour itself.<br><br><strong>Example inputs</strong><ul><li><code>#d9edf7</code></li><li><code>rgba(217,237,247,1)</code></li><li><code>hsla(200,65%,91%,1)</code></li><li><code>cmyk(0.12, 0.04, 0.00, 0.03)</code></li></ul>",
@@ -13800,6 +14452,58 @@
         }
       ],
       "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Pseudo-Random Prime Generator",
+      "module": "Crypto",
+      "description": "Generates a random probable prime number of specified bit length using the Miller-Rabin primality test.<br><br><b>Primality guarantee:</b><br>For numbers . 3,317, the result is guaranteed prime (deterministic test).<br>For larger numbers, uses probabilistic testing:<br>- <b>Standard (7 rounds):</b> Probability of composite approx 1 in 16,000)<br><br>- <b>Crypto grade (40 rounds):</b> Probability of composite(approx 1 in 10^24)<br>Crypto grade is recommended for cryptographic applications (RSA, Diffie-Hellman, etc.).<br><br>",
+      "infoURL": "https://wikipedia.org/wiki/Miller-Rabin_primality_test",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Bit length",
+          "type": "number",
+          "value": 512
+        },
+        {
+          "name": "Crypto grade",
+          "type": "boolean",
+          "value": false
+        },
+        {
+          "name": "Output format",
+          "type": "option",
+          "value": [
+            "Decimal",
+            "Hexadecimal"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Public Key from Certificate",
+      "module": "PublicKey",
+      "description": "Extracts the Public Key from a Certificate.",
+      "infoURL": "https://en.wikipedia.org/wiki/X.509",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Public Key",
+      "is_favorite": false
+    },
+    {
+      "name": "Public Key from Private Key",
+      "module": "PublicKey",
+      "description": "Extracts the Public Key from a Private Key.",
+      "infoURL": "https://en.wikipedia.org/wiki/PKCS_8",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
+      "category": "Public Key",
       "is_favorite": false
     },
     {
@@ -14222,6 +14926,17 @@
         }
       ],
       "category": "Hashing",
+      "is_favorite": false
+    },
+    {
+      "name": "ROR13",
+      "module": "Default",
+      "description": "Computes a ROR13 hash used in API hashing techniques.",
+      "infoURL": null,
+      "inputType": "byteArray",
+      "outputType": "string",
+      "args": [],
+      "category": "Encryption / Encoding",
       "is_favorite": false
     },
     {
@@ -14728,6 +15443,38 @@
       "is_favorite": false
     },
     {
+      "name": "Register",
+      "module": "Regex",
+      "description": "Extract data from the input and store it in registers which can then be passed into subsequent operations as arguments. Regular expression capture groups are used to select the data to extract.<br><br>To use registers in arguments, refer to them using the notation <code>$Rn</code> where n is the register number, starting at 0.<br><br>For example:<br>Input: <code>Test</code><br>Extractor: <code>(.*)</code><br>Argument: <code>$R0</code> becomes <code>Test</code><br><br>Registers can be escaped in arguments using a backslash. e.g. <code>\\$R0</code> would become <code>$R0</code> rather than <code>Test</code>.",
+      "infoURL": "https://wikipedia.org/wiki/Regular_expression#Syntax",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Extractor",
+          "type": "binaryString",
+          "value": "([\\s\\S]*)"
+        },
+        {
+          "name": "Case insensitive",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Multiline matching",
+          "type": "boolean",
+          "value": false
+        },
+        {
+          "name": "Dot matches all",
+          "type": "boolean",
+          "value": false
+        }
+      ],
+      "category": "Flow control",
+      "is_favorite": false
+    },
+    {
       "name": "Regular expression",
       "module": "Regex",
       "description": "Define your own regular expression (regex) to search the input data with, optionally choosing from a list of pre-defined patterns.<br><br>Supports extended regex syntax including the 'dot matches all' flag, named capture groups, full unicode coverage (including <code>\\p{}</code> categories and scripts as well as astral codes) and recursive matching.",
@@ -14753,7 +15500,7 @@
             },
             {
               "name": "Email address",
-              "value": "(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFF-a-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?\\.)+[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}\\])"
+              "value": "(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?\\.)+[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9](?:[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9-]*[\\u00A0-\\uD7FF\\uE000-\\uFFFFa-z0-9])?|\\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\\])"
             },
             {
               "name": "URL",
@@ -14844,6 +15591,17 @@
           ]
         }
       ],
+      "category": "Utils",
+      "is_favorite": false
+    },
+    {
+      "name": "Remove ANSI Escape Codes",
+      "module": "Default",
+      "description": "Removes ANSI Escape Codes.",
+      "infoURL": "https://wikipedia.org/wiki/ANSI_escape_code",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [],
       "category": "Utils",
       "is_favorite": false
     },
@@ -14971,9 +15729,34 @@
           "name": "Enable syntax highlighting",
           "type": "boolean",
           "value": true
+        },
+        {
+          "name": "Open links in new tab.",
+          "type": "boolean",
+          "value": false
         }
       ],
       "category": "Code tidy",
+      "is_favorite": false
+    },
+    {
+      "name": "Render PDF",
+      "module": "File",
+      "description": "Displays the input as a PDF preview. Supports Raw and Base64 input formats.",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "html",
+      "args": [
+        {
+          "name": "Input format",
+          "type": "option",
+          "value": [
+            "Base64",
+            "Raw"
+          ]
+        }
+      ],
+      "category": "Multimedia",
       "is_favorite": false
     },
     {
@@ -15197,7 +15980,7 @@
     {
       "name": "SHA2",
       "module": "Crypto",
-      "description": "The SHA-2 (Secure Hash Algorithm 2) hash functions were designed by the NSA. SHA-2 includes significant changes from its predecessor, SHA-1. The SHA-2 family consists of hash functions with digests (hash values) that are 224, 256, 384 or 512 bits: SHA224, SHA256, SHA384, SHA512.<br><br><ul><li>SHA-512 operates on 64-bit words.</li><li>SHA-256 operates on 32-bit words.</li><li>SHA-384 is largely identical to SHA-512 but is truncated to 384 bytes.</li><li>SHA-224 is largely identical to SHA-256 but is truncated to 224 bytes.</li><li>SHA-512/224 and SHA-512/256 are truncated versions of SHA-512, but the initial values are generated using the method described in Federal Information Processing Standards (FIPS) PUB 180-4.</li></ul> The message digest algorithm for SHA256 variants consists, by default, of 64 rounds, and for SHA512 variants, it is, by default, 160.",
+      "description": "The SHA-2 (Secure Hash Algorithm 2) hash functions were designed by the NSA. SHA-2 includes significant changes from its predecessor, SHA-1. The SHA-2 family consists of hash functions with digests (hash values) that are 224, 256, 384 or 512 bits: SHA224, SHA256, SHA384, SHA512.<br><br><ul><li>SHA-512 operates on 64-bit words.</li><li>SHA-256 operates on 32-bit words.</li><li>SHA-384 is largely identical to SHA-512 but is truncated to 384 bits.</li><li>SHA-224 is largely identical to SHA-256 but is truncated to 224 bits.</li><li>SHA-512/224 and SHA-512/256 are truncated versions of SHA-512, but the initial values are generated using the method described in Federal Information Processing Standards (FIPS) PUB 180-4.</li></ul> The message digest algorithm for SHA256 variants consists, by default, of 64 rounds, and for SHA512 variants, it is, by default, 160.",
       "infoURL": "https://wikipedia.org/wiki/SHA-2",
       "inputType": "ArrayBuffer",
       "outputType": "string",
@@ -16550,7 +17333,9 @@
             "CFB",
             "OFB",
             "CTR",
-            "ECB"
+            "ECB",
+            "CBC/NoPadding",
+            "ECB/NoPadding"
           ]
         },
         {
@@ -17704,6 +18489,7 @@
             "fix",
             "flix",
             "fortran",
+            "freedesktop",
             "fsharp",
             "gams",
             "gauss",
@@ -17851,6 +18637,150 @@
       "is_favorite": false
     },
     {
+      "name": "TEA Decrypt",
+      "module": "Ciphers",
+      "description": "TEA (Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1994. It operates on 64-bit blocks using a 128-bit key and performs 32 cycles (64 Feistel rounds) with the DELTA constant 0x9E3779B9 derived from the golden ratio.<br><br>TEA is notable for its simplicity and compact implementation, making it frequently encountered in malware analysis and CTF challenges. Despite its elegance, TEA has known weaknesses including equivalent keys and susceptibility to related-key attacks, leading to successors XTEA and XXTEA.<br><br><b>Key:</b> Must be exactly 16 bytes (128 bits).<br><br><b>IV:</b> The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.<br><br><b>Padding:</b> In CBC and ECB mode, the PKCS#5 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/Tiny_Encryption_Algorithm",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "TEA Encrypt",
+      "module": "Ciphers",
+      "description": "TEA (Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1994. It operates on 64-bit blocks using a 128-bit key and performs 32 cycles (64 Feistel rounds) with the DELTA constant 0x9E3779B9 derived from the golden ratio.<br><br>TEA is notable for its simplicity and compact implementation, making it frequently encountered in malware analysis and CTF challenges. Despite its elegance, TEA has known weaknesses including equivalent keys and susceptibility to related-key attacks, leading to successors XTEA and XXTEA.<br><br><b>Key:</b> Must be exactly 16 bytes (128 bits).<br><br><b>IV:</b> The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.<br><br><b>Padding:</b> In CBC and ECB mode, the PKCS#5 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/Tiny_Encryption_Algorithm",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
       "name": "Tail",
       "module": "Default",
       "description": "Like the UNIX tail utility.<br>Gets the last n lines.<br>Optionally you can select all lines after line n by entering a negative value for n.<br>The delimiter can be changed so that instead of lines, fields (i.e. commas) are selected instead.",
@@ -17973,7 +18903,7 @@
       "module": "Encodings",
       "description": "Enumerates all supported text encodings for the input, allowing you to quickly spot the correct one.\n<br><br>\nSupported charsets are:\n<ul>\n<li>UTF-8 (65001)</li>\n<li>UTF-7 (65000)</li>\n<li>UTF-16LE (1200)</li>\n<li>UTF-16BE (1201)</li>\n<li>UTF-32LE (12000)</li>\n<li>UTF-32BE (12001)</li>\n<li>IBM EBCDIC International (500)</li>\n<li>IBM EBCDIC US-Canada (37)</li>\n<li>IBM EBCDIC Multilingual/ROECE (Latin 2) (870)</li>\n<li>IBM EBCDIC Greek Modern (875)</li>\n<li>IBM EBCDIC French (1010)</li>\n<li>IBM EBCDIC Turkish (Latin 5) (1026)</li>\n<li>IBM EBCDIC Latin 1/Open System (1047)</li>\n<li>IBM EBCDIC Lao (1132/1133/1341)</li>\n<li>IBM EBCDIC US-Canada (037 + Euro symbol) (1140)</li>\n<li>IBM EBCDIC Germany (20273 + Euro symbol) (1141)</li>\n<li>IBM EBCDIC Denmark-Norway (20277 + Euro symbol) (1142)</li>\n<li>IBM EBCDIC Finland-Sweden (20278 + Euro symbol) (1143)</li>\n<li>IBM EBCDIC Italy (20280 + Euro symbol) (1144)</li>\n<li>IBM EBCDIC Latin America-Spain (20284 + Euro symbol) (1145)</li>\n<li>IBM EBCDIC United Kingdom (20285 + Euro symbol) (1146)</li>\n<li>IBM EBCDIC France (20297 + Euro symbol) (1147)</li>\n<li>IBM EBCDIC International (500 + Euro symbol) (1148)</li>\n<li>IBM EBCDIC Icelandic (20871 + Euro symbol) (1149)</li>\n<li>IBM EBCDIC Germany (20273)</li>\n<li>IBM EBCDIC Denmark-Norway (20277)</li>\n<li>IBM EBCDIC Finland-Sweden (20278)</li>\n<li>IBM EBCDIC Italy (20280)</li>\n<li>IBM EBCDIC Latin America-Spain (20284)</li>\n<li>IBM EBCDIC United Kingdom (20285)</li>\n<li>IBM EBCDIC Japanese Katakana Extended (20290)</li>\n<li>IBM EBCDIC France (20297)</li>\n<li>IBM EBCDIC Arabic (20420)</li>\n<li>IBM EBCDIC Greek (20423)</li>\n<li>IBM EBCDIC Hebrew (20424)</li>\n<li>IBM EBCDIC Korean Extended (20833)</li>\n<li>IBM EBCDIC Thai (20838)</li>\n<li>IBM EBCDIC Icelandic (20871)</li>\n<li>IBM EBCDIC Cyrillic Russian (20880)</li>\n<li>IBM EBCDIC Turkish (20905)</li>\n<li>IBM EBCDIC Latin 1/Open System (1047 + Euro symbol) (20924)</li>\n<li>IBM EBCDIC Cyrillic Serbian-Bulgarian (21025)</li>\n<li>OEM United States (437)</li>\n<li>OEM Greek (formerly 437G); Greek (DOS) (737)</li>\n<li>OEM Baltic; Baltic (DOS) (775)</li>\n<li>OEM Russian; Cyrillic + Euro symbol (808)</li>\n<li>OEM Multilingual Latin 1; Western European (DOS) (850)</li>\n<li>OEM Latin 2; Central European (DOS) (852)</li>\n<li>OEM Cyrillic (primarily Russian) (855)</li>\n<li>OEM Turkish; Turkish (DOS) (857)</li>\n<li>OEM Multilingual Latin 1 + Euro symbol (858)</li>\n<li>OEM Portuguese; Portuguese (DOS) (860)</li>\n<li>OEM Icelandic; Icelandic (DOS) (861)</li>\n<li>OEM Hebrew; Hebrew (DOS) (862)</li>\n<li>OEM French Canadian; French Canadian (DOS) (863)</li>\n<li>OEM Arabic; Arabic (864) (864)</li>\n<li>OEM Nordic; Nordic (DOS) (865)</li>\n<li>OEM Russian; Cyrillic (DOS) (866)</li>\n<li>OEM Modern Greek; Greek, Modern (DOS) (869)</li>\n<li>OEM Cyrillic (primarily Russian) + Euro Symbol (872)</li>\n<li>Windows-874 Thai (874)</li>\n<li>Windows-1250 Central European (1250)</li>\n<li>Windows-1251 Cyrillic (1251)</li>\n<li>Windows-1252 Latin (1252)</li>\n<li>Windows-1253 Greek (1253)</li>\n<li>Windows-1254 Turkish (1254)</li>\n<li>Windows-1255 Hebrew (1255)</li>\n<li>Windows-1256 Arabic (1256)</li>\n<li>Windows-1257 Baltic (1257)</li>\n<li>Windows-1258 Vietnam (1258)</li>\n<li>ISO-8859-1 Latin 1 Western European (28591)</li>\n<li>ISO-8859-2 Latin 2 Central European (28592)</li>\n<li>ISO-8859-3 Latin 3 South European (28593)</li>\n<li>ISO-8859-4 Latin 4 North European (28594)</li>\n<li>ISO-8859-5 Latin/Cyrillic (28595)</li>\n<li>ISO-8859-6 Latin/Arabic (28596)</li>\n<li>ISO-8859-7 Latin/Greek (28597)</li>\n<li>ISO-8859-8 Latin/Hebrew (28598)</li>\n<li>ISO 8859-8 Hebrew (ISO-Logical) (38598)</li>\n<li>ISO-8859-9 Latin 5 Turkish (28599)</li>\n<li>ISO-8859-10 Latin 6 Nordic (28600)</li>\n<li>ISO-8859-11 Latin/Thai (28601)</li>\n<li>ISO-8859-13 Latin 7 Baltic Rim (28603)</li>\n<li>ISO-8859-14 Latin 8 Celtic (28604)</li>\n<li>ISO-8859-15 Latin 9 (28605)</li>\n<li>ISO-8859-16 Latin 10 (28606)</li>\n<li>ISO 2022 JIS Japanese with no halfwidth Katakana (50220)</li>\n<li>ISO 2022 JIS Japanese with halfwidth Katakana (50221)</li>\n<li>ISO 2022 Japanese JIS X 0201-1989 (1 byte Kana-SO/SI) (50222)</li>\n<li>ISO 2022 Korean (50225)</li>\n<li>ISO 2022 Simplified Chinese (50227)</li>\n<li>ISO 6937 Non-Spacing Accent (20269)</li>\n<li>EUC Japanese (51932)</li>\n<li>EUC Simplified Chinese (51936)</li>\n<li>EUC Korean (51949)</li>\n<li>ISCII Devanagari (57002)</li>\n<li>ISCII Bengali (57003)</li>\n<li>ISCII Tamil (57004)</li>\n<li>ISCII Telugu (57005)</li>\n<li>ISCII Assamese (57006)</li>\n<li>ISCII Oriya (57007)</li>\n<li>ISCII Kannada (57008)</li>\n<li>ISCII Malayalam (57009)</li>\n<li>ISCII Gujarati (57010)</li>\n<li>ISCII Punjabi (57011)</li>\n<li>Japanese Shift-JIS (932)</li>\n<li>Simplified Chinese GBK (936)</li>\n<li>Korean (949)</li>\n<li>Traditional Chinese Big5 (950)</li>\n<li>US-ASCII (7-bit) (20127)</li>\n<li>Simplified Chinese GB2312 (20936)</li>\n<li>KOI8-R Russian Cyrillic (20866)</li>\n<li>KOI8-U Ukrainian Cyrillic (21866)</li>\n<li>Mazovia (Polish) MS-DOS (620)</li>\n<li>Arabic (ASMO 708) (708)</li>\n<li>Arabic (Transparent ASMO); Arabic (DOS) (720)</li>\n<li>Kamenick\u00fd (Czech) MS-DOS (895)</li>\n<li>Korean (Johab) (1361)</li>\n<li>MAC Roman (10000)</li>\n<li>Japanese (Mac) (10001)</li>\n<li>MAC Traditional Chinese (Big5) (10002)</li>\n<li>Korean (Mac) (10003)</li>\n<li>Arabic (Mac) (10004)</li>\n<li>Hebrew (Mac) (10005)</li>\n<li>Greek (Mac) (10006)</li>\n<li>Cyrillic (Mac) (10007)</li>\n<li>MAC Simplified Chinese (GB 2312) (10008)</li>\n<li>Romanian (Mac) (10010)</li>\n<li>Ukrainian (Mac) (10017)</li>\n<li>Thai (Mac) (10021)</li>\n<li>MAC Latin 2 (Central European) (10029)</li>\n<li>Icelandic (Mac) (10079)</li>\n<li>Turkish (Mac) (10081)</li>\n<li>Croatian (Mac) (10082)</li>\n<li>CNS Taiwan (Chinese Traditional) (20000)</li>\n<li>TCA Taiwan (20001)</li>\n<li>ETEN Taiwan (Chinese Traditional) (20002)</li>\n<li>IBM5550 Taiwan (20003)</li>\n<li>TeleText Taiwan (20004)</li>\n<li>Wang Taiwan (20005)</li>\n<li>Western European IA5 (IRV International Alphabet 5) (20105)</li>\n<li>IA5 German (7-bit) (20106)</li>\n<li>IA5 Swedish (7-bit) (20107)</li>\n<li>IA5 Norwegian (7-bit) (20108)</li>\n<li>T.61 (20261)</li>\n<li>Japanese (JIS 0208-1990 and 0212-1990) (20932)</li>\n<li>Korean Wansung (20949)</li>\n<li>Extended/Ext Alpha Lowercase (21027)</li>\n<li>Europa 3 (29001)</li>\n<li>Atari ST/TT (47451)</li>\n<li>HZ-GB2312 Simplified Chinese (52936)</li>\n<li>Simplified Chinese GB18030 (54936)</li>\n</ul>",
       "infoURL": "https://wikipedia.org/wiki/Character_encoding",
-      "inputType": "ArrayBuffer",
+      "inputType": "string",
       "outputType": "html",
       "args": [
         {
@@ -17982,6 +18912,27 @@
           "value": [
             "Encode",
             "Decode"
+          ]
+        }
+      ],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
+      "name": "Text-Integer Conversion",
+      "module": "Default",
+      "description": "Converts between text strings and large integers (decimal or hexadecimal).<br><br>Text is interpreted as a big-endian sequence of character codes. For example:<br>ABC is 0x414243 (hex) is 4276803 (decimal)<br><b>Input format detection:</b><br>Decimal: digits 0-9 only<br>Hexadecimal: 0x... prefix<br>Quoted or unquoted text: treated as string<br><br><b>Character limitations:</b><br>Text input may only contain ASCII and Latin-1 characters (code point < 256).<br>Multi-byte Unicode characters will generate an error.<br><br>.",
+      "infoURL": "https://wikipedia.org/wiki/Endianness",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Output format",
+          "type": "option",
+          "value": [
+            "String",
+            "Decimal",
+            "Hexadecimal"
           ]
         }
       ],
@@ -18350,6 +19301,17 @@
       "infoURL": "https://wikipedia.org/wiki/Braille",
       "inputType": "string",
       "outputType": "string",
+      "args": [],
+      "category": "Data format",
+      "is_favorite": false
+    },
+    {
+      "name": "To COBS",
+      "module": "Default",
+      "description": "Encodes bytes in COBS format",
+      "infoURL": "https://wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing",
+      "inputType": "byteArray",
+      "outputType": "byteArray",
       "args": [],
       "category": "Data format",
       "is_favorite": false
@@ -20267,6 +21229,150 @@
       "is_favorite": false
     },
     {
+      "name": "Twofish Decrypt",
+      "module": "Ciphers",
+      "description": "Twofish is a symmetric key block cipher designed by Bruce Schneier. It was one of the five AES finalists. Twofish operates on 128-bit blocks and supports key sizes of 128, 192, or 256 bits with 16 rounds of a Feistel network.<br><br>When using CBC or ECB mode, the PKCS#7 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/Twofish",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "Twofish Encrypt",
+      "module": "Ciphers",
+      "description": "Twofish is a symmetric key block cipher designed by Bruce Schneier. It was one of the five AES finalists. Twofish operates on 128-bit blocks and supports key sizes of 128, 192, or 256 bits with 16 rounds of a Feistel network.<br><br>When using CBC or ECB mode, the PKCS#7 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/Twofish",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
       "name": "Typex",
       "module": "Bletchley",
       "description": "Encipher/decipher with the WW2 Typex machine.<br><br>Typex was originally built by the British Royal Air Force prior to WW2, and is based on the Enigma machine with some improvements made, including using five rotors with more stepping points and interchangeable wiring cores. It was used across the British and Commonwealth militaries. A number of later variants were produced; here we simulate a WW2 era Mark 22 Typex with plugboards for the reflector and input. Typex rotors were changed regularly and none are public: a random example set are provided.<br><br>To configure the reflector plugboard, enter a string of connected pairs of letters in the reflector box, e.g. <code>AB CD EF</code> connects A to B, C to D, and E to F (you'll need to connect every letter). There is also an input plugboard: unlike Enigma's plugboard, it's not restricted to pairs, so it's entered like a rotor (without stepping). To create your own rotor, enter the letters that the rotor maps A to Z to, in order, optionally followed by <code>&lt;</code> then a list of stepping points.<br><br>More detailed descriptions of the Enigma, Typex and Bombe operations <a href='https://github.com/gchq/CyberChef/wiki/Enigma,-the-Bombe,-and-Typex'>can be found here</a>.",
@@ -20899,7 +22005,7 @@
       "module": "URL",
       "description": "Encodes problematic characters into percent-encoding, a format supported by URIs/URLs.<br><br>e.g. <code>=</code> becomes <code>%3d</code>",
       "infoURL": "https://wikipedia.org/wiki/Percent-encoding",
-      "inputType": "string",
+      "inputType": "byteArray",
       "outputType": "string",
       "args": [
         {
@@ -21169,6 +22275,23 @@
       "is_favorite": false
     },
     {
+      "name": "Wrap",
+      "module": "Default",
+      "description": "Wraps the input text at a specified number of characters per line.",
+      "infoURL": null,
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Line Width",
+          "type": "number",
+          "value": 64
+        }
+      ],
+      "category": "Utils",
+      "is_favorite": false
+    },
+    {
       "name": "XKCD Random Number",
       "module": "Default",
       "description": "RFC 1149.5 specifies 4 as the standard IEEE-vetted random number.",
@@ -21327,6 +22450,34 @@
       "is_favorite": false
     },
     {
+      "name": "XPRESS Decompress",
+      "module": "Compression",
+      "description": "Decompresses data using the XPRESS plain LZ77 algorithm (MS-XCA section 2.1).<br><br>Similar to the Windows API <code>RtlDecompressBuffer</code> with <code>COMPRESSION_FORMAT_XPRESS</code>.",
+      "infoURL": "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/5655f4a3-6ba4-489b-959f-e1f407c52f15",
+      "inputType": "byteArray",
+      "outputType": "byteArray",
+      "args": [],
+      "category": "Compression",
+      "is_favorite": false
+    },
+    {
+      "name": "XPRESS LZ77+Huffman Decompress",
+      "module": "Compression",
+      "description": "Decompresses data using the XPRESS LZ77+Huffman algorithm (MS-XCA section 2.2).<br><br>The uncompressed size must be known in advance, as it is from the WOF chunk table or WIM header, so it is taken as an argument.",
+      "infoURL": "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-xca/5655f4a3-6ba4-489b-959f-e1f407c52f15",
+      "inputType": "byteArray",
+      "outputType": "byteArray",
+      "args": [
+        {
+          "name": "Decompressed size",
+          "type": "number",
+          "value": 4096
+        }
+      ],
+      "category": "Compression",
+      "is_favorite": false
+    },
+    {
       "name": "XPath expression",
       "module": "Code",
       "description": "Extract information from an XML document with an XPath query",
@@ -21408,6 +22559,160 @@
             "Raw",
             "Hex"
           ]
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "XTEA Decrypt",
+      "module": "Ciphers",
+      "description": "XTEA (eXtended Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1997 as a successor to TEA, correcting several weaknesses identified in the original algorithm. It operates on 64-bit blocks using a 128-bit key with an improved key schedule that uses sum-dependent key word selection to resist related-key attacks.<br><br>XTEA retains the simplicity and compact implementation of TEA whilst providing significantly improved security. It is frequently encountered in malware analysis and CTF challenges due to its straightforward implementation.<br><br><b>Key:</b> Must be exactly 16 bytes (128 bits).<br><br><b>IV:</b> The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.<br><br><b>Rounds:</b> The recommended number of rounds is 32 (default). The reference implementation by Wheeler &amp; Needham accepts a configurable round count.<br><br><b>Padding:</b> In CBC and ECB mode, the PKCS#5 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/XTEA",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        },
+        {
+          "name": "Rounds",
+          "type": "number",
+          "value": 32
+        }
+      ],
+      "category": "Encryption / Encoding",
+      "is_favorite": false
+    },
+    {
+      "name": "XTEA Encrypt",
+      "module": "Ciphers",
+      "description": "XTEA (eXtended Tiny Encryption Algorithm) is a block cipher designed by David Wheeler and Roger Needham in 1997 as a successor to TEA, correcting several weaknesses identified in the original algorithm. It operates on 64-bit blocks using a 128-bit key with an improved key schedule that uses sum-dependent key word selection to resist related-key attacks.<br><br>XTEA retains the simplicity and compact implementation of TEA whilst providing significantly improved security. It is frequently encountered in malware analysis and CTF challenges due to its straightforward implementation.<br><br><b>Key:</b> Must be exactly 16 bytes (128 bits).<br><br><b>IV:</b> The Initialisation Vector should be 8 bytes (64 bits). If not entered, it will default to null bytes.<br><br><b>Rounds:</b> The recommended number of rounds is 32 (default). The reference implementation by Wheeler &amp; Needham accepts a configurable round count.<br><br><b>Padding:</b> In CBC and ECB mode, the PKCS#5 padding scheme is used.",
+      "infoURL": "https://wikipedia.org/wiki/XTEA",
+      "inputType": "string",
+      "outputType": "string",
+      "args": [
+        {
+          "name": "Key",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "IV",
+          "type": "toggleString",
+          "value": "",
+          "toggleValues": [
+            "Hex",
+            "UTF8",
+            "Latin1",
+            "Base64"
+          ]
+        },
+        {
+          "name": "Mode",
+          "type": "option",
+          "value": [
+            "CBC",
+            "CFB",
+            "OFB",
+            "CTR",
+            "ECB"
+          ]
+        },
+        {
+          "name": "Input",
+          "type": "option",
+          "value": [
+            "Raw",
+            "Hex"
+          ]
+        },
+        {
+          "name": "Output",
+          "type": "option",
+          "value": [
+            "Hex",
+            "Raw"
+          ]
+        },
+        {
+          "name": "Padding",
+          "type": "option",
+          "value": [
+            "PKCS5",
+            "NO",
+            "ZERO",
+            "RANDOM",
+            "BIT"
+          ]
+        },
+        {
+          "name": "Rounds",
+          "type": "number",
+          "value": 32
         }
       ],
       "category": "Encryption / Encoding",

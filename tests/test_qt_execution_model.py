@@ -116,8 +116,8 @@ def _execute_recipe_panel(qtbot, execution_model):
 def test_recipe_panel_clears_later_stale_preview_and_error(qtbot):
     input_model, _, execution_model, panel = _build_recipe_panel(
         qtbot,
-        input_text="104 105",
-        operations=[("From Decimal", {}), ("To Base64", {})],
+        input_text="8 9",
+        operations=[("A1Z26 Cipher Decode", {}), ("To Base64", {})],
     )
     _execute_recipe_panel(qtbot, execution_model)
 
@@ -126,10 +126,10 @@ def test_recipe_panel_clears_later_stale_preview_and_error(qtbot):
     assert second_widget._preview_widget.toPlainText() == "aGk="
 
     with qtbot.waitSignal(execution_model.execution_completed, timeout=2000):
-        input_model.set_manual_text("abc")
+        input_model.set_manual_text("99")
 
     assert first_widget._error_visible is True
-    assert first_widget._error_label.text() == "Error: cannot convert float NaN to integer"
+    assert "all numbers must be between 1 and 26" in first_widget._error_label.text()
     assert second_widget._preview_widget.toPlainText() == ""
     assert second_widget._error_visible is False
 
@@ -137,20 +137,20 @@ def test_recipe_panel_clears_later_stale_preview_and_error(qtbot):
 def test_recipe_panel_clears_stale_state_after_recipe_edit(qtbot):
     _, recipe_model, execution_model, panel = _build_recipe_panel(
         qtbot,
-        input_text="104 105",
-        operations=[("From Decimal", {"Delimiter": "Space"}), ("To Base64", {})],
+        input_text="8,99",
+        operations=[("A1Z26 Cipher Decode", {"Delimiter": "Space"}), ("To Base64", {})],
     )
     _execute_recipe_panel(qtbot, execution_model)
 
     first_widget, second_widget = panel._step_widgets
     assert first_widget._preview_widget.toPlainText() != ""
-    assert second_widget._preview_widget.toPlainText() == "aGk="
+    assert second_widget._preview_widget.toPlainText() == "aA=="
 
     with qtbot.waitSignal(execution_model.execution_completed, timeout=2000):
-        recipe_model.update_operation_args(0, {"Delimiter": "None"})
+        recipe_model.update_operation_args(0, {"Delimiter": "Comma"})
 
     assert first_widget._error_visible is True
-    assert first_widget._error_label.text() == "Error: cannot convert float NaN to integer"
+    assert "all numbers must be between 1 and 26" in first_widget._error_label.text()
     assert second_widget._preview_widget.toPlainText() == ""
     assert second_widget._error_visible is False
 
@@ -159,7 +159,7 @@ def test_recipe_panel_clears_all_stale_state_for_empty_results(qtbot):
     input_model, _, execution_model, panel = _build_recipe_panel(
         qtbot,
         input_text="hello",
-        operations=[("To Base64", {}), ("From Decimal", {"Delimiter": "None"})],
+        operations=[("To Decimal", {}), ("A1Z26 Cipher Decode", {})],
     )
     _execute_recipe_panel(qtbot, execution_model)
 

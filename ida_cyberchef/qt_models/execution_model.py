@@ -1,13 +1,12 @@
 """Qt model for coordinating recipe execution with debouncing.
 
-IMPORTANT: All execution happens in the main thread. PythonMonkey (the
-SpiderMonkey-based JavaScript engine used to execute CyberChef operations)
-offers no thread-safety guarantees, and the bridge drives promise resolution
-through a private asyncio event loop that must only be entered from one
-thread.
+IMPORTANT: All execution happens in the main thread. mini-racer (the V8
+binding used to execute CyberChef operations) runs V8 on its own thread and
+serialises calls into it, but the Python bridge keeps unlocked module-level
+state and recipes run one at a time, so callers stay on one thread.
 
-If future versions migrate to a thread-safe JavaScript engine, background
-execution can be implemented using QThread workers.
+Background execution could be implemented using QThread workers if the
+bridge state is made thread-safe.
 """
 
 from PySide6.QtCore import QObject, QTimer, Signal
